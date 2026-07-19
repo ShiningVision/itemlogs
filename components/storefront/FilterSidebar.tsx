@@ -1,11 +1,11 @@
 // components/storefront/FilterSidebar.tsx
 'use client';
 
-import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useFilterParams } from '@/app/lib/hooks/useFilterParams';
 import { FilterPill } from '@/components/ui/FilterPill';
-import { FunnelIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon } from '@heroicons/react/24/outline';
+import { useFilterDrawer } from './FilterDrawerContext';
 
 type Option = { id: number; name: string | null };
 
@@ -43,7 +43,7 @@ export function FilterSidebar({
 }) {
   const t = useTranslations('storefront');
   const { toggleInList } = useFilterParams();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const { isOpen: drawerOpen, close: closeDrawer } = useFilterDrawer();
 
   const pillSection = (title: string, options: { id: number; label: string }[], selected: number[], key: string) => (
     <div className="storefront-filter-section">
@@ -116,39 +116,20 @@ export function FilterSidebar({
     <>
       <aside className="storefront-filter-sidebar">{content}</aside>
 
-      <button
-        type="button"
-        className="storefront-filter-mobile-trigger"
-        onClick={() => setDrawerOpen(true)}
-        style={{
-          alignItems: 'center',
-          gap: 'var(--spacing-xs)',
-          padding: 'var(--spacing-sm) var(--spacing-md)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-md)',
-          background: 'var(--color-surface)',
-          color: 'var(--color-text)',
-          margin: 'var(--spacing-md) var(--spacing-lg) 0',
-        }}
-      >
-        <FunnelIcon style={{ width: '16px', height: '16px' }} />
-        {t('filters')}
-      </button>
-
       {drawerOpen && (
         <div
           role="dialog"
           aria-modal="true"
-          onClick={() => setDrawerOpen(false)}
+          onClick={closeDrawer}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 90 }}
         >
-          <div className="storefront-filter-drawer-panel" onClick={(e) => e.stopPropagation()}>
+          <div className="storefront-filter-drawer-panel storefront-filter-drawer-panel--open" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
               <span style={{ fontWeight: 'var(--font-weight-bold)' }}>{t('filters')}</span>
               <button
                 type="button"
                 aria-label={t('closeFilters')}
-                onClick={() => setDrawerOpen(false)}
+                onClick={closeDrawer}
                 style={{ background: 'transparent', border: 'none', color: 'var(--color-text)', cursor: 'pointer' }}
               >
                 <XMarkIcon style={{ width: '20px', height: '20px' }} />

@@ -1118,9 +1118,64 @@ body {
 }
 
 /* ---------------------------------------------------------------------
+   Storefront: header row. Logo + login always visible; on mobile a
+   hamburger trigger for the filter drawer appears on the left and the
+   logo centers itself between it and the login icon. On desktop the
+   trigger is hidden (the filter sidebar is already visible) and the
+   header reverts to its original logo-left/login-right layout.
+--------------------------------------------------------------------- */
+.storefront-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-background);
+}
+
+.storefront-header-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.storefront-header-logo-wrap {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.storefront-header-login {
+  flex-shrink: 0;
+}
+
+@media (min-width: 861px) {
+  .storefront-header {
+    justify-content: space-between;
+  }
+
+  .storefront-header-menu-btn {
+    display: none;
+  }
+
+  .storefront-header-logo-wrap {
+    flex: initial;
+    justify-content: flex-start;
+  }
+}
+
+/* ---------------------------------------------------------------------
    Storefront: mobile filter drawer. The sidebar is hidden below the same
-   breakpoint the dashboard nav collapses at, replaced by a trigger button
-   that opens the filters as a full overlay panel.
+   breakpoint the dashboard nav collapses at; the hamburger trigger in
+   StorefrontHeader opens the filters as a full overlay panel that slides
+   in from the left.
 --------------------------------------------------------------------- */
 .storefront-filter-sidebar {
   width: 220px;
@@ -1129,24 +1184,39 @@ body {
   border-right: 1px solid var(--color-border);
 }
 
-.storefront-filter-mobile-trigger {
-  display: none;
-}
-
 @media (max-width: 860px) {
   .storefront-filter-sidebar {
     display: none;
   }
+}
 
-  .storefront-filter-mobile-trigger {
-    display: inline-flex;
+.storefront-main {
+  padding: var(--spacing-lg);
+}
+
+@media (max-width: 480px) {
+  .storefront-main {
+    padding: var(--spacing-md);
   }
+
+  .storefront-grid--dense {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+
+  .storefront-grid--showcase {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+}
+
+@keyframes storefront-filter-drawer-slide-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
 }
 
 .storefront-filter-drawer-panel {
   position: fixed;
   top: 0;
-  right: 0;
+  left: 0;
   bottom: 0;
   width: 300px;
   max-width: 85vw;
@@ -1154,6 +1224,10 @@ body {
   box-shadow: var(--shadow-md);
   padding: var(--spacing-lg);
   overflow-y: auto;
+}
+
+.storefront-filter-drawer-panel--open {
+  animation: storefront-filter-drawer-slide-in 0.2s ease-out;
 }
 
 /* ---------------------------------------------------------------------

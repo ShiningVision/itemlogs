@@ -11,6 +11,7 @@ import {
 } from '@/app/lib/services/items';
 import { resolveLabel } from '@/app/lib/labels';
 import { StorefrontHeader } from '@/components/storefront/StorefrontHeader';
+import { FilterDrawerProvider } from '@/components/storefront/FilterDrawerContext';
 import { StorefrontHero } from '@/components/storefront/StorefrontHero';
 import { StorefrontSpotlight } from '@/components/storefront/StorefrontSpotlight';
 import { FilterSidebar } from '@/components/storefront/FilterSidebar';
@@ -102,7 +103,8 @@ export default async function HomePage({
   const noFiltersActive = selectedCategoryIds.length === 0 && selectedTypeIds.length === 0 && selectedStatuses.length === 0;
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--color-background)', display: 'flex', flexDirection: 'column' }}>
+    <FilterDrawerProvider>
+      <div style={{ minHeight: '100vh', background: 'var(--color-background)', display: 'flex', flexDirection: 'column' }}>
       <StorefrontHeader />
 
       <StorefrontHero
@@ -130,7 +132,7 @@ export default async function HomePage({
           typeCounts={typeCounts}
         />
 
-        <main style={{ flex: 1, padding: 'var(--spacing-lg)' }}>
+        <main className="storefront-main" style={{ flex: 1, minWidth: 0 }}>
           {settings.show_message && (
             <div
               style={{
@@ -172,6 +174,7 @@ export default async function HomePage({
           {t('footerContact', { contact: settings.contact_info })}
         </footer>
       )}
-    </div>
+      </div>
+    </FilterDrawerProvider>
   );
 }
