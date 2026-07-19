@@ -5,8 +5,7 @@ import { getSettings } from '@/app/lib/services/settings';
 import { resolveLabel } from '@/app/lib/labels';
 import { getTranslations } from 'next-intl/server';
 import { notFound, redirect } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { BackToStorefrontButton } from '@/components/storefront/BackToStorefrontButton';
 import { NoImagePlaceholder } from '@/components/ui/NoImagePlaceholder';
 import { StatBox } from '@/components/ui/StatBox';
 import { Badge } from '@/components/ui/Badge';
@@ -53,22 +52,7 @@ export default async function PublicItemPage({
 
   return (
     <div className="item-sheet-container" style={{ padding: 'var(--spacing-lg)' }}>
-      <Link
-        href="/"
-        className="interactive-card"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 'var(--spacing-xs)',
-          marginBottom: 'var(--spacing-md)',
-          color: 'var(--color-text-muted)',
-          textDecoration: 'none',
-          fontSize: 'var(--font-size-sm)',
-        }}
-      >
-        <ArrowLeftIcon style={{ width: '16px', height: '16px' }} />
-        {t('backToStorefront')}
-      </Link>
+      <BackToStorefrontButton label={t('backToStorefront')} />
 
       <div className="sheet-frame">
         <div className="sheet-body">
