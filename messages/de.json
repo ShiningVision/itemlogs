@@ -1,0 +1,17 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "items": "Items",
+    "packages": "Packages",
+    "sales": "Sales",
+    "settings": "Settings"
+  },
+  "login": {
+    "title": "Please log in to continue.",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Log in",
+    "invalidCredentials": "Invalid email or password.",
+    "continueWithGoogle": "Continue with Google"
+  }
+}

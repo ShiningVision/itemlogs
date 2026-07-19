@@ -1,0 +1,49 @@
+// components/items/ItemGrid.tsx
+import { ItemCard } from './ItemCard';
+import type { Settings } from '@/app/lib/definitions';
+
+export function ItemGrid({
+  items,
+  settings,
+  showDeleteButton = false,
+  sellMode = false,
+  saleId,
+  removeFromPackageButton = false,
+  onItemRemovedFromPackage,
+  removeFromSaleButton = false,
+  onItemRemovedFromSale,
+}: {
+  items: any[];
+  settings: Settings;
+  showDeleteButton?: boolean;
+  sellMode?: boolean;
+  saleId?: number;
+  removeFromPackageButton?: boolean;
+  onItemRemovedFromPackage?: () => void;
+  removeFromSaleButton?: boolean;
+  onItemRemovedFromSale?: () => void;
+}) {
+  if (items.length === 0) {
+    return <div style={{ color: 'var(--color-text-muted)' }}>No items match these filters.</div>;
+  }
+
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 'var(--spacing-md)' }}>
+      {items.map((item) => (
+        <ItemCard
+          key={item.id}
+          item={item}
+          settings={settings}
+          showDeleteButton={showDeleteButton}
+          sellMode={sellMode}
+          saleId={saleId}
+          removeFromPackageButton={removeFromPackageButton}
+          onRemovedFromPackage={onItemRemovedFromPackage}
+          removeFromSaleButton={removeFromSaleButton}
+          onRemovedFromSale={onItemRemovedFromSale}
+        />
+      ))}
+    </div>
+  );
+}

@@ -1,0 +1,405 @@
+// app/lib/items/importItems.ts
+// Core logic for the Items "Import from Excel" feature. Deliberately kept
+// out of the API route so the route stays a thin HTTP wrapper.
+//
+// Flow:
+//   1. Validate the workbook's shape (exact column layout matching the
+//      export) — abort immediately if wrong.
+//   2. Parse every data row and run a full validation scan (status must be
+//      1-4, purchase/cost/sell price must be numeric, purchase_price_currency
+//      must exist, ids — if given — must reference an existing item). Nothing
+//      is written to the database yet. If ANY row fails ANY of these
+//      checks, the whole import is aborted and every problem found is
+//      reported together.
+//   3. Only once the scan is clean do we start mutating: create missing
+//      categories/types as we encounter their names, resolve each row's
+//      main_image (existing stored image / already-fetched-this-run
+//      external image / brand-new external image to fetch+compress+
+//      upload), and create or update the item itself (id present ->
+//      update, blank -> create).
+//
+// Note on partial failure: steps 1-2 are a hard gate (nothing written if
+// they fail). Step 3 is not wrapped in a database transaction (the
+// Supabase client here doesn't give us one) — if an individual row fails
+// during the mutation pass (e.g. a transient DB error), it's reported as a
+// row error and the rest of the import continues rather than rolling back
+// rows already written.
+
+import ExcelJS from 'exceljs';
+import { getItemsByIds, createItem, updateItem } from '@/app/lib/services/items';
+import { getCategories, createCategory } from '@/app/lib/services/categories';
+import { getTypes, createType } from '@/app/lib/services/types';
+import { getCurrencies } from '@/app/lib/services/currencies';
+import { getImageByUrl, createImage } from '@/app/lib/services/images';
+import { uploadImageBuffer } from '@/app/lib/storage/images';
+
+const EXPECTED_HEADERS = [
+  'id',
+  'name',
+  'status',
+  'type',
+  'category',
+  'origin',
+  'description',
+  'barcode',
+  'main_image',
+  'purchase_price',
+  'purchase_price_currency',
+  'cost_price',
+  'sell_price',
+];
+
+export type ImportResult =
+  | {
+      success: true;
+      created: number;
+      updated: number;
+      categoriesCreated: number;
+      typesCreated: number;
+      imagesFetched: number;
+      imagesSkipped: number;
+      rowErrors: string[];
+    }
+  | { success: false; error: string; details?: string[] };
+
+type ParsedRow = {
+  rowNumber: number;
+  id: number | null;
+  name: string;
+  status: number;
+  type: string | null;
+  category: string | null;
+  origin: string | null;
+  description: string | null;
+  barcode: string | null;
+  main_image: string | null;
+  purchase_price: number;
+  purchase_price_currency: string;
+  cost_price: number;
+  sell_price: number;
+};
+
+function cellToString(value: ExcelJS.CellValue): string | null {
+  if (value === null || value === undefined) return null;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'object') {
+    if ('text' in (value as any) && typeof (value as any).text === 'string') return (value as any).text;
+    if ('richText' in (value as any) && Array.isArray((value as any).richText)) {
+      return (value as any).richText.map((r: any) => r.text).join('');
+    }
+    if ('result' in (value as any)) return cellToString((value as any).result);
+    return null;
+  }
+  const str = String(value).trim();
+  return str === '' ? null : str;
+}
+
+export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult> {
+  const workbook = new ExcelJS.Workbook();
+  try {
+    await workbook.xlsx.load(buffer as any);
+  } catch {
+    return { success: false, error: 'Could not read this file. Please upload a .xlsx file exported from Itemlogs.' };
+  }
+
+  const sheet = workbook.worksheets[0];
+  if (!sheet) {
+    return { success: false, error: 'The workbook has no sheets.' };
+  }
+
+  // ---- 1. Shape check — exact column layout, same order, no extras ----
+  const headerRow = sheet.getRow(1);
+  for (let i = 0; i < EXPECTED_HEADERS.length; i++) {
+    const actual = (cellToString(headerRow.getCell(i + 1).value) ?? '').toLowerCase();
+    if (actual !== EXPECTED_HEADERS[i]) {
+      return {
+        success: false,
+        error: `This file doesn't match the expected column layout. Expected column ${i + 1} to be "${EXPECTED_HEADERS[i]}" but found "${actual || '(empty)'}". Please use a file exported from Itemlogs.`,
+      };
+    }
+  }
+  const extraHeader = cellToString(headerRow.getCell(EXPECTED_HEADERS.length + 1).value);
+  if (extraHeader) {
+    return {
+      success: false,
+      error: `This file has an unexpected extra column ("${extraHeader}"). Please use a file exported from Itemlogs.`,
+    };
+  }
+
+  // ---- 2. Parse rows + full validation scan (nothing written yet) ----
+  const currencies = await getCurrencies();
+  const currencyCodes = new Set(currencies.map((c) => c.currency_code));
+
+  const rows: ParsedRow[] = [];
+  const statusErrors: string[] = [];
+  const priceErrors: string[] = [];
+  const currencyErrors: string[] = [];
+  const idFormatErrors: string[] = [];
+  const nameErrors: string[] = [];
+
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return; // header row
+
+    const get = (col: number) => cellToString(row.getCell(col).value);
+    const idStr = get(1);
+    const name = get(2);
+    const statusStr = get(3);
+    const type = get(4);
+    const category = get(5);
+    const origin = get(6);
+    const description = get(7);
+    const barcode = get(8);
+    const main_image = get(9);
+    const purchasePriceStr = get(10);
+    const purchase_price_currency = get(11);
+    const costPriceStr = get(12);
+    const sellPriceStr = get(13);
+
+    const allBlank = [
+      idStr, name, statusStr, type, category, origin, description, barcode,
+      main_image, purchasePriceStr, purchase_price_currency, costPriceStr,
+      sellPriceStr,
+    ].every((v) => v === null);
+    if (allBlank) return;
+
+    let id: number | null = null;
+    if (idStr !== null) {
+      const n = Number(idStr);
+      // Item ids are Postgres integers — reject anything non-numeric
+      // (letters, symbols, a Mongo-style ObjectId, etc.) as well as
+      // numeric-looking-but-fractional values like "1.5", which would
+      // otherwise slip past this check and only fail later as a raw
+      // database error instead of a clean, reported row error.
+      if (!Number.isInteger(n)) {
+        idFormatErrors.push(`Row ${rowNumber}: "id" is not a valid whole number ("${idStr}").`);
+      } else {
+        id = n;
+      }
+    }
+
+    if (id === null && !name) {
+      nameErrors.push(`Row ${rowNumber}: "name" is required when creating a new item (id is empty).`);
+    }
+
+    const statusNum = statusStr !== null ? Number(statusStr) : NaN;
+    if (!Number.isFinite(statusNum) || ![1, 2, 3, 4].includes(statusNum)) {
+      statusErrors.push(`Row ${rowNumber}: "status" must be 1, 2, 3, or 4 (found "${statusStr ?? '(empty)'}").`);
+    }
+
+    function parsePrice(label: string, str: string | null): number {
+      if (str === null) return 0;
+      const n = Number(str);
+      if (!Number.isFinite(n)) {
+        priceErrors.push(`Row ${rowNumber}: "${label}" must be a number (found "${str}").`);
+        return 0;
+      }
+      return n;
+    }
+    const purchase_price = parsePrice('purchase_price', purchasePriceStr);
+    const cost_price = parsePrice('cost_price', costPriceStr);
+    const sell_price = parsePrice('sell_price', sellPriceStr);
+
+    if (purchase_price_currency === null || !currencyCodes.has(purchase_price_currency)) {
+      currencyErrors.push(`Row ${rowNumber}: unsupported currency "${purchase_price_currency ?? '(empty)'}" in purchase_price_currency.`);
+    }
+
+    rows.push({
+      rowNumber,
+      id,
+      name: name ?? '',
+      status: Number.isFinite(statusNum) ? statusNum : 0,
+      type,
+      category,
+      origin,
+      description,
+      barcode,
+      main_image,
+      purchase_price,
+      purchase_price_currency: purchase_price_currency ?? '',
+      cost_price,
+      sell_price,
+    });
+  });
+
+  // id existence check (batched)
+  const idsToCheck = rows.map((r) => r.id).filter((id): id is number => id !== null);
+  const existingIds = await getItemsByIds(idsToCheck);
+  const missingIdErrors: string[] = [];
+  for (const row of rows) {
+    if (row.id !== null && !existingIds.has(row.id)) {
+      missingIdErrors.push(`Row ${row.rowNumber}: item id ${row.id} does not exist.`);
+    }
+  }
+
+  const allErrors = [...idFormatErrors, ...nameErrors, ...statusErrors, ...priceErrors, ...currencyErrors, ...missingIdErrors];
+  if (allErrors.length > 0) {
+    return {
+      success: false,
+      error: 'Import aborted — this file has problems that need fixing first.',
+      details: allErrors,
+    };
+  }
+
+  if (rows.length === 0) {
+    return { success: true, created: 0, updated: 0, categoriesCreated: 0, typesCreated: 0, imagesFetched: 0, imagesSkipped: 0, rowErrors: [] };
+  }
+
+  // ---- 3. Mutation pass ----
+  const currencyCodeToId = new Map(currencies.map((c) => [c.currency_code, c.id]));
+
+  const categoriesList = await getCategories();
+  const categoryNameToId = new Map<string, number>((categoriesList ?? []).map((c: any) => [c.name, c.id]));
+  let categoriesCreated = 0;
+
+  const typesList = await getTypes();
+  const typeNameToId = new Map<string, number>((typesList ?? []).map((t: any) => [t.name, t.id]));
+  let typesCreated = 0;
+
+  async function resolveCategory(name: string | null): Promise<number | null> {
+    if (!name) return null;
+    const existing = categoryNameToId.get(name);
+    if (existing !== undefined) return existing;
+    const created = await createCategory({ name });
+    categoryNameToId.set(name, created.id);
+    categoriesCreated++;
+    return created.id;
+  }
+
+  async function resolveType(name: string | null): Promise<number | null> {
+    if (!name) return null;
+    const existing = typeNameToId.get(name);
+    if (existing !== undefined) return existing;
+    const created = await createType({ name });
+    typeNameToId.set(name, created.id);
+    typesCreated++;
+    return created.id;
+  }
+
+  // The dedup map described in the spec: original external image URL ->
+  // the Vercel Blob URL we uploaded it to. Prevents re-downloading and
+  // re-uploading the same external image if it's referenced by multiple
+  // rows in the same import.
+  const externalUrlToBlobUrl = new Map<string, string>();
+  // Companion cache (not the map itself, just bookkeeping) so a repeated
+  // external URL doesn't need a second `images` table lookup once we
+  // already know its row id from earlier in this run.
+  const blobUrlToImageId = new Map<string, number>();
+
+  let imagesFetched = 0;
+  let imagesSkipped = 0;
+
+  async function resolveMainImage(url: string | null): Promise<number | null> {
+    if (!url) return null;
+
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      imagesSkipped++;
+      return null; // invalid URL — skip, per spec (don't abort the row)
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      imagesSkipped++;
+      return null;
+    }
+
+    // Already one of our own stored images (e.g. re-importing a previous export)?
+    const existingImage = await getImageByUrl(url);
+    if (existingImage) return existingImage.id;
+
+    // Already fetched earlier in this same import run?
+    const cachedBlobUrl = externalUrlToBlobUrl.get(url);
+    if (cachedBlobUrl) {
+      const cachedId = blobUrlToImageId.get(cachedBlobUrl);
+      if (cachedId !== undefined) return cachedId;
+    }
+
+    // New external URL — fetch, compress, upload, and remember it.
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        imagesSkipped++;
+        return null;
+      }
+      const contentType = response.headers.get('content-type') ?? '';
+      if (!contentType.startsWith('image/')) {
+        imagesSkipped++;
+        return null;
+      }
+
+      const original = Buffer.from(await response.arrayBuffer());
+      const sharp = (await import('sharp')).default;
+      const compressed = await sharp(original)
+        .resize({ width: 1280, height: 1280, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 70 })
+        .toBuffer();
+
+      const filename = (parsed.pathname.split('/').pop() || 'image').replace(/\.[a-zA-Z0-9]+$/, '') + '.jpg';
+      const blobUrl = await uploadImageBuffer(compressed, filename, 'image/jpeg');
+      const createdImage = await createImage(blobUrl);
+
+      externalUrlToBlobUrl.set(url, blobUrl);
+      blobUrlToImageId.set(blobUrl, createdImage.id);
+      imagesFetched++;
+      return createdImage.id;
+    } catch {
+      imagesSkipped++;
+      return null;
+    }
+  }
+
+  let created = 0;
+  let updated = 0;
+  const rowErrors: string[] = [];
+
+  for (const row of rows) {
+    try {
+      const categoryId = await resolveCategory(row.category);
+      const typeId = await resolveType(row.type);
+      const mainImageId = await resolveMainImage(row.main_image);
+
+      const payload = {
+        name: row.name,
+        // Blank description/origin/barcode leave the existing value alone
+        // on update (they're omitted, not nulled) — only main_image,
+        // category, and type support explicit clearing, since those are
+        // the only nullable fields in the schema.
+        description: row.description ?? undefined,
+        origin: row.origin ?? undefined,
+        barcode: row.barcode ?? undefined,
+        status: row.status,
+        category: categoryId,
+        type: typeId,
+        main_image: mainImageId,
+        cost_price: row.cost_price,
+        purchase_price: row.purchase_price,
+        purchase_price_currency: currencyCodeToId.get(row.purchase_price_currency)!,
+        // sell_price is always in the shop-wide settings.sell_price_currency —
+        // no per-item currency to resolve/write here anymore.
+        sell_price: row.sell_price,
+      };
+
+      if (row.id !== null) {
+        await updateItem(row.id, payload);
+        updated++;
+      } else {
+        await createItem(payload);
+        created++;
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'unknown error';
+      rowErrors.push(`Row ${row.rowNumber}: failed to save — ${message}.`);
+    }
+  }
+
+  return {
+    success: true,
+    created,
+    updated,
+    categoriesCreated,
+    typesCreated,
+    imagesFetched,
+    imagesSkipped,
+    rowErrors,
+  };
+}

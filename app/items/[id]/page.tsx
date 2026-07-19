@@ -1,0 +1,166 @@
+// app/items/[id]/page.tsx
+import { getItemById } from '@/app/lib/services/items';
+import { getItemImages } from '@/app/lib/services/item-images';
+import { getSettings } from '@/app/lib/services/settings';
+import { resolveLabel } from '@/app/lib/labels';
+import { getTranslations } from 'next-intl/server';
+import { notFound, redirect } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { NoImagePlaceholder } from '@/components/ui/NoImagePlaceholder';
+import { StatBox } from '@/components/ui/StatBox';
+import { Badge } from '@/components/ui/Badge';
+import { ContactModal } from '@/components/storefront/ContactModal';
+
+export default async function PublicItemPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+
+  const [item, settings] = await Promise.all([
+    getItemById(Number(id)),
+    getSettings(),
+  ]);
+
+  const statusFlags: Record<number, boolean> = {
+    1: settings.show_status_1,
+    2: settings.show_status_2,
+    3: settings.show_status_3,
+    4: settings.show_status_4,
+  };
+
+  if (!settings.show) {
+    redirect('/login');
+  }
+
+  if (!statusFlags[item.status]) {
+    notFound();
+  }
+
+  const galleryImages = await getItemImages(Number(id));
+  const t = await getTranslations('storefront');
+  const itemsT = await getTranslations('items');
+
+  const categoryLabel = resolveLabel(settings.name_category, itemsT('category'));
+  const typeLabel = resolveLabel(settings.name_type, itemsT('type'));
+
+  const hasStats =
+    (settings.show_sell_price && item.sell_price !== null) ||
+    (settings.show_purchase_price && item.purchase_price !== null) ||
+    (settings.show_cost_price && item.cost_price !== null);
+
+  return (
+    <div className="item-sheet-container" style={{ padding: 'var(--spacing-lg)' }}>
+      <Link
+        href="/"
+        className="interactive-card"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 'var(--spacing-xs)',
+          marginBottom: 'var(--spacing-md)',
+          color: 'var(--color-text-muted)',
+          textDecoration: 'none',
+          fontSize: 'var(--font-size-sm)',
+        }}
+      >
+        <ArrowLeftIcon style={{ width: '16px', height: '16px' }} />
+        {t('backToStorefront')}
+      </Link>
+
+      <div className="sheet-frame">
+        <div className="sheet-body">
+          <div className="sheet-header">
+            <div className="sheet-portrait">
+              <div className="sheet-portrait-frame">
+                {item.main_image_ref?.url ? (
+                  <img
+                    src={item.main_image_ref.url}
+                    alt={item.name ?? ''}
+                    style={{ width: '100%', aspectRatio: '1', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div style={{ width: '100%', aspectRatio: '1' }}>
+                    <NoImagePlaceholder label={t('noImage')} />
+                  </div>
+                )}
+              </div>
+
+              {galleryImages.length > 0 && (
+                <div className="sheet-inventory-row">
+                  {galleryImages.map((gi) => (
+                    <img
+                      key={gi.image_id}
+                      src={gi.images.url}
+                      alt=""
+                      className="sheet-inventory-thumb"
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="sheet-title-block">
+              <h1 className="sheet-name">{item.name}</h1>
+
+              <div className="sheet-badges">
+                <Badge tone="primary">{itemsT(`status${item.status}`)}</Badge>
+                {item.category_ref?.name && (
+                  <Badge>{categoryLabel}: {item.category_ref.name}</Badge>
+                )}
+                {item.type_ref?.name && (
+                  <Badge>{typeLabel}: {item.type_ref.name}</Badge>
+                )}
+              </div>
+
+              {hasStats && (
+                <div className="stat-grid">
+                  {settings.show_sell_price && item.sell_price !== null && (
+                    <StatBox
+                      label={t('sellPrice')}
+                      value={`${item.sell_price.toFixed(2)} ${settings.sell_currency?.currency_code ?? ''}`}
+                    />
+                  )}
+                  {settings.show_purchase_price && item.purchase_price !== null && (
+                    <StatBox
+                      label={t('purchasePrice')}
+                      value={`${item.purchase_price.toFixed(2)} ${item.purchase_currency?.currency_code ?? ''}`}
+                    />
+                  )}
+                  {settings.show_cost_price && item.cost_price !== null && (
+                    <StatBox
+                      label={t('costPrice')}
+                      value={`${item.cost_price.toFixed(2)} ${settings.sell_currency?.currency_code ?? ''}`}
+                    />
+                  )}
+                </div>
+              )}
+
+              {settings.show_contact && settings.contact_info && (
+                <div style={{ marginTop: 'var(--spacing-md)' }}>
+                  <ContactModal contactInfo={settings.contact_info} itemName={item.name ?? ''} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {item.description && (
+            <div className="sheet-section">
+              <div className="sheet-section-title">{itemsT('description')}</div>
+              <p>{item.description}</p>
+            </div>
+          )}
+
+          {settings.show_origin && item.origin && (
+            <div className="sheet-section">
+              <div className="sheet-section-title">{itemsT('origin')}</div>
+              <p>{item.origin}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,36 +1,177 @@
-import { ArrowRightIcon } from '@heroicons/react/24/outline';
-import Link from 'next/link';
-import styles from '@/themes/standard.module.css';
-import { lusitana, lusitanaBold } from '@/app/ui/fonts';
-import Image from 'next/image';
-import Logo from './ui/logo';
-export default function Page() {
+// app/page.tsx
+import { getSettings } from '@/app/lib/services/settings';
+import { getCategories } from '@/app/lib/services/categories';
+import { getTypes } from '@/app/lib/services/types';
+import {
+  getPublicItems,
+  getPublicItemsCount,
+  getPublicCategoryCounts,
+  getPublicTypeCounts,
+  getFeaturedPublicItems,
+} from '@/app/lib/services/items';
+import { resolveLabel } from '@/app/lib/labels';
+import { StorefrontHeader } from '@/components/storefront/StorefrontHeader';
+import { StorefrontHero } from '@/components/storefront/StorefrontHero';
+import { StorefrontSpotlight } from '@/components/storefront/StorefrontSpotlight';
+import { FilterSidebar } from '@/components/storefront/FilterSidebar';
+import { PublicItemGrid } from '@/components/storefront/PublicItemGrid';
+import { DensityToggle } from '@/components/storefront/DensityToggle';
+import { Pagination } from '@/components/ui/Pagination';
+import { parsePage, getOffset, getTotalPages, buildPageHref } from '@/app/lib/pagination';
+import { getTranslations } from 'next-intl/server';
+import { redirect } from 'next/navigation';
+
+const PUBLIC_ITEMS_PAGE_SIZE = 24;
+
+type SearchParams = {
+  categories?: string;
+  types?: string;
+  statuses?: string;
+  page?: string;
+  density?: string;
+};
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const rawSearchParams = await searchParams;
+  const { categories: categoriesParam, types: typesParam, statuses: statusesParam, page: pageParam, density: densityParam } = rawSearchParams;
+  const settings = await getSettings();
+
+  if (!settings.show) {
+    redirect('/login');
+  }
+
+  const t = await getTranslations('storefront');
+  const itemsT = await getTranslations('items');
+
+  const statusFlags: Record<number, boolean> = {
+    1: settings.show_status_1,
+    2: settings.show_status_2,
+    3: settings.show_status_3,
+    4: settings.show_status_4,
+  };
+  const allowedStatuses = [1, 2, 3, 4].filter((s) => statusFlags[s]);
+  const statusOptionLabels = Object.fromEntries(allowedStatuses.map((s) => [s, itemsT(`status${s}`)]));
+
+  const categoryLabel = resolveLabel(settings.name_category, itemsT('category'));
+  const typeLabel = resolveLabel(settings.name_type, itemsT('type'));
+  const statusLabel = resolveLabel(settings.name_status, itemsT('filterStatuses'));
+
+  const selectedCategoryIds = categoriesParam ? categoriesParam.split(',').map(Number) : [];
+  const selectedTypeIds = typesParam ? typesParam.split(',').map(Number) : [];
+  const selectedStatuses = statusesParam ? statusesParam.split(',').map(Number) : [];
+
+  const density: 'dense' | 'showcase' =
+    densityParam === 'showcase' || densityParam === 'dense'
+      ? densityParam
+      : settings.storefront_density === 'showcase'
+        ? 'showcase'
+        : 'dense';
+
+  const page = parsePage(pageParam);
+  const offset = getOffset(page, PUBLIC_ITEMS_PAGE_SIZE);
+
+  const [{ items, totalCount }, categories, types, collectionItemCount, categoryCounts, typeCounts, featuredItems] =
+    await Promise.all([
+      getPublicItems(
+        {
+          categoryIds: selectedCategoryIds.length ? selectedCategoryIds : undefined,
+          typeIds: selectedTypeIds.length ? selectedTypeIds : undefined,
+          statuses: selectedStatuses.length ? selectedStatuses : undefined,
+          limit: PUBLIC_ITEMS_PAGE_SIZE,
+          offset,
+        },
+        allowedStatuses
+      ),
+      getCategories(),
+      getTypes(),
+      getPublicItemsCount(allowedStatuses),
+      getPublicCategoryCounts(allowedStatuses),
+      getPublicTypeCounts(allowedStatuses),
+      getFeaturedPublicItems(allowedStatuses),
+    ]);
+
+  const totalPages = getTotalPages(totalCount, PUBLIC_ITEMS_PAGE_SIZE);
+
+  const sortedCategories = [...categories].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+  const sortedTypes = [...types].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+
+  const noFiltersActive = selectedCategoryIds.length === 0 && selectedTypeIds.length === 0 && selectedStatuses.length === 0;
+
   return (
-    <main className="flex min-h-screen flex-col p-6">
-      <div className="flex h-20 shrink-0 items-end rounded-lg bg-blue-500 p-4 md:h-52">
-        {<Logo />}
+    <div style={{ minHeight: '100vh', background: 'var(--color-background)', display: 'flex', flexDirection: 'column' }}>
+      <StorefrontHeader />
+
+      <StorefrontHero
+        name={settings.storefront_name}
+        tagline={settings.storefront_tagline}
+        itemCount={collectionItemCount}
+        categoryCount={categories.length}
+        fallbackName={t('defaultCollectionName')}
+        itemCountLabel={t('collectionStats', { itemCount: collectionItemCount, categoryCount: categories.length })}
+      />
+
+      <div style={{ display: 'flex', flex: 1 }}>
+        <FilterSidebar
+          categories={sortedCategories}
+          types={sortedTypes}
+          selectedCategoryIds={selectedCategoryIds}
+          selectedTypeIds={selectedTypeIds}
+          availableStatuses={allowedStatuses}
+          selectedStatuses={selectedStatuses}
+          categoryLabel={categoryLabel}
+          typeLabel={typeLabel}
+          statusLabel={statusLabel}
+          statusOptionLabels={statusOptionLabels}
+          categoryCounts={categoryCounts}
+          typeCounts={typeCounts}
+        />
+
+        <main style={{ flex: 1, padding: 'var(--spacing-lg)' }}>
+          {settings.show_message && (
+            <div
+              style={{
+                padding: 'var(--spacing-md) var(--spacing-lg)',
+                marginBottom: 'var(--spacing-lg)',
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-md)',
+                color: 'var(--color-text)',
+                whiteSpace: 'pre-line',
+              }}
+            >
+              {settings.show_message}
+            </div>
+          )}
+
+          {noFiltersActive && page === 1 && (
+            <StorefrontSpotlight
+              items={featuredItems}
+              settings={settings}
+              title={t('featured')}
+              noImageLabel={t('noImage')}
+            />
+          )}
+
+          <div className="storefront-toolbar">
+            <span className="storefront-result-count">{t('resultCount', { count: totalCount })}</span>
+            <DensityToggle density={density} />
+          </div>
+
+          <PublicItemGrid items={items} settings={settings} noItemsMessage={t('noItems')} noImageLabel={t('noImage')} density={density} />
+
+          <Pagination page={page} totalPages={totalPages} buildHref={(p) => buildPageHref('/', rawSearchParams, p)} />
+        </main>
       </div>
-      <div className="mt-4 flex grow flex-col gap-4 md:flex-row">
-        <div className="flex flex-col justify-center gap-6 rounded-lg bg-gray-50 px-6 py-10 md:w-2/5 md:px-20">
-          <div className={styles.shape} />
-          <p className={`${lusitana.className} text-xl text-gray-800 md:text-3xl md:leading-normal`}>
-            <strong>Welcome to Itemlogs.</strong> This is the example for the{' '}
-            <a href="https://nextjs.org/learn/" className="text-blue-500">
-              Next.js Learn Course
-            </a>
-            , brought to you by Anton.
-          </p>
-          <Link
-            href="/login"
-            className="flex items-center gap-5 self-start rounded-lg bg-blue-500 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-400 md:text-base"
-          >
-            <span>Log in</span> <ArrowRightIcon className="w-5 md:w-6" />
-          </Link>
-        </div>
-        <div className="flex items-center justify-center p-6 md:w-3/5 md:px-28 md:py-12">
-          {/* Add Show Items here */}
-        </div>
-      </div>
-    </main>
+
+      {settings.show_contact && settings.contact_info && (
+        <footer className="storefront-footer">
+          {t('footerContact', { contact: settings.contact_info })}
+        </footer>
+      )}
+    </div>
   );
 }

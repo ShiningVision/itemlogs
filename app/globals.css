@@ -1,0 +1,1434 @@
+/* app/globals.css */
+:root {
+  --color-primary: #3b82f6;
+  --color-secondary: #6366f1;
+  --color-background: #ffffff;
+  --color-surface: #f9fafb;
+  --color-text: #111827;
+  --color-text-muted: #6b7280;
+  --color-border: #e5e7eb;
+  --color-danger: #ef4444;
+  --color-primary-hover: #2563eb;
+  --color-success: #16a34a;
+  --color-success-hover: #15803d;
+
+  --font-family: system-ui, sans-serif;
+  --font-size-base: 14px;
+  --font-size-lg: 18px;
+  --font-size-xl: 28px;
+  --font-size-sm: 12px;
+  --font-weight-normal: 400;
+  --font-weight-bold: 600;
+
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+  --motion-duration: 150ms;
+  --motion-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-hover-lift: translateY(-2px);
+  --motion-hover-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --motion-active-scale: scale(0.98);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  tab-size: 4;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* app/globals.css — add these */
+
+body {
+  background-image: var(--color-background-image, none);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+.interactive-card {
+  transition: transform var(--motion-duration) var(--motion-easing),
+              box-shadow var(--motion-duration) var(--motion-easing);
+}
+
+.interactive-card:hover {
+  transform: var(--motion-hover-lift);
+  box-shadow: var(--motion-hover-shadow);
+}
+
+.interactive-card:active {
+  transform: var(--motion-active-scale);
+}
+
+.primary-button {
+  background: var(--color-primary);
+  transition: background var(--motion-duration) var(--motion-easing);
+}
+
+.primary-button:hover {
+  background: var(--color-primary-hover);
+}
+
+.primary-button:active {
+  transform: var(--motion-active-scale);
+}
+
+/* iOS-style toggle switch. Keeps a real <input type="checkbox"> for native
+   form semantics (name/checked participate in FormData on submit) but hides
+   it visually, driving the track/thumb purely off the :checked pseudo-class
+   so no React state is needed. */
+.ios-toggle {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  width: 44px;
+  height: 26px;
+  cursor: pointer;
+}
+
+.ios-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.ios-toggle-track {
+  position: absolute;
+  inset: 0;
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+  transition: background var(--motion-duration) var(--motion-easing);
+  pointer-events: none;
+}
+
+.ios-toggle-track::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--motion-duration) var(--motion-easing);
+}
+
+.ios-toggle input:checked ~ .ios-toggle-track {
+  background: var(--color-success);
+}
+
+.ios-toggle input:checked ~ .ios-toggle-track::before {
+  transform: translateX(18px);
+}
+
+.ios-toggle input:disabled ~ .ios-toggle-track {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ios-toggle input:focus-visible ~ .ios-toggle-track {
+  box-shadow: 0 0 0 2px var(--color-background), 0 0 0 4px var(--color-primary);
+}
+
+/* Responsive app nav: a horizontal header on desktop, a hamburger + slide-out
+   drawer on mobile. Inline styles can't express a media query, so the
+   show/hide split between the two nav modes lives here.
+   NOTE: CSS custom properties can't be referenced inside an @media condition,
+   so the 860px breakpoint below can't be pulled from a token — it's just a
+   plain literal, kept in one place (this comment + the query itself). */
+.app-header-nav-links {
+  display: flex;
+  align-items: center;
+}
+
+.app-header-mobile-trigger {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .app-header-nav-links {
+    display: none;
+  }
+
+  .app-header-mobile-trigger {
+    display: inline-flex;
+  }
+}
+
+/* Wide list pages (items/packages/sales/gallery): full width on mobile,
+   inset 20% on each side on desktop so content doesn't stretch edge to edge. */
+.page-container-wide {
+  margin-inline: 0;
+}
+
+@media (min-width: 861px) {
+  .page-container-wide {
+    margin-inline: 20%;
+  }
+}
+
+/* Settings pages: centered narrow column. max-width naturally collapses to
+   full width on small viewports, so no media query is needed for centering
+   itself. */
+.settings-page-container {
+  max-width: 680px;
+  width: 100%;
+  margin-inline: auto;
+}
+
+/* Toggle settings: single column on mobile, 2 columns on desktop to use
+   horizontal space instead of stretching down the page. */
+.settings-toggle-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-sm);
+}
+
+@media (min-width: 640px) {
+  .settings-toggle-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Label + control pairs (currency/language dropdowns, "name for ..." text
+   fields): stacked on mobile, control aligned to the right of the label on
+   desktop. */
+.settings-inline-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+@media (min-width: 640px) {
+  .settings-inline-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+  }
+
+  .settings-inline-row > select,
+  .settings-inline-row > input {
+    max-width: 280px;
+  }
+}
+
+/* Grouped settings list (general settings page): a small uppercase section
+   label above a bordered card, with every field — toggle, select, or text
+   input alike — laid out as the same row (label left, control right,
+   divider between rows). Modeled after OS-level settings screens. */
+.settings-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.settings-section-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-sm);
+  padding-left: var(--spacing-xs);
+}
+
+.settings-group {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-row-control {
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 260px;
+}
+
+/* Transient "Saving…"/"Saved"/error text shown next to a row's control right
+   after an auto-saved field changes. */
+.settings-row-status {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* Footer strip anchoring a Save button to the specific settings-group card
+   it belongs to (used where a group is batch-saved rather than
+   auto-saving field by field, e.g. free-text label overrides). */
+.settings-group-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-background);
+}
+
+@media (max-width: 480px) {
+  .settings-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-row-control {
+    max-width: none;
+  }
+}
+
+/* Vertical timeline (sales page): each row is a flex pair of a "rail"
+   (dot + connecting line, sized by the row's own height) and the content
+   next to it. Using flex layout instead of absolutely-positioned dots keeps
+   the connector line correctly sized for variable-height content without
+   any manual pixel math. */
+.timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-row {
+  display: flex;
+  align-items: stretch;
+}
+
+.timeline-row:last-child .timeline-connector {
+  visibility: hidden;
+}
+
+.timeline-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 24px;
+  flex-shrink: 0;
+}
+
+.timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: var(--color-text-muted);
+  margin-top: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+.timeline-dot-date {
+  width: 16px;
+  height: 16px;
+  background: var(--color-primary);
+}
+
+.timeline-connector {
+  width: 2px;
+  flex: 1;
+  background: var(--color-border);
+  margin-top: var(--spacing-xs);
+}
+
+.timeline-content {
+  flex: 1;
+  min-width: 0;
+  padding-left: var(--spacing-md);
+  padding-bottom: var(--spacing-md);
+}
+
+/* "Character sheet" presentation used by the item create/edit form and the
+   storefront item detail page: a bordered, shadowed sheet with a colored top
+   banner, a portrait + title header, labeled stat boxes (like ability score
+   blocks), and rule-lined sections — built entirely from existing tokens. */
+.item-sheet-container {
+  max-width: 760px;
+  width: 100%;
+  margin-inline: auto;
+}
+
+.sheet-frame {
+  border: 1px solid var(--color-border);
+  border-top: 6px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  background: var(--color-background);
+  overflow: hidden;
+}
+
+.sheet-body {
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.sheet-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+@media (min-width: 640px) {
+  .sheet-header {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .sheet-portrait {
+    width: 220px;
+    flex-shrink: 0;
+  }
+}
+
+.sheet-portrait-frame {
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.sheet-inventory-row {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+  margin-top: var(--spacing-sm);
+}
+
+.sheet-inventory-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.sheet-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  flex: 1;
+  min-width: 0;
+}
+
+.sheet-name {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.01em;
+}
+
+.sheet-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
+}
+
+.sheet-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.sheet-badge-primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+.stat-box {
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  padding: var(--spacing-sm);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: border-color var(--motion-duration) var(--motion-easing);
+}
+
+.stat-box:focus-within {
+  border-color: var(--color-primary);
+}
+
+.stat-box-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.stat-box-value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.stat-box-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  text-align: center;
+  width: 100%;
+  min-width: 0;
+  font-family: inherit;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.stat-box-select {
+  border: none;
+  background: transparent;
+  outline: none;
+  text-align: center;
+  width: 100%;
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-muted);
+}
+
+.sheet-section {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  background: var(--color-background);
+}
+
+.sheet-section-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  padding-bottom: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Editable "sheet fields" in the item form: label caption above a bordered
+   input, arranged 1-up on mobile and 2-up on desktop where fields pair up
+   naturally (category/type, currency selectors, etc). */
+.sheet-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.sheet-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.sheet-input {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm);
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  background: var(--color-background);
+  color: var(--color-text);
+  width: 100%;
+  transition: border-color var(--motion-duration) var(--motion-easing);
+}
+
+.sheet-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-background), 0 0 0 3px var(--color-primary);
+}
+
+.sheet-field-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-md);
+}
+
+@media (min-width: 640px) {
+  .sheet-field-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Big underlined "character name" input at the top of the item form. */
+.sheet-name-input {
+  border: none;
+  border-bottom: 2px solid var(--color-border);
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  width: 100%;
+  padding: var(--spacing-xs) 0;
+  outline: none;
+  transition: border-color var(--motion-duration) var(--motion-easing);
+}
+
+.sheet-name-input:focus {
+  border-color: var(--color-primary);
+}
+
+/* Shipping-manifest header for the package form: a departure -> arrival
+   "route" line, styled like the two date stamps on a cargo waybill. */
+.sheet-route {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.sheet-route > .sheet-field {
+  flex: 1;
+  min-width: 140px;
+}
+
+.sheet-route-arrow {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-muted);
+  padding-bottom: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+/* "Catalog card" presentation for the item grid tiles (dashboard ItemCard +
+   storefront PublicItemCard): a quiet neutral shell (same surface/border
+   language as every other card in the app) with a slim top accent line
+   borrowed from the sheet-frame forms, a price tag overlaid on the image
+   like a sticker, and a small badge + flavor-text body below — built
+   entirely from existing tokens. Deliberately keeps the top-right image
+   corner plain so the shared DeleteXButton sits the same way it does on
+   every other card, instead of needing its own per-view treatment. */
+.catalog-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-top: 3px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+}
+
+.catalog-card-art {
+  position: relative;
+  aspect-ratio: 1;
+  background: var(--color-background);
+  overflow: hidden;
+}
+
+.catalog-card-price-tag {
+  position: absolute;
+  bottom: var(--spacing-xs);
+  right: var(--spacing-xs);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  padding: 2px var(--spacing-sm);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.catalog-card-body {
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  flex: 1;
+}
+
+.catalog-card-name {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-base);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.catalog-card-prices {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.catalog-card-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+}
+
+.catalog-card-sell-price {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.catalog-card-actions {
+  border-top: 1px solid var(--color-border);
+  padding: var(--spacing-xs) var(--spacing-md);
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+}
+
+/* Themes page: a row of theme preview tiles. Hover reveals the relevant
+   action (switch / try / buy) over a darkened image; not-yet-purchased
+   themes that have already had their one-time trial are shown permanently
+   dimmed. */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.theme-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.theme-card-image-wrap {
+  position: relative;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+}
+
+.theme-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: filter var(--motion-duration) var(--motion-easing);
+}
+
+.theme-card-dimmed .theme-card-image {
+  opacity: 0.55;
+}
+
+.theme-card-image-wrap:hover .theme-card-image {
+  filter: brightness(0.6);
+}
+
+.theme-card-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-duration) var(--motion-easing);
+}
+
+.theme-card-image-wrap:hover .theme-card-overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.theme-card-overlay-button {
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.theme-card-overlay-button:hover {
+  background: var(--color-primary-hover);
+}
+
+.theme-card-badge {
+  position: absolute;
+  top: var(--spacing-xs);
+  right: var(--spacing-xs);
+  background: var(--color-success);
+  color: #fff;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  padding: 2px var(--spacing-sm);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.theme-card-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.theme-card-label {
+  font-weight: var(--font-weight-bold);
+}
+
+.theme-card-price {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* Dashboard items-page filter card: tightened single-panel layout with
+   consistent pill-based multi-select for every filter (category/status/type
+   alike), and a de-emphasized text-link for "manage categories/types"
+   instead of a competing colored button. */
+.item-filters-card {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.item-filters-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-sm);
+}
+
+.item-filters-status {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-normal);
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--color-text-muted);
+}
+
+.filter-section {
+  margin-bottom: var(--spacing-sm);
+}
+
+.filter-section:last-child {
+  margin-bottom: 0;
+}
+
+.filter-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.filter-section-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.filter-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+/* Package grid tile ("parcel label"): reuses the catalog-card shell so it
+   reads as a sibling of the item tiles, plus a small uppercase status
+   "stamp" (icon + colored text, no fill — distinct from the filled Badge
+   pill) and a condensed departure -> arrival route line. */
+.package-status-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.package-status-stamp--pending {
+  color: var(--color-text-muted);
+}
+
+.package-status-stamp--transit {
+  color: var(--color-primary);
+}
+
+.package-status-stamp--arrived {
+  color: var(--color-success);
+}
+
+.package-route {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* ---------------------------------------------------------------------
+   Storefront: identity hero, above-the-fold banner introducing the
+   collection. Deliberately quiet — a themed background/accent line is
+   plenty of presence without competing with the item photography below.
+--------------------------------------------------------------------- */
+.storefront-hero {
+  padding: var(--spacing-xl) var(--spacing-lg) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  text-align: center;
+}
+
+.storefront-hero-name {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  margin: 0;
+}
+
+.storefront-hero-tagline {
+  margin: var(--spacing-xs) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-base);
+}
+
+.storefront-hero-stats {
+  margin: var(--spacing-sm) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* ---------------------------------------------------------------------
+   Storefront: featured/spotlight strip. Visually distinct from the main
+   grid — larger tiles in a horizontally scrollable row rather than a
+   wrapping grid, so it reads as a curated highlight reel, not "the grid,
+   but first."
+--------------------------------------------------------------------- */
+.storefront-spotlight {
+  padding: 0 0 var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.storefront-spotlight-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-sm);
+}
+
+.storefront-spotlight-row {
+  display: flex;
+  gap: var(--spacing-md);
+  overflow-x: auto;
+  padding-bottom: var(--spacing-xs);
+}
+
+.storefront-spotlight-row .catalog-card {
+  flex: 0 0 220px;
+  width: 220px;
+}
+
+/* ---------------------------------------------------------------------
+   Storefront: density toggle bar, sits directly above the item grid.
+--------------------------------------------------------------------- */
+.storefront-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.storefront-result-count {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.density-toggle-group {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.density-toggle-button {
+  border: none;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.density-toggle-button + .density-toggle-button {
+  border-left: 1px solid var(--color-border);
+}
+
+.density-toggle-button--active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+/* Grid density variants for the main storefront item grid. */
+.storefront-grid--dense {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.storefront-grid--showcase {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+/* ---------------------------------------------------------------------
+   Storefront: adaptive filter dimensions. Status stays as pills (handled
+   by the existing FilterPill styling); category/type switch to this
+   checkbox-with-count list once there are enough options that a wrapping
+   pill cloud stops being scannable.
+--------------------------------------------------------------------- */
+.storefront-filter-section {
+  margin-bottom: var(--spacing-lg);
+}
+
+.storefront-filter-section-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-sm);
+}
+
+.storefront-filter-checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.storefront-filter-checkbox-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) 0;
+  font-size: var(--font-size-base);
+  cursor: pointer;
+}
+
+.storefront-filter-checkbox-row input {
+  margin-right: var(--spacing-xs);
+}
+
+.storefront-filter-checkbox-label {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.storefront-filter-count {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------
+   Storefront: mobile filter drawer. The sidebar is hidden below the same
+   breakpoint the dashboard nav collapses at, replaced by a trigger button
+   that opens the filters as a full overlay panel.
+--------------------------------------------------------------------- */
+.storefront-filter-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  padding: var(--spacing-lg);
+  border-right: 1px solid var(--color-border);
+}
+
+.storefront-filter-mobile-trigger {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .storefront-filter-sidebar {
+    display: none;
+  }
+
+  .storefront-filter-mobile-trigger {
+    display: inline-flex;
+  }
+}
+
+.storefront-filter-drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 300px;
+  max-width: 85vw;
+  background: var(--color-background);
+  box-shadow: var(--shadow-md);
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+}
+
+/* ---------------------------------------------------------------------
+   Storefront: contact/inquiry CTA + footer.
+--------------------------------------------------------------------- */
+.storefront-contact-button {
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.storefront-contact-button:hover {
+  background: var(--color-primary-hover);
+}
+
+/* Change Themes button on the dashboard — deliberately hardcoded and
+   off-system: it's a portal to the one part of the app that's about
+   cosmetics/delight/spending money, so it gets to look like a shiny,
+   holographic collectible instead of a normal flat UI button. */
+@keyframes theme-portal-hue {
+  from { filter: hue-rotate(0deg); }
+  to { filter: hue-rotate(360deg); }
+}
+
+@keyframes theme-portal-shimmer {
+  0% { transform: translateX(-120%) skewX(-20deg); }
+  100% { transform: translateX(220%) skewX(-20deg); }
+}
+
+@keyframes theme-portal-float {
+  0%, 100% { transform: rotate(-2deg) translateY(0); }
+  50% { transform: rotate(-2deg) translateY(-4px); }
+}
+
+.theme-portal-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 48px 0;
+}
+
+.theme-portal-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  border: 3px solid #1a1a2e;
+  border-radius: 999px;
+  padding: 18px 40px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #1a1a2e;
+  text-decoration: none;
+  cursor: pointer;
+  background: linear-gradient(115deg, #ff5f6d, #ffc371, #f9f871, #6dffb8, #6db8ff, #a06dff, #ff5f6d);
+  background-size: 300% 300%;
+  box-shadow: 0 0 0 4px #fff, 0 0 0 7px #1a1a2e, 0 10px 24px rgba(0, 0, 0, 0.35);
+  animation: theme-portal-hue 6s linear infinite, theme-portal-float 3s ease-in-out infinite;
+  transition: transform 0.2s ease;
+}
+
+.theme-portal-btn:hover {
+  transform: scale(1.06) rotate(0deg);
+  animation-duration: 2.4s, 3s;
+}
+
+.theme-portal-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(115deg, transparent, rgba(255, 255, 255, 0.85), transparent);
+  animation: theme-portal-shimmer 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.theme-portal-btn-icon {
+  font-size: 22px;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
+}
+
+.theme-portal-btn-text {
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* Corner "remove from package/sale" button — same slot as DeleteXButton,
+   but neutral until hovered so it doesn't read as a full item delete. */
+@keyframes remove-x-button-spin {
+  to { transform: rotate(360deg); }
+}
+
+.remove-x-button {
+  position: absolute;
+  top: var(--spacing-xs);
+  right: var(--spacing-xs);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--color-background);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.remove-x-button:hover:not(:disabled) {
+  background: var(--color-danger);
+  color: #fff;
+  border-color: var(--color-danger);
+}
+
+.remove-x-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.remove-x-button-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+  border: 2px solid rgba(107, 114, 128, 0.3);
+  border-top-color: currentColor;
+  animation: remove-x-button-spin 0.6s linear infinite;
+}
+
+/* Shared delete/destructive-action confirmation dialog. Used everywhere a
+   delete is confirmed (items, packages, sales, gallery, reference data) —
+   one styled component instead of ad-hoc unstyled prompts. */
+@keyframes confirm-dialog-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes confirm-dialog-card-in {
+  from { opacity: 0; transform: scale(0.94) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes confirm-dialog-spin {
+  to { transform: rotate(360deg); }
+}
+
+.confirm-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.55);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md);
+  z-index: 60;
+  animation: confirm-dialog-overlay-in 0.15s ease-out;
+}
+
+.confirm-dialog-card {
+  background: var(--color-background);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md), 0 20px 40px rgba(0, 0, 0, 0.2);
+  padding: var(--spacing-xl) var(--spacing-lg) var(--spacing-lg);
+  max-width: 380px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: confirm-dialog-card-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.confirm-dialog-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  color: var(--color-danger);
+  margin-bottom: var(--spacing-md);
+}
+
+.confirm-dialog-message {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  line-height: 1.5;
+  margin-bottom: var(--spacing-lg);
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  width: 100%;
+}
+
+.confirm-dialog-cancel,
+.confirm-dialog-confirm {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.confirm-dialog-cancel {
+  background: var(--color-background);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.confirm-dialog-cancel:hover:not(:disabled) {
+  background: var(--color-surface);
+}
+
+.main-image-picker-btn:hover {
+  background: var(--color-border);
+}
+
+.gallery-add-btn:hover {
+  background: var(--color-border);
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
+.confirm-dialog-confirm {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.confirm-dialog-confirm:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.confirm-dialog-cancel:disabled,
+.confirm-dialog-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.confirm-dialog-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-top-color: #fff;
+  animation: confirm-dialog-spin 0.6s linear infinite;
+}
+
+.storefront-footer {
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  border-top: 1px solid var(--color-border);
+}
