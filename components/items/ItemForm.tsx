@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { MainImagePicker } from './MainImagePicker';
 import { ImageGalleryEditor } from './ImageGalleryEditor';
 import { BlueprintPickerModal } from './BlueprintPickerModal';
@@ -163,7 +164,14 @@ export function ItemForm({
           )
         );
       }
-      if (!(mode === 'create' && stayOnPage)) {
+      if (mode === 'update') {
+        // Go back to wherever this edit was opened from (items list,
+        // package view, sale view, ...) instead of always the items list —
+        // router.back() also restores that page's scroll position, so the
+        // user doesn't have to scroll back down to where they were.
+        router.back();
+        router.refresh();
+      } else if (!(mode === 'create' && stayOnPage)) {
         router.push('/dashboard/items');
       }
       // NOTE: The following code is for if you want to reset form after saving.
@@ -227,6 +235,27 @@ export function ItemForm({
         </h1>
         {mode === 'create' && (
           <Button onClick={() => setBlueprintModalOpen(true)}>{t('createFromBlueprint')}</Button>
+        )}
+        {mode === 'update' && (
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="interactive-card"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 'var(--spacing-xs)',
+              background: 'transparent',
+              border: 'none',
+              padding: 0,
+              color: 'var(--color-text-muted)',
+              fontSize: 'var(--font-size-sm)',
+              cursor: 'pointer',
+            }}
+          >
+            <ArrowLeftIcon style={{ width: '16px', height: '16px' }} />
+            {t('back')}
+          </button>
         )}
       </div>
 

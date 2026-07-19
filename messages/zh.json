@@ -102,6 +102,7 @@
     "createItem": "创建物品",
     "updateItem": "更新物品",
     "createFromBlueprint": "从蓝图创建",
+    "back": "返回",
     "saveAsBlueprint": "保存为蓝图",
     "gallery": "图库",
     "name": "名称",

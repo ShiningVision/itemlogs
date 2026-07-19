@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/widgets/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { Badge } from '@/components/ui/Badge';
 import { AddItemsToPackageModal } from './AddItemsToPackageModal';
 import { ItemGrid } from '@/components/items/ItemGrid';
 import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
@@ -208,7 +207,6 @@ export function PackageForm({
                                     <span className="sheet-section-title" style={{ border: 'none', margin: 0, padding: 0 }}>
                                         {t('itemsInPackage', { count: packageItems.length })}
                                     </span>
-                                    <Badge tone="primary">{packageItems.length}</Badge>
                                 </div>
                                 <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
                                     <Button onClick={() => setAddItemsModalOpen(true)}>{t('addItemsToPackage')}</Button>
