@@ -20,6 +20,7 @@ const STOREFRONT_AUTOSAVE_FIELDS = [
   'show_purchase_price',
   'show_cost_price',
   'show_origin',
+  'show_package_filter',
   'storefront_density',
 ] as const;
 
@@ -75,7 +76,7 @@ const GENERAL_SETTINGS_AUTOSAVE_FIELDS = [
   'language',
   'use_sell_price',
   'use_barcode',
-  'use_package_fee_distribution',
+  'use_package_fees',
   'display_profit',
   'display_sell_price',
   'display_purchase_price',

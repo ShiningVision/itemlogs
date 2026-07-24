@@ -7,6 +7,7 @@ type ItemFilters = {
   statuses?: number[];
   typeId?: number;     // single-select, used by admin items page
   typeIds?: number[];  // multi-select, used by storefront
+  packageId?: number;  // single-select, used by storefront package filter
   limit?: number;
   offset?: number;
 };
@@ -33,6 +34,7 @@ export async function getItems(filters: ItemFilters = {}): Promise<{ items: any[
   if (filters.statuses !== undefined) query = query.in('status', filters.statuses);
   if (filters.typeIds !== undefined) query = query.in('type', filters.typeIds);
   else if (filters.typeId !== undefined) query = query.eq('type', filters.typeId);
+  if (filters.packageId !== undefined) query = query.eq('package_id', filters.packageId);
 
   if (filters.limit !== undefined && filters.offset !== undefined) {
     query = query.range(filters.offset, filters.offset + filters.limit - 1);
@@ -202,7 +204,7 @@ export async function getAvailableItems() {
 }
 
 export async function getPublicItems(
-  filters: { categoryIds?: number[]; statuses?: number[]; typeIds?: number[]; limit?: number; offset?: number },
+  filters: { categoryIds?: number[]; statuses?: number[]; typeIds?: number[]; packageId?: number; limit?: number; offset?: number },
   allowedStatuses: number[]
 ) {
   const statuses = filters.statuses?.length

@@ -6,10 +6,10 @@ import { resolveLabel } from '@/app/lib/labels';
 import { getTranslations } from 'next-intl/server';
 import { notFound, redirect } from 'next/navigation';
 import { BackToStorefrontButton } from '@/components/storefront/BackToStorefrontButton';
-import { NoImagePlaceholder } from '@/components/ui/NoImagePlaceholder';
 import { StatBox } from '@/components/ui/StatBox';
 import { Badge } from '@/components/ui/Badge';
 import { ContactModal } from '@/components/storefront/ContactModal';
+import { ItemGallery } from '@/components/storefront/ItemGallery';
 
 export default async function PublicItemPage({
   params,
@@ -56,32 +56,16 @@ export default async function PublicItemPage({
         <div className="sheet-body">
           <div className="sheet-header">
             <div className="sheet-portrait">
-              <div className="sheet-portrait-frame">
-                {item.main_image_ref?.url ? (
-                  <img
-                    src={item.main_image_ref.url}
-                    alt={item.name ?? ''}
-                    style={{ width: '100%', aspectRatio: '1', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <div style={{ width: '100%', aspectRatio: '1' }}>
-                    <NoImagePlaceholder label={t('noImage')} />
-                  </div>
-                )}
-              </div>
-
-              {galleryImages.length > 0 && (
-                <div className="sheet-inventory-row">
-                  {galleryImages.map((gi) => (
-                    <img
-                      key={gi.image_id}
-                      src={gi.images.url}
-                      alt=""
-                      className="sheet-inventory-thumb"
-                    />
-                  ))}
-                </div>
-              )}
+              <ItemGallery
+                mainImage={
+                  item.main_image_ref?.url
+                    ? { id: item.main_image ?? -1, url: item.main_image_ref.url }
+                    : null
+                }
+                galleryImages={galleryImages.map((gi) => ({ id: gi.image_id, url: gi.images.url }))}
+                itemName={item.name ?? ''}
+                noImageLabel={t('noImage')}
+              />
             </div>
 
             <div className="sheet-title-block">

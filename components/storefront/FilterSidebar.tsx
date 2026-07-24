@@ -27,6 +27,7 @@ export function FilterSidebar({
   statusOptionLabels,
   categoryCounts = {},
   typeCounts = {},
+  packageFilter,
 }: {
   categories: Option[];
   types: Option[];
@@ -40,6 +41,7 @@ export function FilterSidebar({
   statusOptionLabels: Record<number, string>;
   categoryCounts?: Record<number, number>;
   typeCounts?: Record<number, number>;
+  packageFilter?: React.ReactNode;
 }) {
   const t = useTranslations('storefront');
   const { toggleInList } = useFilterParams();
@@ -93,6 +95,12 @@ export function FilterSidebar({
 
   const content = (
     <>
+      {packageFilter && (
+        <div className="storefront-package-filter-drawer-only storefront-filter-section">
+          {packageFilter}
+        </div>
+      )}
+
       {categoryOptions.length > ADAPTIVE_THRESHOLD
         ? checkboxSection(categoryLabel, categoryOptions, selectedCategoryIds, 'categories', categoryCounts)
         : pillSection(categoryLabel, categoryOptions, selectedCategoryIds, 'categories')}

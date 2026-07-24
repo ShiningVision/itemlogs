@@ -27,6 +27,19 @@ export async function getPackages() {
   return data;
 }
 
+// Only the packages the owner has explicitly opted into showing publicly —
+// used to populate the storefront's single-select package filter dropdown.
+export async function getPublicPackages(): Promise<{ id: number; name: string }[]> {
+  const { data, error } = await supabase
+    .from('packages')
+    .select('id, name')
+    .eq('show_on_storefront', true)
+    .order('name', { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function getPackageById(id: number) {
   const { data, error } = await supabase
     .from('packages')

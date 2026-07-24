@@ -9,6 +9,7 @@ import { Toggle } from '@/components/ui/Toggle';
 import { CharCountTextarea } from '@/components/ui/CharCountTextarea';
 import Link from 'next/link';
 import type { Settings } from '@/app/lib/definitions';
+import { resolveLabel } from '@/app/lib/labels';
 
 const SHOW_MESSAGE_MAX_LENGTH = 255;
 
@@ -32,6 +33,7 @@ type FieldStatus = 'saving' | 'saved' | 'error';
 
 export function SettingsForm({ settings }: { settings: Settings }) {
   const t = useTranslations('dashboard');
+  const packageLabel = resolveLabel(settings.name_package, t('packageNameFallback'));
   const [, startAutosaveTransition] = useTransition();
   const [fieldStatus, setFieldStatus] = useState<Record<string, FieldStatus>>({});
 
@@ -94,6 +96,20 @@ export function SettingsForm({ settings }: { settings: Settings }) {
       <div className="settings-section">
         <div className="settings-section-title">{t('sectionVisibility')}</div>
         {toggleGroup(VISIBILITY_FIELDS)}
+        <div className="settings-group">
+          <div className="settings-row">
+            <span>{t('showPackageFilter', { packages: packageLabel })}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+              {statusFor('show_package_filter')}
+              <Toggle
+                name="show_package_filter"
+                defaultChecked={Boolean(settings.show_package_filter)}
+                label={t('showPackageFilter', { packages: packageLabel })}
+                onChange={(e) => autoSave('show_package_filter', e.target.checked)}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="settings-section">

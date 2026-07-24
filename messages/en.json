@@ -30,7 +30,7 @@
     "title": "Dashboard",
     "flavourTexts": [
       "Need barcode scanning? Enable it in the settings! It works only in the mobile app though.",
-      "Did you know you can distribute your shipping costs and tariffs among your items with 1 button click? Enable it in settings with use_package_pricing!",
+      "Did you know you can distribute your shipping costs and tariffs among your items with 1 button click? Enable it in settings with use_package_fees!",
       "Itemlogs is free and hosted on the cloud. How can that be? By you only having 1GB space for images. But don't worry. We compress your images heavily!",
       "Like the app? Support the dev! Buy a theme!",
       "You can change the label for \"Category\", \"Type\", \"Status\", \"Package\" and \"Item\" in the settings. Make it your own!",
@@ -49,6 +49,8 @@
     "showPurchasePrice": "Show purchase price",
     "showCostPrice": "Show cost price",
     "showOrigin": "Show origin",
+    "showPackageFilter": "Search by {packages}",
+    "packageNameFallback": "Package",
     "showStatus1": "Show AVAILABLE",
     "showStatus2": "Show SOLD",
     "showStatus3": "Show RESERVED",
@@ -133,12 +135,14 @@
     "exitSellMode": "Exit sell mode",
     "sold": "SELL",
     "confirmDeleteItem": "Delete this item? This cannot be undone.",
+    "nameRequired": "Name is required.",
     "confirmDeleteBlueprint": "Delete this blueprint? This cannot be undone.",
     "cancel":"Cancel",
     "markSoldSuccess": "Item marked as sold.",
     "markSoldFailed": "Failed to mark item as sold.",
     "featureThisItem": "Feature this item on the storefront",
-    "featuredCapReached": "You can feature up to {cap} items at a time. Unfeature another item first."
+    "featuredCapReached": "You can feature up to {cap} items at a time. Unfeature another item first.",
+    "package": "Package"
   },
   "referenceData": {
     "defaultCategoryLabel": "Categories",
@@ -163,7 +167,7 @@
     "language": "Language",
     "useSellPrice": "Use sell price",
     "useBarcode": "Use barcode",
-    "usePackageFeeDistribution": "Use package fee distribution",
+    "usePackageFees": "Use package fees",
     "displayProfit": "Display profit",
     "displaySellPrice": "Display sell price",
     "displayPurchasePrice": "Display purchase price",
@@ -246,7 +250,8 @@
     "tariffCurrency": "Tariff currency",
     "shippingFeeCurrency": "Shipping fee currency",
     "delete": "Delete",
-    "confirmDeletePackage": "Delete this package? Items inside it will become unassigned, not deleted."
+    "confirmDeletePackage": "Delete this package? Items inside it will become unassigned, not deleted.",
+    "showOnStorefront": "Show on visitor page"
   },
   "sales": {
     "title": "Sales",
@@ -271,7 +276,8 @@
     "adding": "Adding...",
     "cancel": "Cancel",
     "delete": "Delete",
-    "confirmDeleteSale": "Delete this sale? This cannot be undone."
+    "confirmDeleteSale": "Delete this sale? This cannot be undone.",
+    "dateRequired": "Date is required."
   },
   "gallery": {
     "title": "Gallery",
@@ -318,6 +324,9 @@
     "copyContact": "Copy",
     "copied": "Copied!",
     "close": "Close",
-    "footerContact": "Questions about this collection? Reach out at {contact}"
+    "footerContact": "Questions about this collection? Reach out at {contact}",
+    "prevImage": "Previous image",
+    "nextImage": "Next image",
+    "moreImages": "+{count}"
   }
 }

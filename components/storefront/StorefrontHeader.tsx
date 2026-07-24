@@ -6,7 +6,11 @@ import { UserCircleIcon, Bars3Icon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 import { useFilterDrawer } from './FilterDrawerContext';
 
-export function StorefrontHeader() {
+export function StorefrontHeader({
+  packageFilter,
+}: {
+  packageFilter?: React.ReactNode;
+}) {
   const t = useTranslations('storefront');
   const { open } = useFilterDrawer();
 
@@ -30,6 +34,10 @@ export function StorefrontHeader() {
           style={{ height: '32px', width: 'auto', flexShrink: 0 }}
         />
       </div>
+
+      {packageFilter && (
+        <div className="storefront-header-package-filter">{packageFilter}</div>
+      )}
 
       <Link
         href="/login"

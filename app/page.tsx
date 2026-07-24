@@ -2,6 +2,7 @@
 import { getSettings } from '@/app/lib/services/settings';
 import { getCategories } from '@/app/lib/services/categories';
 import { getTypes } from '@/app/lib/services/types';
+import { getPublicPackages } from '@/app/lib/services/packages';
 import {
   getPublicItems,
   getPublicItemsCount,
@@ -15,8 +16,11 @@ import { FilterDrawerProvider } from '@/components/storefront/FilterDrawerContex
 import { StorefrontHero } from '@/components/storefront/StorefrontHero';
 import { StorefrontSpotlight } from '@/components/storefront/StorefrontSpotlight';
 import { FilterSidebar } from '@/components/storefront/FilterSidebar';
+import { PackageFilterDropdown } from '@/components/storefront/PackageFilterDropdown';
 import { PublicItemGrid } from '@/components/storefront/PublicItemGrid';
 import { DensityToggle } from '@/components/storefront/DensityToggle';
+import { Pagination } from '@/components/ui/Pagination';
+import { parsePage, getOffset, getTotalPages, buildPageHref } from '@/app/lib/pagination';
 import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 
@@ -26,6 +30,8 @@ type SearchParams = {
   categories?: string;
   types?: string;
   statuses?: string;
+  package?: string;
+  page?: string;
   density?: string;
 };
 
@@ -35,7 +41,7 @@ export default async function HomePage({
   searchParams: Promise<SearchParams>;
 }) {
   const rawSearchParams = await searchParams;
-  const { categories: categoriesParam, types: typesParam, statuses: statusesParam, density: densityParam } = rawSearchParams;
+  const { categories: categoriesParam, types: typesParam, statuses: statusesParam, package: packageParam, page: pageParam, density: densityParam } = rawSearchParams;
   const settings = await getSettings();
 
   if (!settings.show) {
@@ -57,10 +63,12 @@ export default async function HomePage({
   const categoryLabel = resolveLabel(settings.name_category, itemsT('category'));
   const typeLabel = resolveLabel(settings.name_type, itemsT('type'));
   const statusLabel = resolveLabel(settings.name_status, itemsT('filterStatuses'));
+  const packageLabel = resolveLabel(settings.name_package, itemsT('package'));
 
   const selectedCategoryIds = categoriesParam ? categoriesParam.split(',').map(Number) : [];
   const selectedTypeIds = typesParam ? typesParam.split(',').map(Number) : [];
   const selectedStatuses = statusesParam ? statusesParam.split(',').map(Number) : [];
+  const selectedPackageId = packageParam ? Number(packageParam) : null;
 
   const density: 'dense' | 'showcase' =
     densityParam === 'showcase' || densityParam === 'dense'
@@ -69,15 +77,19 @@ export default async function HomePage({
         ? 'showcase'
         : 'dense';
 
-  const [{ items, totalCount }, categories, types, collectionItemCount, categoryCounts, typeCounts, featuredItems] =
+  const page = parsePage(pageParam);
+  const offset = getOffset(page, PUBLIC_ITEMS_PAGE_SIZE);
+
+  const [{ items, totalCount }, categories, types, collectionItemCount, categoryCounts, typeCounts, featuredItems, publicPackages] =
     await Promise.all([
       getPublicItems(
         {
           categoryIds: selectedCategoryIds.length ? selectedCategoryIds : undefined,
           typeIds: selectedTypeIds.length ? selectedTypeIds : undefined,
           statuses: selectedStatuses.length ? selectedStatuses : undefined,
+          packageId: selectedPackageId ?? undefined,
           limit: PUBLIC_ITEMS_PAGE_SIZE,
-          offset: 0,
+          offset,
         },
         allowedStatuses
       ),
@@ -87,19 +99,32 @@ export default async function HomePage({
       getPublicCategoryCounts(allowedStatuses),
       getPublicTypeCounts(allowedStatuses),
       getFeaturedPublicItems(allowedStatuses),
+      settings.show_package_filter ? getPublicPackages() : Promise.resolve([]),
     ]);
 
-  const hasMore = items.length < totalCount;
+  const totalPages = getTotalPages(totalCount, PUBLIC_ITEMS_PAGE_SIZE);
 
   const sortedCategories = [...categories].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
   const sortedTypes = [...types].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
 
-  const noFiltersActive = selectedCategoryIds.length === 0 && selectedTypeIds.length === 0 && selectedStatuses.length === 0;
+  const noFiltersActive =
+    selectedCategoryIds.length === 0 &&
+    selectedTypeIds.length === 0 &&
+    selectedStatuses.length === 0 &&
+    selectedPackageId === null;
+
+  const packageFilterDropdown = settings.show_package_filter ? (
+    <PackageFilterDropdown
+      packages={publicPackages}
+      selectedPackageId={selectedPackageId}
+      label={packageLabel}
+    />
+  ) : null;
 
   return (
     <FilterDrawerProvider>
       <div style={{ minHeight: '100vh', background: 'var(--color-background)', display: 'flex', flexDirection: 'column' }}>
-      <StorefrontHeader />
+      <StorefrontHeader packageFilter={packageFilterDropdown} />
 
       <StorefrontHero
         name={settings.storefront_name}
@@ -124,6 +149,7 @@ export default async function HomePage({
           statusOptionLabels={statusOptionLabels}
           categoryCounts={categoryCounts}
           typeCounts={typeCounts}
+          packageFilter={packageFilterDropdown}
         />
 
         <main className="storefront-main" style={{ flex: 1, minWidth: 0 }}>
@@ -143,7 +169,7 @@ export default async function HomePage({
             </div>
           )}
 
-          {noFiltersActive && (
+          {noFiltersActive && page === 1 && (
             <StorefrontSpotlight
               items={featuredItems}
               settings={settings}
@@ -157,17 +183,9 @@ export default async function HomePage({
             <DensityToggle density={density} />
           </div>
 
-          <PublicItemGrid
-            items={items}
-            hasMore={hasMore}
-            settings={settings}
-            noItemsMessage={t('noItems')}
-            noImageLabel={t('noImage')}
-            density={density}
-            categoryIds={selectedCategoryIds}
-            typeIds={selectedTypeIds}
-            statuses={selectedStatuses}
-          />
+          <PublicItemGrid items={items} settings={settings} noItemsMessage={t('noItems')} noImageLabel={t('noImage')} density={density} />
+
+          <Pagination page={page} totalPages={totalPages} buildHref={(p) => buildPageHref('/', rawSearchParams, p)} />
         </main>
       </div>
 

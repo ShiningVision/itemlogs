@@ -436,19 +436,55 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
+.sheet-portrait-counter {
+  position: absolute;
+  bottom: var(--spacing-xs);
+  right: var(--spacing-xs);
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: var(--font-size-xs);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
 .sheet-inventory-row {
   display: flex;
   gap: var(--spacing-xs);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   margin-top: var(--spacing-sm);
+  padding-bottom: 2px;
 }
 
 .sheet-inventory-thumb {
   width: 48px;
   height: 48px;
+  flex-shrink: 0;
   object-fit: cover;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.sheet-inventory-thumb--active {
+  border: 2px solid var(--color-primary);
+}
+
+.sheet-inventory-more-tile {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
 }
 
 .sheet-title-block {
@@ -636,6 +672,27 @@ body {
 
 .sheet-name-input:focus {
   border-color: var(--color-primary);
+}
+
+/* Red asterisk marking a required field. Used both standalone next to a
+   .sheet-label/.stat-box-label, and absolutely positioned over the
+   placeholder-only .sheet-name-input fields, which have no visible label
+   to attach to otherwise. */
+.required-mark {
+  color: var(--color-danger);
+  margin-left: 4px;
+}
+
+.sheet-name-input-wrap {
+  position: relative;
+}
+
+.sheet-name-input-wrap .required-mark {
+  position: absolute;
+  top: var(--spacing-xs);
+  right: 0;
+  font-size: var(--font-size-lg);
+  pointer-events: none;
 }
 
 /* Shipping-manifest header for the package form: a departure -> arrival
@@ -1178,6 +1235,23 @@ body {
   flex-shrink: 0;
 }
 
+/* Desktop-only: the header dropdown for filtering by package. Hidden on
+   mobile, where the same control instead appears inside the filter drawer
+   alongside categories/types (see .storefront-package-filter-drawer-only). */
+.storefront-header-package-filter {
+  display: none;
+}
+
+.storefront-package-filter-select {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  max-width: 220px;
+}
+
 @media (min-width: 861px) {
   .storefront-header {
     justify-content: space-between;
@@ -1190,6 +1264,19 @@ body {
   .storefront-header-logo-wrap {
     flex: initial;
     justify-content: flex-start;
+  }
+
+  .storefront-header-package-filter {
+    display: flex;
+    flex-shrink: 0;
+  }
+
+  /* The header already shows the package filter on desktop — don't show a
+     second copy in the (also desktop-visible) filter sidebar. It stays
+     visible in the mobile drawer, which reuses the same .storefront-filter-section
+     content but isn't covered by this rule. */
+  .storefront-filter-sidebar .storefront-package-filter-drawer-only {
+    display: none;
   }
 }
 
@@ -1564,35 +1651,4 @@ body {
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
   border-top: 1px solid var(--color-border);
-}
-
-/* Infinite scroll: fade-in-and-rise for freshly rendered/appended cards, and
-   the loading spinner shown at the sentinel while the next batch loads. */
-@keyframes fade-in-item {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.fade-in-item {
-  animation: fade-in-item 0.4s ease both;
-}
-
-@keyframes infinite-scroll-spin {
-  to { transform: rotate(360deg); }
-}
-
-.infinite-scroll-spinner {
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  border-radius: var(--radius-full);
-  border: 2px solid var(--color-border);
-  border-top-color: var(--color-primary);
-  animation: infinite-scroll-spin 0.6s linear infinite;
 }

@@ -10,6 +10,7 @@ export const createPackageSchema = z.object({
   tariff_currency: z.number().int(),
   shipping_fee: z.number().nullable().optional(),
   shipping_fee_currency: z.number().int(),
+  show_on_storefront: z.boolean().optional(),
 });
 
 export const updatePackageSchema = createPackageSchema.partial();

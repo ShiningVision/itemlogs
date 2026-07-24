@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/widgets/Button';
 import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import type { Sale } from '@/app/lib/definitions';
+import { parseApiError } from '@/app/lib/errors/parseApiError';
 
 export function SaleForm({ mode, sale }: { mode: 'create' | 'update'; sale?: Sale }) {
   const t = useTranslations('sales');
@@ -19,6 +20,11 @@ export function SaleForm({ mode, sale }: { mode: 'create' | 'update'; sale?: Sal
   const [error, setError] = useState<string | null>(null);
 
   async function handleSave() {
+    if (!date) {
+      setError(t('dateRequired'));
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
     try {
@@ -34,7 +40,7 @@ export function SaleForm({ mode, sale }: { mode: 'create' | 'update'; sale?: Sal
       const json = await res.json();
 
       if (!res.ok) {
-        setError(t('saveFailed'));
+        setError(parseApiError(json, t('saveFailed')));
         return;
       }
 
@@ -73,7 +79,7 @@ export function SaleForm({ mode, sale }: { mode: 'create' | 'update'; sale?: Sal
               <input className="sheet-input" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="sheet-field">
-              <span className="sheet-label">{t('date')}</span>
+              <span className="sheet-label">{t('date')}<span className="required-mark" aria-hidden="true">*</span></span>
               <input type="date" className="sheet-input" value={date} onChange={(e) => setDate(e.target.value)} required />
             </div>
           </div>

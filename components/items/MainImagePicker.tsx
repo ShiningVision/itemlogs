@@ -12,9 +12,11 @@ type ImageRow = { id: number; url: string };
 export function MainImagePicker({
   value,
   onChange,
+  excludeIds,
 }: {
   value: ImageRow | null;
   onChange: (image: ImageRow) => void;
+  excludeIds?: number[];
 }) {
   const t = useTranslations('items');
   const [modalOpen, setModalOpen] = useState(false);
@@ -65,7 +67,7 @@ export function MainImagePicker({
       </button>
 
       {modalOpen && (
-        <ImagePickerModal onSelect={onChange} onClose={() => setModalOpen(false)} />
+        <ImagePickerModal onSelect={onChange} onClose={() => setModalOpen(false)} excludeIds={excludeIds} />
       )}
     </div>
   );

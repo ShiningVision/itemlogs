@@ -5,11 +5,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/widgets/Button';
+import { Toggle } from '@/components/ui/Toggle';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AddItemsToPackageModal } from './AddItemsToPackageModal';
 import { ItemGrid } from '@/components/items/ItemGrid';
 import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import type { Package, Settings } from '@/app/lib/definitions';
+import { parseApiError } from '@/app/lib/errors/parseApiError';
 
 type Currency = { id: number; currency_code: string };
 
@@ -38,6 +40,7 @@ export function PackageForm({
         tariff_currency: pkg?.tariff_currency ?? settings.sell_price_currency,
         shipping_fee: pkg?.shipping_fee?.toString() ?? '',
         shipping_fee_currency: pkg?.shipping_fee_currency ?? settings.default_purchase_price_currency,
+        show_on_storefront: pkg?.show_on_storefront ?? false,
     });
 
     const [isSaving, setIsSaving] = useState(false);
@@ -68,6 +71,7 @@ export function PackageForm({
             tariff_currency: form.tariff_currency,
             shipping_fee: form.shipping_fee ? Number(form.shipping_fee) : null,
             shipping_fee_currency: form.shipping_fee_currency,
+            show_on_storefront: form.show_on_storefront,
         };
         try {
             const url = mode === 'create' ? '/api/v1/packages' : `/api/v1/packages/${pkg!.id}`;
@@ -81,7 +85,7 @@ export function PackageForm({
             const json = await res.json();
 
             if (!res.ok) {
-                setError(t('saveFailed'));
+                setError(parseApiError(json, t('saveFailed')));
                 return;
             }
 
@@ -121,13 +125,16 @@ export function PackageForm({
 
             <div className="sheet-frame">
                 <div className="sheet-body">
-                    <input
-                        className="sheet-name-input"
-                        placeholder={t('name')}
-                        value={form.name}
-                        onChange={(e) => update('name', e.target.value)}
-                        required
-                    />
+                    <div className="sheet-name-input-wrap">
+                        <input
+                            className="sheet-name-input"
+                            placeholder={t('name')}
+                            value={form.name}
+                            onChange={(e) => update('name', e.target.value)}
+                            required
+                        />
+                        <span className="required-mark" aria-hidden="true">*</span>
+                    </div>
 
                     <div className="sheet-route">
                         <div className="sheet-field">
@@ -141,39 +148,51 @@ export function PackageForm({
                         </div>
                     </div>
 
-                    <div className="stat-grid">
-                        <div className="stat-box">
-                            <span className="stat-box-label">{t('tariff')}</span>
-                            <input
-                                className="stat-box-input"
-                                type="number"
-                                step="0.01"
-                                value={form.tariff}
-                                onChange={(e) => update('tariff', e.target.value)}
-                            />
+                    {settings.use_package_fees && (
+                        <div className="stat-grid">
+                            <div className="stat-box">
+                                <span className="stat-box-label">{t('tariff')}</span>
+                                <input
+                                    className="stat-box-input"
+                                    type="number"
+                                    step="0.01"
+                                    value={form.tariff}
+                                    onChange={(e) => update('tariff', e.target.value)}
+                                />
+                            </div>
+                            <div className="stat-box">
+                                <span className="stat-box-label">{t('tariffCurrency')}</span>
+                                <select className="stat-box-select" value={form.tariff_currency} onChange={(e) => update('tariff_currency', Number(e.target.value))}>
+                                    {currencies.map((c) => (<option key={c.id} value={c.id}>{c.currency_code}</option>))}
+                                </select>
+                            </div>
+                            <div className="stat-box">
+                                <span className="stat-box-label">{t('shippingFee')}</span>
+                                <input
+                                    className="stat-box-input"
+                                    type="number"
+                                    step="0.01"
+                                    value={form.shipping_fee}
+                                    onChange={(e) => update('shipping_fee', e.target.value)}
+                                />
+                            </div>
+                            <div className="stat-box">
+                                <span className="stat-box-label">{t('shippingFeeCurrency')}</span>
+                                <select className="stat-box-select" value={form.shipping_fee_currency} onChange={(e) => update('shipping_fee_currency', Number(e.target.value))}>
+                                    {currencies.map((c) => (<option key={c.id} value={c.id}>{c.currency_code}</option>))}
+                                </select>
+                            </div>
                         </div>
-                        <div className="stat-box">
-                            <span className="stat-box-label">{t('tariffCurrency')}</span>
-                            <select className="stat-box-select" value={form.tariff_currency} onChange={(e) => update('tariff_currency', Number(e.target.value))}>
-                                {currencies.map((c) => (<option key={c.id} value={c.id}>{c.currency_code}</option>))}
-                            </select>
-                        </div>
-                        <div className="stat-box">
-                            <span className="stat-box-label">{t('shippingFee')}</span>
-                            <input
-                                className="stat-box-input"
-                                type="number"
-                                step="0.01"
-                                value={form.shipping_fee}
-                                onChange={(e) => update('shipping_fee', e.target.value)}
-                            />
-                        </div>
-                        <div className="stat-box">
-                            <span className="stat-box-label">{t('shippingFeeCurrency')}</span>
-                            <select className="stat-box-select" value={form.shipping_fee_currency} onChange={(e) => update('shipping_fee_currency', Number(e.target.value))}>
-                                {currencies.map((c) => (<option key={c.id} value={c.id}>{c.currency_code}</option>))}
-                            </select>
-                        </div>
+                    )}
+
+                    <div className="settings-row" style={{ marginTop: 'var(--spacing-sm)' }}>
+                        <span>{t('showOnStorefront')}</span>
+                        <Toggle
+                            name="show_on_storefront"
+                            defaultChecked={form.show_on_storefront}
+                            label={t('showOnStorefront')}
+                            onChange={(e) => update('show_on_storefront', e.target.checked)}
+                        />
                     </div>
 
                     <div className="sheet-section">
@@ -210,13 +229,13 @@ export function PackageForm({
                                 </div>
                                 <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
                                     <Button onClick={() => setAddItemsModalOpen(true)}>{t('addItemsToPackage')}</Button>
-                                    {settings.use_package_fee_distribution && (
+                                    {settings.use_package_fees && (
                                         <Button onClick={() => setDistributeConfirmOpen(true)}>{t('distributeFees')}</Button>
                                     )}
                                 </div>
                             </div>
 
-                            {settings.use_package_fee_distribution && (
+                            {settings.use_package_fees && (
                                 <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-md)' }}>
                                     {t('distributeFeesWarning')}
                                 </p>

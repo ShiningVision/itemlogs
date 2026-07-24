@@ -1,28 +1,79 @@
 // components/items/ImagePickerModal.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { compressImageFile } from '@/app/lib/images/compressImage';
 
 type ImageRow = { id: number; url: string };
 
+const PAGE_SIZE = 60;
+
 export function ImagePickerModal({
   onSelect,
   onClose,
+  excludeIds,
 }: {
   onSelect: (image: ImageRow) => void;
   onClose: () => void;
+  // Images already attached elsewhere (e.g. already in this item's gallery)
+  // — hidden from the picker so there's no way to "select" a duplicate.
+  excludeIds?: number[];
 }) {
   const t = useTranslations('items');
   const [images, setImages] = useState<ImageRow[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const offsetRef = useRef(0);
+  const loadingRef = useRef(false);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const excludeSet = useMemo(() => new Set(excludeIds ?? []), [excludeIds]);
+  const visibleImages = useMemo(() => images.filter((img) => !excludeSet.has(img.id)), [images, excludeSet]);
 
+  async function loadMore() {
+    if (loadingRef.current || !hasMore) return;
+    loadingRef.current = true;
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/v1/images?offset=${offsetRef.current}&limit=${PAGE_SIZE}`);
+      const json = await res.json();
+      const nextImages: ImageRow[] = json.data ?? [];
+      offsetRef.current += nextImages.length;
+      setImages((prev) => [...prev, ...nextImages]);
+      setHasMore(Boolean(json.hasMore) && nextImages.length > 0);
+    } finally {
+      loadingRef.current = false;
+      setIsLoading(false);
+    }
+  }
+
+  // Load the first batch on open.
   useEffect(() => {
-    fetch('/api/v1/images')
-      .then((res) => res.json())
-      .then((res) => setImages(res.data ?? []));
+    loadMore();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // This is a modal that mounts fresh every time it opens, and its own
+  // internal div scrolls (not the page window) — so the observer's root
+  // needs to be that scroll container, not the default viewport.
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    const root = scrollContainerRef.current;
+    if (!sentinel || !root) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore();
+      },
+      { root, rootMargin: '300px' }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMore]);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -59,6 +110,7 @@ export function ImagePickerModal({
       onClick={onClose}
     >
       <div
+        ref={scrollContainerRef}
         style={{
           background: 'var(--color-background)',
           borderRadius: 'var(--radius-lg)',
@@ -88,7 +140,7 @@ export function ImagePickerModal({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 'var(--spacing-sm)' }}>
-          {images.map((img) => (
+          {visibleImages.map((img) => (
             <img
               key={img.id}
               src={img.url}
@@ -105,6 +157,24 @@ export function ImagePickerModal({
             />
           ))}
         </div>
+
+        {hasMore && (
+          <div ref={sentinelRef} style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-md) 0' }}>
+            {isLoading && (
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: '18px',
+                  height: '18px',
+                  borderRadius: 'var(--radius-full)',
+                  border: '2px solid var(--color-border)',
+                  borderTopColor: 'var(--color-primary)',
+                  animation: 'confirm-dialog-spin 0.6s linear infinite',
+                }}
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -14,7 +14,7 @@ type Language = { id: number; name: string };
 const FUNCTIONALITY_FIELDS: Array<{ key: keyof Settings; labelKey: string }> = [
   { key: 'use_sell_price', labelKey: 'useSellPrice' },
   { key: 'use_barcode', labelKey: 'useBarcode' },
-  { key: 'use_package_fee_distribution', labelKey: 'usePackageFeeDistribution' },
+  { key: 'use_package_fees', labelKey: 'usePackageFees' },
 ];
 
 const PREFERENCE_TOGGLE_FIELDS: Array<{ key: keyof Settings; labelKey: string }> = [

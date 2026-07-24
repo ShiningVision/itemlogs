@@ -228,9 +228,13 @@ async function seedPackages(sql: postgres.Sql) {
       tariff NUMERIC(18,2),
       tariff_currency INTEGER NOT NULL REFERENCES currencies(id),
       shipping_fee NUMERIC(18,2),
-      shipping_fee_currency INTEGER NOT NULL REFERENCES currencies(id)
+      shipping_fee_currency INTEGER NOT NULL REFERENCES currencies(id),
+      show_on_storefront BOOLEAN NOT NULL DEFAULT false
     );
   `;
+
+  // Added after the table already existed in deployed environments.
+  await sql`ALTER TABLE packages ADD COLUMN IF NOT EXISTS show_on_storefront BOOLEAN NOT NULL DEFAULT false;`;
 
   const insertedPackages = await Promise.all(
     packages.map((pkg) => {
@@ -372,7 +376,7 @@ async function seedSettings(sql: postgres.Sql) {
       sell_price_currency INTEGER NOT NULL REFERENCES currencies(id),
       default_purchase_price_currency INTEGER NOT NULL REFERENCES currencies(id),
       use_sell_price BOOLEAN NOT NULL,
-      use_package_fee_distribution BOOLEAN NOT NULL,
+      use_package_fees BOOLEAN NOT NULL,
       use_barcode BOOLEAN NOT NULL,
       language INTEGER NOT NULL REFERENCES languages(id),
       name_category VARCHAR(255),
@@ -393,7 +397,8 @@ async function seedSettings(sql: postgres.Sql) {
       storefront_density VARCHAR(20) NOT NULL DEFAULT 'dense',
       show_contact BOOLEAN NOT NULL DEFAULT false,
       contact_info VARCHAR(255),
-      show_origin BOOLEAN NOT NULL DEFAULT false
+      show_origin BOOLEAN NOT NULL DEFAULT false,
+      show_package_filter BOOLEAN NOT NULL DEFAULT false
     );
   `;
 
@@ -409,6 +414,25 @@ async function seedSettings(sql: postgres.Sql) {
   await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS show_contact BOOLEAN NOT NULL DEFAULT false;`;
   await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS contact_info VARCHAR(255);`;
   await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS show_origin BOOLEAN NOT NULL DEFAULT false;`;
+  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS show_package_filter BOOLEAN NOT NULL DEFAULT false;`;
+
+  // Renamed from use_package_fee_distribution: this flag now gates more than
+  // just the "distribute fees" button — it also hides the tariff/shipping-fee
+  // fields entirely, since packages can now represent things (e.g. a trip)
+  // that have no fees at all. RENAME COLUMN isn't naturally idempotent, so
+  // guard it with an existence check (safe to re-run once the rename has
+  // happened).
+  await sql`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'settings' AND column_name = 'use_package_fee_distribution'
+      ) THEN
+        ALTER TABLE settings RENAME COLUMN use_package_fee_distribution TO use_package_fees;
+      END IF;
+    END $$;
+  `;
 
   // Renamed from default_sell_price_currency: this is no longer just a
   // default seed for new items — with per-item sell_price_currency gone,
@@ -434,7 +458,7 @@ async function seedSettings(sql: postgres.Sql) {
           id, show, show_sell_price, show_cost_price, show_purchase_price,
           show_status_1, show_status_2, show_status_3, show_status_4, show_message,
           sell_price_currency, default_purchase_price_currency,
-          use_sell_price, use_package_fee_distribution, use_barcode,language,
+          use_sell_price, use_package_fees, use_barcode,language,
           name_category, name_status, name_type, name_package, name_item,
           display_profit, display_sell_price, display_purchase_price, display_cost_price, theme,
           owned_themes, tried_themes, theme_trial_expires_at
@@ -443,7 +467,7 @@ async function seedSettings(sql: postgres.Sql) {
           ${setting.id}, ${setting.show}, ${setting.show_sell_price}, ${setting.show_cost_price}, ${setting.show_purchase_price},
           ${setting.show_status_1}, ${setting.show_status_2}, ${setting.show_status_3}, ${setting.show_status_4}, ${setting.show_message},
           ${setting.sell_price_currency}, ${setting.default_purchase_price_currency},
-          ${setting.use_sell_price}, ${setting.use_package_fee_distribution}, ${setting.use_barcode},${setting.language},
+          ${setting.use_sell_price}, ${setting.use_package_fees}, ${setting.use_barcode},${setting.language},
           ${setting.name_category}, ${setting.name_status}, ${setting.name_type}, ${setting.name_package}, ${setting.name_item},
           ${setting.display_profit}, ${setting.display_sell_price}, ${setting.display_purchase_price}, ${setting.display_cost_price}, ${setting.theme},
           ${setting.owned_themes ?? ['default', 'dark']}, ${setting.tried_themes ?? []}, ${setting.theme_trial_expires_at ?? null}

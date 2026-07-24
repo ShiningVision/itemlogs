@@ -12,6 +12,7 @@ import { Button } from '@/widgets/Button';
 import { Toggle } from '@/components/ui/Toggle';
 import type { Settings } from '@/app/lib/definitions';
 import { resolveLabel } from '@/app/lib/labels';
+import { parseApiError } from '@/app/lib/errors/parseApiError';
 
 type Option = { id: number; name: string | null };
 type Currency = { id: number; currency_code: string; currency_name: string };
@@ -130,6 +131,11 @@ export function ItemForm({
   }
 
   async function handleSave() {
+    if (!form.name.trim()) {
+      setErrorMessage(t('nameRequired'));
+      return;
+    }
+
     setIsSaving(true);
     setErrorMessage(null);
 
@@ -146,7 +152,11 @@ export function ItemForm({
       const json = await res.json();
 
       if (!res.ok) {
-        setErrorMessage(json?.error === 'featuredCapReached' ? t('featuredCapReached', { cap: featuredCap }) : t('saveFailed'));
+        setErrorMessage(
+          json?.error === 'featuredCapReached'
+            ? t('featuredCapReached', { cap: featuredCap })
+            : parseApiError(json, t('saveFailed'))
+        );
         return;
       }
 
@@ -201,15 +211,31 @@ export function ItemForm({
   }
 
   async function handleSaveAsBlueprint() {
+    if (!form.name.trim()) {
+      setErrorMessage(t('nameRequired'));
+      return;
+    }
+
+    setErrorMessage(null);
     const payload = buildPayload();
-    await fetch('/api/v1/blueprints', {
+    const res = await fetch('/api/v1/blueprints', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+
+    if (!res.ok) {
+      const json = await res.json().catch(() => null);
+      setErrorMessage(parseApiError(json, t('saveFailed')));
+    }
   }
 
   async function handleAddGalleryImage(img: ImageRow) {
+    // The picker doesn't know what's already in this item's gallery, so a
+    // user can select the same image twice — guard here instead, or the
+    // gallery ends up with two entries sharing the same id (React key clash).
+    if (gallery.some((g) => g.id === img.id)) return;
+
     if (mode === 'update') {
       await fetch(`/api/v1/items/${item.id}/images`, {
         method: 'POST',
@@ -263,17 +289,24 @@ export function ItemForm({
         <div className="sheet-body">
           <div className="sheet-header">
             <div className="sheet-portrait">
-              <MainImagePicker value={form.main_image} onChange={(img) => update('main_image', img)} />
+              <MainImagePicker
+                value={form.main_image}
+                onChange={(img) => update('main_image', img)}
+                excludeIds={gallery.map((g) => g.id)}
+              />
             </div>
 
             <div className="sheet-title-block">
-              <input
-                className="sheet-name-input"
-                placeholder={t('name')}
-                value={form.name}
-                onChange={(e) => update('name', e.target.value)}
-                required
-              />
+              <div className="sheet-name-input-wrap">
+                <input
+                  className="sheet-name-input"
+                  placeholder={t('name')}
+                  value={form.name}
+                  onChange={(e) => update('name', e.target.value)}
+                  required
+                />
+                <span className="required-mark" aria-hidden="true">*</span>
+              </div>
 
               <div className="sheet-field-grid" style={{ marginTop: 'var(--spacing-sm)' }}>
                 <div className="sheet-field">
@@ -310,6 +343,7 @@ export function ItemForm({
               images={gallery}
               onAdd={handleAddGalleryImage}
               onRemove={handleRemoveGalleryImage}
+              additionalExcludeIds={form.main_image ? [form.main_image.id] : []}
             />
           </div>
 

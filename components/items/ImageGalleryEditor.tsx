@@ -12,10 +12,12 @@ export function ImageGalleryEditor({
   images,
   onAdd,
   onRemove,
+  additionalExcludeIds = [],
 }: {
   images: ImageRow[];
   onAdd: (image: ImageRow) => void;
   onRemove: (imageId: number) => void;
+  additionalExcludeIds?: number[];
 }) {
   const t = useTranslations('items');
   const [modalOpen, setModalOpen] = useState(false);
@@ -79,6 +81,7 @@ export function ImageGalleryEditor({
         <ImagePickerModal
           onSelect={(img) => onAdd(img)}
           onClose={() => setModalOpen(false)}
+          excludeIds={[...images.map((img) => img.id), ...additionalExcludeIds]}
         />
       )}
     </div>

@@ -64,6 +64,7 @@ const packages = [
     tariff_currency: '1',
     shipping_fee: '40.00',
     shipping_fee_currency: '1',
+    show_on_storefront: false,
   },
   {
     id: '2',
@@ -75,6 +76,7 @@ const packages = [
     tariff_currency: '2',
     shipping_fee: '55.00',
     shipping_fee_currency: '2',
+    show_on_storefront: false,
   },
 ];
 
@@ -179,6 +181,7 @@ const settings = [
     show_contact: false,
     contact_info: null,
     show_origin: false,
+    show_package_filter: false,
     show: false,
     show_sell_price: false,
     show_cost_price: false,
@@ -193,7 +196,7 @@ const settings = [
     show_message:
       'Itemlogs is a FREE inventory system for collectors, hobbyists, and small businesses. \n No gatekeeping of functionalities, no ads, no subscriptions, and no tracking. \n Try it out!',
     use_sell_price: true,
-    use_package_fee_distribution: false,
+    use_package_fees: false,
     use_barcode: false,
     name_category: 'Category',
     name_status: 'Status',

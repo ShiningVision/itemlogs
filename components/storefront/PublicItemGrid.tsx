@@ -1,80 +1,29 @@
 // components/storefront/PublicItemGrid.tsx
-'use client';
-
-import { useCallback, useMemo } from 'react';
-import { usePathname } from 'next/navigation';
 import { PublicItemCard } from './PublicItemCard';
-import { InfiniteScrollSentinel } from '@/components/ui/InfiniteScrollSentinel';
-import { useInfiniteScroll } from '@/app/lib/hooks/useInfiniteScroll';
 import type { Settings } from '@/app/lib/definitions';
-
-const PAGE_SIZE = 24;
 
 export function PublicItemGrid({
   items,
-  hasMore,
   settings,
   noItemsMessage,
   noImageLabel,
   density = 'dense',
-  categoryIds,
-  typeIds,
-  statuses,
 }: {
   items: any[];
-  hasMore: boolean;
   settings: Settings;
   noItemsMessage: string;
   noImageLabel?: string;
   density?: 'dense' | 'showcase';
-  categoryIds: number[];
-  typeIds: number[];
-  statuses: number[];
 }) {
-  const loadMore = useCallback(
-    async (offset: number) => {
-      const params = new URLSearchParams();
-      if (categoryIds.length) params.set('categories', categoryIds.join(','));
-      if (typeIds.length) params.set('types', typeIds.join(','));
-      if (statuses.length) params.set('statuses', statuses.join(','));
-      params.set('offset', String(offset));
-      params.set('limit', String(PAGE_SIZE));
-
-      const res = await fetch(`/api/v1/public-items?${params.toString()}`);
-      if (!res.ok) return { items: [], hasMore: false };
-      const json = await res.json();
-      return { items: json.data as any[], hasMore: Boolean(json.hasMore) };
-    },
-    [categoryIds, typeIds, statuses]
-  );
-
-  const pathname = usePathname();
-  const storageKey = useMemo(
-    () => `${pathname}|${categoryIds.join(',')}|${typeIds.join(',')}|${statuses.join(',')}`,
-    [pathname, categoryIds, typeIds, statuses]
-  );
-
-  const infiniteScroll = useInfiniteScroll({ storageKey, initialItems: items, initialHasMore: hasMore, loadMore });
-
-  if (infiniteScroll.items.length === 0) {
+  if (items.length === 0) {
     return <div style={{ color: 'var(--color-text-muted)' }}>{noItemsMessage}</div>;
   }
 
   return (
-    <>
-      <div className={density === 'showcase' ? 'storefront-grid--showcase' : 'storefront-grid--dense'}>
-        {infiniteScroll.items.map((item) => (
-          <div key={item.id} className="fade-in-item">
-            <PublicItemCard item={item} settings={settings} noImageLabel={noImageLabel} />
-          </div>
-        ))}
-      </div>
-
-      <InfiniteScrollSentinel
-        sentinelRef={infiniteScroll.sentinelRef}
-        hasMore={infiniteScroll.hasMore}
-        isLoading={infiniteScroll.isLoading}
-      />
-    </>
+    <div className={density === 'showcase' ? 'storefront-grid--showcase' : 'storefront-grid--dense'}>
+      {items.map((item) => (
+        <PublicItemCard key={item.id} item={item} settings={settings} noImageLabel={noImageLabel} />
+      ))}
+    </div>
   );
 }

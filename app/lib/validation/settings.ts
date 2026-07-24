@@ -16,7 +16,7 @@ export const updateSettingsSchema = z.object({
   sell_price_currency: z.number().int().optional(),
   default_purchase_price_currency: z.number().int().optional(),
   use_sell_price: z.boolean().optional(),
-  use_package_fee_distribution: z.boolean().optional(),
+  use_package_fees: z.boolean().optional(),
   use_barcode: z.boolean().optional(),
   language: z.number().int().optional(),
   name_category: z.string().nullable().optional(),
@@ -38,6 +38,7 @@ export const updateSettingsSchema = z.object({
   show_contact: z.boolean().optional(),
   contact_info: z.string().max(255).nullable().optional(),
   show_origin: z.boolean().optional(),
+  show_package_filter: z.boolean().optional(),
 });
 
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;

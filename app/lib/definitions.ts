@@ -56,7 +56,7 @@ export type Settings = {
   sell_price_currency: number;
   default_purchase_price_currency: number;
   use_sell_price: boolean;
-  use_package_fee_distribution: boolean;
+  use_package_fees: boolean;
   use_barcode: boolean;
   language: number;
   name_category: string | null;
@@ -78,6 +78,7 @@ export type Settings = {
   show_contact: boolean;
   contact_info: string | null;
   show_origin: boolean;
+  show_package_filter: boolean;
   // Resolved join (see getSettings) — every item's sell_price/cost_price is
   // denominated in this single shop-wide currency.
   sell_currency?: { currency_code: string; currency_symbol: string } | null;
@@ -93,6 +94,7 @@ export type Package = {
   tariff_currency: number;
   shipping_fee: number | null;
   shipping_fee_currency: number;
+  show_on_storefront: boolean;
 };
 
 export type Blueprint = {
