@@ -24,9 +24,10 @@ export function StorefrontHeader() {
       </button>
 
       <div className="storefront-header-logo-wrap">
-        <div
-          style={{ width: '40px', height: '40px', borderRadius: 'var(--radius-md)', background: 'var(--color-primary)', flexShrink: 0 }}
-          aria-label="Logo placeholder"
+        <img
+          src="/itemlogs-full-transparent.png"
+          alt="Itemlogs"
+          style={{ height: '32px', width: 'auto', flexShrink: 0 }}
         />
       </div>
 

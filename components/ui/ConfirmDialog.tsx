@@ -1,6 +1,7 @@
 // components/ui/ConfirmDialog.tsx
 'use client';
 
+import { createPortal } from 'react-dom';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 export function ConfirmDialog({
@@ -18,7 +19,16 @@ export function ConfirmDialog({
   onCancel: () => void;
   isConfirming?: boolean;
 }) {
-  return (
+  // Rendered via a portal straight into <body>. Callers often open this from
+  // inside a hovered `.interactive-card` (e.g. item/package/sale cards),
+  // which applies a CSS `transform` on hover — and any transformed ancestor
+  // becomes the containing block for `position: fixed` descendants. Without
+  // the portal, the "fixed" overlay ends up confined to that card's box
+  // instead of the viewport, which is what made the dialog look like it was
+  // rendering inside the card with its buttons overflowing the edge.
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div className="confirm-dialog-overlay" onClick={onCancel}>
       <div className="confirm-dialog-card" role="alertdialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="confirm-dialog-icon">
@@ -37,6 +47,7 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

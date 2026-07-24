@@ -56,9 +56,10 @@ export function AppHeader() {
             <Bars3Icon style={{ width: '24px', height: '24px' }} />
           </button>
 
-          <div
-            style={{ width: '32px', height: '32px', borderRadius: 'var(--radius-md)', background: 'var(--color-primary)', flexShrink: 0 }}
-            aria-label="Logo"
+          <img
+            src="/itemlogs-full-transparent.png"
+            alt="Itemlogs"
+            style={{ height: '28px', width: 'auto', flexShrink: 0 }}
           />
         </div>
 

@@ -30,8 +30,8 @@
     "title": "Dashboard",
     "flavourTexts": [
       "Need barcode scanning? Enable it in the settings! It works only in the mobile app though.",
-      "Did you know you can distribute your shipping costs and tariffs among your items with 1 button click? Enable it in settings and use packages!",
-      "Itemlogs is free and hosted on the cloud. How can that be? By you only having 5GB space for images. But don't worry. We compress your images heavily!",
+      "Did you know you can distribute your shipping costs and tariffs among your items with 1 button click? Enable it in settings with use_package_pricing!",
+      "Itemlogs is free and hosted on the cloud. How can that be? By you only having 1GB space for images. But don't worry. We compress your images heavily!",
       "Like the app? Support the dev! Buy a theme!",
       "You can change the label for \"Category\", \"Type\", \"Status\", \"Package\" and \"Item\" in the settings. Make it your own!",
       "You can feature items on your storefront. Feature up to 5 items at a time. Unfeature another item first if you want to feature a new one.",
@@ -278,9 +278,21 @@
     "uploadImage": "Upload image",
     "uploading": "Uploading...",
     "noImages": "No images yet.",
+    "noOrphanImages": "No unused images — nothing to clean up.",
     "delete": "Delete",
     "cancel": "Cancel",
-    "confirmDeleteImage": "Delete this image? If it's used as an item's main image or in a gallery, it will be removed from there too."
+    "confirmDeleteImage": "Delete this image? If it's used as an item's main image or in a gallery, it will be removed from there too.",
+    "confirmDeleteSelected": "Delete {count} selected images? If any are used as an item's main image or in a gallery, they will be removed from there too.",
+    "storageUsed": "{used} of {limit} used",
+    "sortNewest": "Newest",
+    "sortLargest": "Largest first",
+    "orphanedOnly": "Unused only",
+    "orphanedBadge": "Unused",
+    "select": "Select",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "deleteSelected": "Delete selected ({count})",
+    "cancelSelection": "Cancel"
   },
   "storefront": {
     "login": "Login",

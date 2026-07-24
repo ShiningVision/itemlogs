@@ -14,6 +14,9 @@ const languages = [
   { id: '2', name: 'German', code: 'de' },
   { id: '3', name: 'Chinese', code: 'zh' },
   { id: '4', name: 'Japanese', code: 'ja' },
+  // Placeholder — messages/ko.json is currently just a copy of en.json.
+  // Real Korean translations to be filled in later.
+  { id: '5', name: 'Korean', code: 'ko' },
 ];
 
 const types = [

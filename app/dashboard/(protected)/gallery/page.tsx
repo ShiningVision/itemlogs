@@ -1,30 +1,33 @@
 // app/dashboard/(protected)/gallery/page.tsx
-import { getImages } from '@/app/lib/services/images';
+import { getImages, getReferencedImageIds } from '@/app/lib/services/images';
+import { getBlobUsage, BLOB_LIMIT_BYTES } from '@/app/lib/storage/blob-usage';
 import { GalleryGrid } from '@/components/gallery/GalleryGrid';
-import { Pagination } from '@/components/ui/Pagination';
-import { parsePage, getOffset, getTotalPages, buildPageHref } from '@/app/lib/pagination';
 import { getTranslations } from 'next-intl/server';
 
-const GALLERY_PAGE_SIZE = 40;
+export default async function GalleryPage() {
+  // The Gallery now does its own sorting/filtering/pagination client-side
+  // (sort-by-size and orphan-filtering both need the full set to work with),
+  // so we fetch every image once rather than a DB-paginated page of 40.
+  const [{ images }, referencedIds, usage] = await Promise.all([
+    getImages(),
+    getReferencedImageIds(),
+    getBlobUsage(),
+  ]);
 
-export default async function GalleryPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ page?: string }>;
-}) {
-  const rawSearchParams = await searchParams;
-  const page = parsePage(rawSearchParams.page);
-  const offset = getOffset(page, GALLERY_PAGE_SIZE);
-
-  // already ordered newest first (id desc)
-  const { images, totalCount } = await getImages({ limit: GALLERY_PAGE_SIZE, offset });
-  const totalPages = getTotalPages(totalCount, GALLERY_PAGE_SIZE);
+  const sizeByUrl = Object.fromEntries(usage.sizeByUrl);
+  const orphanIds = images.filter((img) => !referencedIds.has(img.id)).map((img) => img.id);
   const t = await getTranslations('gallery');
 
   return (
     <div className="page-container-wide" style={{ padding: 'var(--spacing-lg)' }}>
-      <GalleryGrid initialImages={images} title={t('title')} />
-      <Pagination page={page} totalPages={totalPages} buildHref={(p) => buildPageHref('/dashboard/gallery', rawSearchParams, p)} />
+      <GalleryGrid
+        initialImages={images}
+        title={t('title')}
+        sizeByUrl={sizeByUrl}
+        orphanIds={orphanIds}
+        usedBytes={usage.totalBytes}
+        limitBytes={BLOB_LIMIT_BYTES}
+      />
     </div>
   );
 }

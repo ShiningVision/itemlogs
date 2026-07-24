@@ -4,13 +4,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { Settings } from '@/app/lib/definitions';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Toast, type ToastType } from '@/components/ui/notification';
 import { NoImagePlaceholder } from '@/components/ui/NoImagePlaceholder';
 import { DeleteXButton } from '@/components/ui/DeleteXButton';
 import { RemoveXButton } from '@/components/ui/RemoveXButton';
+import { getProfitColorClass } from '@/app/lib/locale/profitColor';
 
 type ItemWithRelations = {
   id: number;
@@ -44,6 +45,7 @@ export function ItemCard({
   onRemovedFromSale?: () => void;
 }) {
   const t = useTranslations('items');
+  const locale = useLocale();
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -177,7 +179,11 @@ export function ItemCard({
                 </div>
               )}
               {showCost && <span>{sellSymbol}{item.cost_price!.toFixed(2)}</span>}
-              {showProfit && <span>{sellSymbol}{profit!.toFixed(2)}</span>}
+              {showProfit && (
+                <span className={`catalog-card-profit ${getProfitColorClass(profit!, locale)}`}>
+                  {sellSymbol}{profit!.toFixed(2)}
+                </span>
+              )}
             </div>
           )}
         </div>

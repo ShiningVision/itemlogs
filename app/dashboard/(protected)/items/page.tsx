@@ -6,10 +6,8 @@ import { getSettings } from '@/app/lib/services/settings';
 import { resolveLabel } from '@/app/lib/labels';
 import { ItemFiltersBar } from '@/components/items/ItemFiltersBar';
 import { SellModeControls } from '@/components/items/SellModeControls';
-import { ItemGrid } from '@/components/items/ItemGrid';
+import { ItemsInfiniteGrid } from '@/components/items/ItemsInfiniteGrid';
 import { ImportExcelButton } from '@/components/items/ImportExcelButton';
-import { Pagination } from '@/components/ui/Pagination';
-import { parsePage, getOffset, getTotalPages, buildPageHref } from '@/app/lib/pagination';
 import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 import { Button } from '@/widgets/Button';
@@ -23,7 +21,6 @@ type SearchParams = {
   type?: string;
   sell?: string;
   saleId?: string;
-  page?: string;
 };
 
 export default async function ItemsPage({
@@ -32,7 +29,7 @@ export default async function ItemsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const rawSearchParams = await searchParams;
-  const { categories: categoriesParam, statuses: statusesParam, type: typeParam, sell, saleId: saleIdParam, page: pageParam } =
+  const { categories: categoriesParam, statuses: statusesParam, type: typeParam, sell, saleId: saleIdParam } =
     rawSearchParams;
 
   const sellModeActive = sell === '1';
@@ -42,11 +39,8 @@ export default async function ItemsPage({
   const typeId = typeParam ? Number(typeParam) : undefined;
   const saleId = saleIdParam ? Number(saleIdParam) : undefined;
 
-  const page = parsePage(pageParam);
-  const offset = getOffset(page, ITEMS_PAGE_SIZE);
-
-  // Export honors the same filters as the grid, but never the pagination —
-  // it always covers every matching row, not just the current page.
+  // Export honors the same filters as the grid, but always covers every
+  // matching row rather than just what's currently loaded on screen.
   const exportParams = new URLSearchParams();
   if (categoryIds?.length) exportParams.set('categories', categoryIds.join(','));
   if (statuses?.length) exportParams.set('statuses', statuses.join(','));
@@ -54,13 +48,13 @@ export default async function ItemsPage({
   const exportHref = `/api/v1/items/export${exportParams.toString() ? `?${exportParams.toString()}` : ''}`;
 
   const [{ items, totalCount }, categories, types, settings] = await Promise.all([
-    getItems({ categoryIds, statuses, typeId, limit: ITEMS_PAGE_SIZE, offset }),
+    getItems({ categoryIds, statuses, typeId, limit: ITEMS_PAGE_SIZE, offset: 0 }),
     getCategories(),
     getTypes(),
     getSettings(),
   ]);
 
-  const totalPages = getTotalPages(totalCount, ITEMS_PAGE_SIZE);
+  const hasMore = items.length < totalCount;
 
   const sortedCategories = [...categories].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
   const sortedTypes = [...types].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
@@ -113,10 +107,18 @@ export default async function ItemsPage({
       />
 
       <div style={{ marginTop: 'var(--spacing-lg)' }}>
-        <ItemGrid items={items} settings={settings} showDeleteButton sellMode={sellModeActive} saleId={saleId} />
+        <ItemsInfiniteGrid
+          items={items}
+          hasMore={hasMore}
+          settings={settings}
+          showDeleteButton
+          sellMode={sellModeActive}
+          saleId={saleId}
+          categoryIds={categoryIds ?? []}
+          statuses={statuses ?? []}
+          typeId={typeId}
+        />
       </div>
-
-      <Pagination page={page} totalPages={totalPages} buildHref={(p) => buildPageHref('/dashboard/items', rawSearchParams, p)} />
     </div>
   );
 }

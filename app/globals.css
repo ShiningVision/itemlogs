@@ -732,6 +732,28 @@ body {
   gap: var(--spacing-sm);
 }
 
+/* Profit/loss badge — green/red is assigned in JS based on locale (see
+   app/lib/locale/profitColor.ts), not directly on the sign, since some
+   locales use the reverse convention. */
+.catalog-card-profit {
+  display: block;
+  text-align: center;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--spacing-sm);
+}
+
+.catalog-card-profit--green {
+  background: color-mix(in srgb, var(--color-success) 15%, transparent);
+  color: var(--color-success);
+}
+
+.catalog-card-profit--red {
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+  color: var(--color-danger);
+}
+
 .catalog-card-sell-price {
   font-weight: var(--font-weight-bold);
   color: var(--color-text);
@@ -1250,6 +1272,39 @@ body {
   background: var(--color-primary-hover);
 }
 
+/* Item detail page: "back to storefront" button. Fixed to the bottom-right
+   corner instead of sitting up at the top of the page — on mobile that's
+   a thumb-reachable spot rather than one you have to stretch up for. */
+.storefront-back-button {
+  position: fixed;
+  right: var(--spacing-lg);
+  bottom: calc(var(--spacing-lg) + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+}
+
+.storefront-back-button:hover {
+  background: var(--color-surface);
+}
+
+@media (max-width: 480px) {
+  /* Icon-only on very small screens so the floating button stays compact. */
+  .storefront-back-button-label {
+    display: none;
+  }
+}
+
 /* Change Themes button on the dashboard — deliberately hardcoded and
    off-system: it's a portal to the one part of the app that's about
    cosmetics/delight/spending money, so it gets to look like a shiny,
@@ -1442,9 +1497,13 @@ body {
 .confirm-dialog-cancel,
 .confirm-dialog-confirm {
   flex: 1;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   gap: var(--spacing-xs);
   padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-md);
@@ -1505,4 +1564,35 @@ body {
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
   border-top: 1px solid var(--color-border);
+}
+
+/* Infinite scroll: fade-in-and-rise for freshly rendered/appended cards, and
+   the loading spinner shown at the sentinel while the next batch loads. */
+@keyframes fade-in-item {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.fade-in-item {
+  animation: fade-in-item 0.4s ease both;
+}
+
+@keyframes infinite-scroll-spin {
+  to { transform: rotate(360deg); }
+}
+
+.infinite-scroll-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  animation: infinite-scroll-spin 0.6s linear infinite;
 }

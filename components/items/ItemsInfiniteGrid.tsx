@@ -1,71 +1,77 @@
-// components/storefront/PublicItemGrid.tsx
+// components/items/ItemsInfiniteGrid.tsx
 'use client';
 
 import { useCallback, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
-import { PublicItemCard } from './PublicItemCard';
+import { ItemCard } from './ItemCard';
 import { InfiniteScrollSentinel } from '@/components/ui/InfiniteScrollSentinel';
 import { useInfiniteScroll } from '@/app/lib/hooks/useInfiniteScroll';
 import type { Settings } from '@/app/lib/definitions';
 
 const PAGE_SIZE = 24;
 
-export function PublicItemGrid({
+export function ItemsInfiniteGrid({
   items,
   hasMore,
   settings,
-  noItemsMessage,
-  noImageLabel,
-  density = 'dense',
+  showDeleteButton = false,
+  sellMode = false,
+  saleId,
   categoryIds,
-  typeIds,
   statuses,
+  typeId,
 }: {
   items: any[];
   hasMore: boolean;
   settings: Settings;
-  noItemsMessage: string;
-  noImageLabel?: string;
-  density?: 'dense' | 'showcase';
+  showDeleteButton?: boolean;
+  sellMode?: boolean;
+  saleId?: number;
   categoryIds: number[];
-  typeIds: number[];
   statuses: number[];
+  typeId?: number;
 }) {
   const loadMore = useCallback(
     async (offset: number) => {
       const params = new URLSearchParams();
       if (categoryIds.length) params.set('categories', categoryIds.join(','));
-      if (typeIds.length) params.set('types', typeIds.join(','));
       if (statuses.length) params.set('statuses', statuses.join(','));
+      if (typeId !== undefined) params.set('type', String(typeId));
       params.set('offset', String(offset));
       params.set('limit', String(PAGE_SIZE));
 
-      const res = await fetch(`/api/v1/public-items?${params.toString()}`);
+      const res = await fetch(`/api/v1/items?${params.toString()}`);
       if (!res.ok) return { items: [], hasMore: false };
       const json = await res.json();
       return { items: json.data as any[], hasMore: Boolean(json.hasMore) };
     },
-    [categoryIds, typeIds, statuses]
+    [categoryIds, statuses, typeId]
   );
 
   const pathname = usePathname();
   const storageKey = useMemo(
-    () => `${pathname}|${categoryIds.join(',')}|${typeIds.join(',')}|${statuses.join(',')}`,
-    [pathname, categoryIds, typeIds, statuses]
+    () => `${pathname}|${categoryIds.join(',')}|${statuses.join(',')}|${typeId ?? ''}`,
+    [pathname, categoryIds, statuses, typeId]
   );
 
   const infiniteScroll = useInfiniteScroll({ storageKey, initialItems: items, initialHasMore: hasMore, loadMore });
 
   if (infiniteScroll.items.length === 0) {
-    return <div style={{ color: 'var(--color-text-muted)' }}>{noItemsMessage}</div>;
+    return <div style={{ color: 'var(--color-text-muted)' }}>No items match these filters.</div>;
   }
 
   return (
     <>
-      <div className={density === 'showcase' ? 'storefront-grid--showcase' : 'storefront-grid--dense'}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 'var(--spacing-md)' }}>
         {infiniteScroll.items.map((item) => (
           <div key={item.id} className="fade-in-item">
-            <PublicItemCard item={item} settings={settings} noImageLabel={noImageLabel} />
+            <ItemCard
+              item={item}
+              settings={settings}
+              showDeleteButton={showDeleteButton}
+              sellMode={sellMode}
+              saleId={saleId}
+            />
           </div>
         ))}
       </div>

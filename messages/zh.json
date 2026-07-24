@@ -31,7 +31,7 @@
     "flavourTexts": [
       "需要条码扫描？在设置中启用它吧！不过该功能仅在移动应用中可用。",
       "你知道吗？只需点击一个按钮，就能将运费和关税分摊到你的物品上。在设置中启用它，并配合使用包裹功能吧！",
-      "Itemlogs 是免费的云端服务。这怎么可能？因为你只有 5GB 的图片空间。不过别担心，我们会对图片进行高强度压缩！",
+      "Itemlogs 是免费的云端服务。这怎么可能？因为你只有 1GB 的图片空间。不过别担心，我们会对图片进行高强度压缩！",
       "喜欢这个应用吗？支持一下开发者吧！购买一个主题！",
       "你可以在设置中修改「分类」「类型」「状态」「包裹」和「物品」的标签名称。打造属于你的风格！",
       "你可以在店面上展示精选物品，最多同时展示 5 件。如果想展示新的物品，需先取消展示另一件。",
@@ -275,9 +275,21 @@
     "uploadImage": "上传图片",
     "uploading": "正在上传...",
     "noImages": "暂无图片。",
+    "noOrphanImages": "没有未使用的图片，无需清理。",
     "delete": "删除",
     "cancel": "取消",
-    "confirmDeleteImage": "删除此图片？如果它被用作某件物品的主图或图库图片，也会一并被移除。"
+    "confirmDeleteImage": "删除此图片？如果它被用作某件物品的主图或图库图片，也会一并被移除。",
+    "confirmDeleteSelected": "删除选中的 {count} 张图片？如果其中有被用作物品主图或图库图片，也会一并被移除。",
+    "storageUsed": "已使用 {used}，共 {limit}",
+    "sortNewest": "最新",
+    "sortLargest": "从大到小",
+    "orphanedOnly": "仅显示未使用",
+    "orphanedBadge": "未使用",
+    "select": "选择",
+    "selectAll": "全选",
+    "deselectAll": "取消全选",
+    "deleteSelected": "删除所选（{count}）",
+    "cancelSelection": "取消"
   },
   "storefront": {
     "login": "登录",

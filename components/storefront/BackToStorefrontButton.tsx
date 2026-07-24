@@ -8,6 +8,10 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 // reset scroll to the top. router.back() instead returns to the actual
 // grid page (with whatever filters/page it had) and restores its scroll
 // position, same as pressing the browser's native back button.
+//
+// Fixed to the bottom-right corner rather than the top-left: on mobile
+// that's a thumb-reachable spot, instead of a target you have to stretch
+// up to the top of the screen for.
 export function BackToStorefrontButton({ label }: { label: string }) {
   const router = useRouter();
 
@@ -15,22 +19,12 @@ export function BackToStorefrontButton({ label }: { label: string }) {
     <button
       type="button"
       onClick={() => router.back()}
-      className="interactive-card"
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 'var(--spacing-xs)',
-        marginBottom: 'var(--spacing-md)',
-        background: 'transparent',
-        border: 'none',
-        padding: 0,
-        color: 'var(--color-text-muted)',
-        fontSize: 'var(--font-size-sm)',
-        cursor: 'pointer',
-      }}
+      className="storefront-back-button"
+      aria-label={label}
+      title={label}
     >
-      <ArrowLeftIcon style={{ width: '16px', height: '16px' }} />
-      {label}
+      <ArrowLeftIcon style={{ width: '18px', height: '18px' }} />
+      <span className="storefront-back-button-label">{label}</span>
     </button>
   );
 }

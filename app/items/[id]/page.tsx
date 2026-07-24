@@ -52,8 +52,6 @@ export default async function PublicItemPage({
 
   return (
     <div className="item-sheet-container" style={{ padding: 'var(--spacing-lg)' }}>
-      <BackToStorefrontButton label={t('backToStorefront')} />
-
       <div className="sheet-frame">
         <div className="sheet-body">
           <div className="sheet-header">
@@ -145,6 +143,8 @@ export default async function PublicItemPage({
           )}
         </div>
       </div>
+
+      <BackToStorefrontButton label={t('backToStorefront')} />
     </div>
   );
 }

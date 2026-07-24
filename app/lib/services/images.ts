@@ -65,3 +65,44 @@ export async function deleteImage(id: number) {
 
   if (error) throw error;
 }
+
+// Bulk variant for the Gallery's multi-select delete — deletes each Blob
+// file individually (no batch API) but does the DB delete in one query.
+export async function deleteImages(ids: number[]) {
+  if (ids.length === 0) return;
+
+  const { data: rows, error: fetchError } = await supabase
+    .from('images')
+    .select('id, url')
+    .in('id', ids);
+
+  if (fetchError) throw fetchError;
+
+  await Promise.all((rows ?? []).map((row) => deleteImageFile(row.url)));
+
+  const { error } = await supabase.from('images').delete().in('id', ids);
+  if (error) throw error;
+}
+
+// Returns the set of image ids referenced by an item's main image, a
+// blueprint's main image, or an item's gallery (item_images) — i.e.
+// everything that is NOT orphaned. Used by the Gallery page to flag unused
+// images for cleanup.
+export async function getReferencedImageIds(): Promise<Set<number>> {
+  const [itemsRes, blueprintsRes, itemImagesRes] = await Promise.all([
+    supabase.from('items').select('main_image').not('main_image', 'is', null),
+    supabase.from('blueprints').select('main_image').not('main_image', 'is', null),
+    supabase.from('item_images').select('image_id'),
+  ]);
+
+  if (itemsRes.error) throw itemsRes.error;
+  if (blueprintsRes.error) throw blueprintsRes.error;
+  if (itemImagesRes.error) throw itemImagesRes.error;
+
+  const referenced = new Set<number>();
+  for (const row of itemsRes.data ?? []) referenced.add(row.main_image);
+  for (const row of blueprintsRes.data ?? []) referenced.add(row.main_image);
+  for (const row of itemImagesRes.data ?? []) referenced.add(row.image_id);
+
+  return referenced;
+}

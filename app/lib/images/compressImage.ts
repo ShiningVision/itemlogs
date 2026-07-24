@@ -1,6 +1,6 @@
 // app/lib/images/compressImage.ts
 // Client-side image compression before upload, to conserve Vercel Blob storage
-// (5 GB budget). Tuned to be as aggressive as WhatsApp's image compression:
+// (1 GB Hobby-plan budget). Tuned to be as aggressive as WhatsApp's image compression:
 // long edge capped at 1280px, targeting ~300KB per image.
 'use client';
 

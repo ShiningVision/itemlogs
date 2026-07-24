@@ -17,8 +17,6 @@ import { StorefrontSpotlight } from '@/components/storefront/StorefrontSpotlight
 import { FilterSidebar } from '@/components/storefront/FilterSidebar';
 import { PublicItemGrid } from '@/components/storefront/PublicItemGrid';
 import { DensityToggle } from '@/components/storefront/DensityToggle';
-import { Pagination } from '@/components/ui/Pagination';
-import { parsePage, getOffset, getTotalPages, buildPageHref } from '@/app/lib/pagination';
 import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 
@@ -28,7 +26,6 @@ type SearchParams = {
   categories?: string;
   types?: string;
   statuses?: string;
-  page?: string;
   density?: string;
 };
 
@@ -38,7 +35,7 @@ export default async function HomePage({
   searchParams: Promise<SearchParams>;
 }) {
   const rawSearchParams = await searchParams;
-  const { categories: categoriesParam, types: typesParam, statuses: statusesParam, page: pageParam, density: densityParam } = rawSearchParams;
+  const { categories: categoriesParam, types: typesParam, statuses: statusesParam, density: densityParam } = rawSearchParams;
   const settings = await getSettings();
 
   if (!settings.show) {
@@ -72,9 +69,6 @@ export default async function HomePage({
         ? 'showcase'
         : 'dense';
 
-  const page = parsePage(pageParam);
-  const offset = getOffset(page, PUBLIC_ITEMS_PAGE_SIZE);
-
   const [{ items, totalCount }, categories, types, collectionItemCount, categoryCounts, typeCounts, featuredItems] =
     await Promise.all([
       getPublicItems(
@@ -83,7 +77,7 @@ export default async function HomePage({
           typeIds: selectedTypeIds.length ? selectedTypeIds : undefined,
           statuses: selectedStatuses.length ? selectedStatuses : undefined,
           limit: PUBLIC_ITEMS_PAGE_SIZE,
-          offset,
+          offset: 0,
         },
         allowedStatuses
       ),
@@ -95,7 +89,7 @@ export default async function HomePage({
       getFeaturedPublicItems(allowedStatuses),
     ]);
 
-  const totalPages = getTotalPages(totalCount, PUBLIC_ITEMS_PAGE_SIZE);
+  const hasMore = items.length < totalCount;
 
   const sortedCategories = [...categories].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
   const sortedTypes = [...types].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
@@ -149,7 +143,7 @@ export default async function HomePage({
             </div>
           )}
 
-          {noFiltersActive && page === 1 && (
+          {noFiltersActive && (
             <StorefrontSpotlight
               items={featuredItems}
               settings={settings}
@@ -163,9 +157,17 @@ export default async function HomePage({
             <DensityToggle density={density} />
           </div>
 
-          <PublicItemGrid items={items} settings={settings} noItemsMessage={t('noItems')} noImageLabel={t('noImage')} density={density} />
-
-          <Pagination page={page} totalPages={totalPages} buildHref={(p) => buildPageHref('/', rawSearchParams, p)} />
+          <PublicItemGrid
+            items={items}
+            hasMore={hasMore}
+            settings={settings}
+            noItemsMessage={t('noItems')}
+            noImageLabel={t('noImage')}
+            density={density}
+            categoryIds={selectedCategoryIds}
+            typeIds={selectedTypeIds}
+            statuses={selectedStatuses}
+          />
         </main>
       </div>
 
