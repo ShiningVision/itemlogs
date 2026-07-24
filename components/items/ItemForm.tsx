@@ -21,7 +21,7 @@ type ImageRow = { id: number; url: string };
 type ItemFormData = {
   name: string;
   description: string;
-  origin: string;
+  location: string;
   barcode: string;
   status: number;
   category: number | null;
@@ -63,7 +63,7 @@ export function ItemForm({
   const [form, setForm] = useState<ItemFormData>({
     name: item?.name ?? '',
     description: item?.description ?? '',
-    origin: item?.origin ?? '',
+    location: item?.location ?? '',
     barcode: item?.barcode?.toString() ?? '',
     status: item?.status ?? 1,
     category: item?.category ?? null,
@@ -98,7 +98,7 @@ export function ItemForm({
     setForm({
       name: bp.name ?? '',
       description: bp.description ?? '',
-      origin: bp.origin ?? '',
+      location: bp.location ?? '',
       barcode: bp.barcode?.toString() ?? '',
       status: bp.status ?? 1,
       category: bp.category,
@@ -116,7 +116,7 @@ export function ItemForm({
     return {
       name: form.name,
       description: form.description || undefined,
-      origin: form.origin || undefined,
+      location: form.location || undefined,
       barcode: settings.use_barcode && form.barcode ? form.barcode.trim() : undefined,
       status: form.status,
       category: form.category,
@@ -190,7 +190,7 @@ export function ItemForm({
       //   setForm({
       //     name: '',
       //     description: '',
-      //     origin: '',
+      //     location: '',
       //     barcode: '',
       //     status: 1,
       //     category: null,
@@ -415,8 +415,8 @@ export function ItemForm({
 
           <div className="sheet-field-grid">
             <div className="sheet-field">
-              <span className="sheet-label">{t('origin')}</span>
-              <input className="sheet-input" value={form.origin} onChange={(e) => update('origin', e.target.value)} />
+              <span className="sheet-label">{t('location')}</span>
+              <input className="sheet-input" value={form.location} onChange={(e) => update('location', e.target.value)} />
             </div>
 
             {settings.use_barcode && (

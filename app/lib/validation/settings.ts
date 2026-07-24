@@ -37,7 +37,7 @@ export const updateSettingsSchema = z.object({
   storefront_density: z.enum(['showcase', 'dense']).optional(),
   show_contact: z.boolean().optional(),
   contact_info: z.string().max(255).nullable().optional(),
-  show_origin: z.boolean().optional(),
+  show_location: z.boolean().optional(),
   show_package_filter: z.boolean().optional(),
 });
 

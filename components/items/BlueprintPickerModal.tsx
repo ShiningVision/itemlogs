@@ -11,7 +11,7 @@ type BlueprintRow = {
   name: string | null;
   barcode: string | null;
   description: string | null;
-  origin: string | null;
+  location: string | null;
   status: number;
   cost_price: number | null;
   purchase_price: number | null;

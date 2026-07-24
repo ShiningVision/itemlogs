@@ -11,7 +11,7 @@ export const ITEM_EXPORT_COLUMNS: { header: string; key: string; width?: number 
   { header: 'status', key: 'status', width: 10 },
   { header: 'type', key: 'type', width: 18 },
   { header: 'category', key: 'category', width: 18 },
-  { header: 'origin', key: 'origin', width: 18 },
+  { header: 'location', key: 'location', width: 18 },
   { header: 'description', key: 'description', width: 40 },
   { header: 'barcode', key: 'barcode', width: 16 },
   { header: 'main_image', key: 'main_image', width: 40 },
@@ -30,7 +30,7 @@ export type ExportableItem = {
   id: number;
   name: string | null;
   status: number;
-  origin?: string | null;
+  location?: string | null;
   description?: string | null;
   barcode?: string | null;
   type_ref?: { name: string } | null;
@@ -59,7 +59,7 @@ export async function buildItemsWorkbook(items: ExportableItem[]): Promise<Excel
       status: item.status,
       type: item.type_ref?.name ?? '',
       category: item.category_ref?.name ?? '',
-      origin: item.origin,
+      location: item.location,
       description: item.description,
       barcode: item.barcode,
       main_image: item.main_image_ref?.url ?? '',

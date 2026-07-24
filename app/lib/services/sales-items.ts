@@ -5,7 +5,7 @@ type ItemRow = {
   id: number;
   name: string | null;
   status: number;
-  origin: string | null;
+  location: string | null;
   description: string | null;
   barcode: string | null;
   sell_price: number | null;

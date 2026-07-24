@@ -119,10 +119,10 @@ export default async function PublicItemPage({
             </div>
           )}
 
-          {settings.show_origin && item.origin && (
+          {settings.show_location && item.location && (
             <div className="sheet-section">
-              <div className="sheet-section-title">{itemsT('origin')}</div>
-              <p>{item.origin}</p>
+              <div className="sheet-section-title">{itemsT('location')}</div>
+              <p>{item.location}</p>
             </div>
           )}
         </div>

@@ -26,7 +26,7 @@ const ITEM_DETAIL_FIELDS: Array<{ key: keyof Settings; labelKey: string }> = [
   { key: 'show_sell_price', labelKey: 'showSellPrice' },
   { key: 'show_purchase_price', labelKey: 'showPurchasePrice' },
   { key: 'show_cost_price', labelKey: 'showCostPrice' },
-  { key: 'show_origin', labelKey: 'showOrigin' },
+  { key: 'show_location', labelKey: 'showLocation' },
 ];
 
 type FieldStatus = 'saving' | 'saved' | 'error';

@@ -39,7 +39,7 @@ const EXPECTED_HEADERS = [
   'status',
   'type',
   'category',
-  'origin',
+  'location',
   'description',
   'barcode',
   'main_image',
@@ -69,7 +69,7 @@ type ParsedRow = {
   status: number;
   type: string | null;
   category: string | null;
-  origin: string | null;
+  location: string | null;
   description: string | null;
   barcode: string | null;
   main_image: string | null;
@@ -146,7 +146,7 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
     const statusStr = get(3);
     const type = get(4);
     const category = get(5);
-    const origin = get(6);
+    const location = get(6);
     const description = get(7);
     const barcode = get(8);
     const main_image = get(9);
@@ -156,7 +156,7 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
     const sellPriceStr = get(13);
 
     const allBlank = [
-      idStr, name, statusStr, type, category, origin, description, barcode,
+      idStr, name, statusStr, type, category, location, description, barcode,
       main_image, purchasePriceStr, purchase_price_currency, costPriceStr,
       sellPriceStr,
     ].every((v) => v === null);
@@ -210,7 +210,7 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
       status: Number.isFinite(statusNum) ? statusNum : 0,
       type,
       category,
-      origin,
+      location,
       description,
       barcode,
       main_image,
@@ -360,12 +360,12 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
 
       const payload = {
         name: row.name,
-        // Blank description/origin/barcode leave the existing value alone
+        // Blank description/location/barcode leave the existing value alone
         // on update (they're omitted, not nulled) — only main_image,
         // category, and type support explicit clearing, since those are
         // the only nullable fields in the schema.
         description: row.description ?? undefined,
-        origin: row.origin ?? undefined,
+        location: row.location ?? undefined,
         barcode: row.barcode ?? undefined,
         status: row.status,
         category: categoryId,

@@ -28,7 +28,7 @@ export type Item = {
   id: number;
   name: string | null;
   description: string | null;
-  origin: string | null;
+  location: string | null;
   barcode: string | null;
   status: number;
   cost_price: number | null;
@@ -77,7 +77,7 @@ export type Settings = {
   storefront_density: string;
   show_contact: boolean;
   contact_info: string | null;
-  show_origin: boolean;
+  show_location: boolean;
   show_package_filter: boolean;
   // Resolved join (see getSettings) — every item's sell_price/cost_price is
   // denominated in this single shop-wide currency.
@@ -101,7 +101,7 @@ export type Blueprint = {
   id: number;
   name: string | null;
   description: string | null;
-  origin: string | null;
+  location: string | null;
   barcode: string | null;
   status: number;
   cost_price: number | null;

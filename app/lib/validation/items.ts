@@ -4,7 +4,7 @@ import { z } from 'zod';
 export const createItemSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string().optional(),
-  origin: z.string().optional(),
+  location: z.string().optional(),
   barcode: z.string().max(255).optional(),
   status: z.number().int(),
   cost_price: z.number().optional(),

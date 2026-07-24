@@ -183,10 +183,6 @@ async function seedUsers(sql: postgres.Sql) {
       username VARCHAR(255) UNIQUE
     );
   `;
-  // Added after the table already existed in deployed environments — safe to
-  // re-run, and covers instances where the table was created before this
-  // column existed.
-  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(255) UNIQUE;`;
 
   const insertedUsers = await Promise.all(
     users.map(async (user) => {
@@ -198,15 +194,6 @@ async function seedUsers(sql: postgres.Sql) {
       `;
     }),
   );
-
-  // Backfill any pre-existing rows (from before this column existed) with a
-  // username derived from their email's local part, sanitized for use as a
-  // subdomain-style identifier.
-  await sql`
-    UPDATE users
-    SET username = LOWER(REGEXP_REPLACE(SPLIT_PART(email, '@', 1), '[^a-zA-Z0-9]+', '-', 'g'))
-    WHERE username IS NULL;
-  `;
 
   console.log('users ok');
   return insertedUsers;
@@ -233,19 +220,16 @@ async function seedPackages(sql: postgres.Sql) {
     );
   `;
 
-  // Added after the table already existed in deployed environments.
-  await sql`ALTER TABLE packages ADD COLUMN IF NOT EXISTS show_on_storefront BOOLEAN NOT NULL DEFAULT false;`;
-
   const insertedPackages = await Promise.all(
     packages.map((pkg) => {
       return sql`
         INSERT INTO packages (
           id, name, description, departure_date, arrival_date,
-          tariff, tariff_currency, shipping_fee, shipping_fee_currency
+          tariff, tariff_currency, shipping_fee, shipping_fee_currency, show_on_storefront
         )
         VALUES (
           ${pkg.id}, ${pkg.name}, ${pkg.description}, ${pkg.departure_date}, ${pkg.arrival_date},
-          ${pkg.tariff}, ${pkg.tariff_currency}, ${pkg.shipping_fee}, ${pkg.shipping_fee_currency}
+          ${pkg.tariff}, ${pkg.tariff_currency}, ${pkg.shipping_fee}, ${pkg.shipping_fee_currency}, ${pkg.show_on_storefront}
         )
         ON CONFLICT (id) DO NOTHING;
       `;
@@ -266,7 +250,7 @@ async function seedItems(sql: postgres.Sql) {
       id SERIAL PRIMARY KEY,
       name VARCHAR(255),
       description VARCHAR(255),
-      origin VARCHAR(255),
+      location VARCHAR(255),
       barcode VARCHAR(255),
       status INTEGER NOT NULL,
       cost_price NUMERIC(18,2),
@@ -281,34 +265,18 @@ async function seedItems(sql: postgres.Sql) {
     );
   `;
 
-  // Added after the table already existed in deployed environments.
-  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS is_featured BOOLEAN NOT NULL DEFAULT false;`;
-
-  // barcode was originally BIGINT — widened to text since real-world
-  // barcodes can have leading zeros or non-numeric formats that a numeric
-  // column would silently mangle. Safe to re-run on an existing BIGINT
-  // column (casts each value to its text representation) and a no-op if
-  // the column is already VARCHAR.
-  await sql`ALTER TABLE items ALTER COLUMN barcode TYPE VARCHAR(255) USING barcode::VARCHAR;`;
-
-  // sell_price_currency used to be a per-item FK, but every item's sell
-  // price is now always denominated in the single shop-wide
-  // settings.sell_price_currency — dropping the redundant per-item column.
-  // Existing sell_price/cost_price numbers are left as-is (not converted).
-  await sql`ALTER TABLE items DROP COLUMN IF EXISTS sell_price_currency;`;
-
   const insertedItems = await Promise.all(
     items.map((item) => {
       return sql`
         INSERT INTO items (
-          id, name, description, origin, barcode, status,
+          id, name, description, location, barcode, status,
           cost_price,
           purchase_price, purchase_price_currency,
           sell_price,
           type, category, main_image, package_id
         )
         VALUES (
-          ${item.id}, ${item.name}, ${item.description}, ${item.origin}, ${item.barcode}, ${item.status},
+          ${item.id}, ${item.name}, ${item.description}, ${item.location}, ${item.barcode}, ${item.status},
           ${item.cost_price},
           ${item.purchase_price}, ${item.purchase_price_currency},
           ${item.sell_price},
@@ -332,7 +300,7 @@ async function seedBlueprints(sql: postgres.Sql) {
       id SERIAL PRIMARY KEY,
       name VARCHAR(255),
       description VARCHAR(255),
-      origin VARCHAR(255),
+      location VARCHAR(255),
       barcode VARCHAR(255),
       status INTEGER NOT NULL,
       cost_price NUMERIC(18,2),
@@ -344,13 +312,6 @@ async function seedBlueprints(sql: postgres.Sql) {
       main_image INTEGER REFERENCES images(id) ON DELETE SET NULL
     );
   `;
-
-  await sql`ALTER TABLE blueprints ALTER COLUMN barcode TYPE VARCHAR(255) USING barcode::VARCHAR;`;
-
-  // Same reasoning as items: sell price is now always in the single
-  // shop-wide settings.sell_price_currency, so blueprints don't need their
-  // own copy either.
-  await sql`ALTER TABLE blueprints DROP COLUMN IF EXISTS sell_price_currency;`;
 
   console.log('blueprints ok');
 }
@@ -397,58 +358,9 @@ async function seedSettings(sql: postgres.Sql) {
       storefront_density VARCHAR(20) NOT NULL DEFAULT 'dense',
       show_contact BOOLEAN NOT NULL DEFAULT false,
       contact_info VARCHAR(255),
-      show_origin BOOLEAN NOT NULL DEFAULT false,
+      show_location BOOLEAN NOT NULL DEFAULT false,
       show_package_filter BOOLEAN NOT NULL DEFAULT false
     );
-  `;
-
-  // Added after the table already existed in deployed environments — safe to
-  // re-run, and covers instances where the table was created before these
-  // columns existed.
-  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS owned_themes TEXT[] NOT NULL DEFAULT ARRAY['default', 'dark'];`;
-  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS tried_themes TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];`;
-  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS theme_trial_expires_at TIMESTAMPTZ;`;
-  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS storefront_name VARCHAR(255);`;
-  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS storefront_tagline VARCHAR(255);`;
-  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS storefront_density VARCHAR(20) NOT NULL DEFAULT 'dense';`;
-  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS show_contact BOOLEAN NOT NULL DEFAULT false;`;
-  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS contact_info VARCHAR(255);`;
-  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS show_origin BOOLEAN NOT NULL DEFAULT false;`;
-  await sql`ALTER TABLE settings ADD COLUMN IF NOT EXISTS show_package_filter BOOLEAN NOT NULL DEFAULT false;`;
-
-  // Renamed from use_package_fee_distribution: this flag now gates more than
-  // just the "distribute fees" button — it also hides the tariff/shipping-fee
-  // fields entirely, since packages can now represent things (e.g. a trip)
-  // that have no fees at all. RENAME COLUMN isn't naturally idempotent, so
-  // guard it with an existence check (safe to re-run once the rename has
-  // happened).
-  await sql`
-    DO $$
-    BEGIN
-      IF EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'settings' AND column_name = 'use_package_fee_distribution'
-      ) THEN
-        ALTER TABLE settings RENAME COLUMN use_package_fee_distribution TO use_package_fees;
-      END IF;
-    END $$;
-  `;
-
-  // Renamed from default_sell_price_currency: this is no longer just a
-  // default seed for new items — with per-item sell_price_currency gone,
-  // it's now the single authoritative currency every sell_price/cost_price
-  // is denominated in. RENAME COLUMN isn't naturally idempotent, so guard
-  // it with an existence check (safe to re-run once the rename has happened).
-  await sql`
-    DO $$
-    BEGIN
-      IF EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'settings' AND column_name = 'default_sell_price_currency'
-      ) THEN
-        ALTER TABLE settings RENAME COLUMN default_sell_price_currency TO sell_price_currency;
-      END IF;
-    END $$;
   `;
 
   const insertedSettings = await Promise.all(
@@ -461,7 +373,9 @@ async function seedSettings(sql: postgres.Sql) {
           use_sell_price, use_package_fees, use_barcode,language,
           name_category, name_status, name_type, name_package, name_item,
           display_profit, display_sell_price, display_purchase_price, display_cost_price, theme,
-          owned_themes, tried_themes, theme_trial_expires_at
+          owned_themes, tried_themes, theme_trial_expires_at,
+          storefront_name, storefront_tagline, storefront_density,
+          show_contact, contact_info, show_location, show_package_filter
         )
         VALUES (
           ${setting.id}, ${setting.show}, ${setting.show_sell_price}, ${setting.show_cost_price}, ${setting.show_purchase_price},
@@ -470,7 +384,9 @@ async function seedSettings(sql: postgres.Sql) {
           ${setting.use_sell_price}, ${setting.use_package_fees}, ${setting.use_barcode},${setting.language},
           ${setting.name_category}, ${setting.name_status}, ${setting.name_type}, ${setting.name_package}, ${setting.name_item},
           ${setting.display_profit}, ${setting.display_sell_price}, ${setting.display_purchase_price}, ${setting.display_cost_price}, ${setting.theme},
-          ${setting.owned_themes ?? ['default', 'dark']}, ${setting.tried_themes ?? []}, ${setting.theme_trial_expires_at ?? null}
+          ${setting.owned_themes ?? ['default', 'dark']}, ${setting.tried_themes ?? []}, ${setting.theme_trial_expires_at ?? null},
+          ${setting.storefront_name}, ${setting.storefront_tagline}, ${setting.storefront_density},
+          ${setting.show_contact}, ${setting.contact_info}, ${setting.show_location}, ${setting.show_package_filter}
         )
         ON CONFLICT (id) DO NOTHING;
 
@@ -536,21 +452,29 @@ async function seedItemImages(sql: postgres.Sql) {
 
 export async function GET() {
   try {
-    const result = await sql.begin((sql) => [
-      seedCurrencies(sql),
-      seedLanguages(sql),
-      seedTypes(sql),
-      seedCategories(sql),
-      seedImages(sql),
-      seedSales(sql),
-      seedUsers(sql),
-      seedPackages(sql),
-      seedItems(sql),
-      seedBlueprints(sql),
-      seedSettings(sql),
-      seedSalesItems(sql),
-      seedItemImages(sql),
-    ]);
+    // Run sequentially, in dependency order (independent tables first, then
+    // tables with foreign keys to them, then join tables last). Passing an
+    // array of already-invoked async calls to sql.begin does NOT guarantee
+    // this order — each function starts running as soon as it's called, so
+    // whether e.g. `items` rows exist before `sales_items` tries to
+    // reference them ends up racing on response timing instead of being
+    // deterministic. Awaiting each step before starting the next removes
+    // that race entirely.
+    await sql.begin(async (sql) => {
+      await seedCurrencies(sql);
+      await seedLanguages(sql);
+      await seedTypes(sql);
+      await seedCategories(sql);
+      await seedImages(sql);
+      await seedSales(sql);
+      await seedUsers(sql);
+      await seedPackages(sql);
+      await seedItems(sql);
+      await seedBlueprints(sql);
+      await seedSettings(sql);
+      await seedSalesItems(sql);
+      await seedItemImages(sql);
+    });
 
     return Response.json({ message: 'Database seeded successfully' });
   } catch (error) {
