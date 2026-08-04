@@ -39,6 +39,10 @@ async function createShareFormAction(_prev: ActionResult, formData: FormData): P
   return createSharePasswordAction(formData);
 }
 
+async function deleteShareFormAction(formData: FormData): Promise<void> {
+  await deleteSharePasswordAction(formData);
+}
+
 function PasswordField({
   name,
   label,
@@ -176,7 +180,7 @@ export function AccountSecurityForm({
                       {new Date(sp.created_at).toLocaleDateString()}
                     </div>
                   </div>
-                  <form action={deleteSharePasswordAction}>
+                  <form action={deleteShareFormAction}>
                     <input type="hidden" name="id" value={sp.id} />
                     <button type="submit" style={dangerButtonStyle}>
                       {t('delete')}
