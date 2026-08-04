@@ -1,16 +1,19 @@
 // lib/validation/account.ts
 import { z } from 'zod';
 
-// Whether current_password is actually required depends on whether the
-// account has a password set at all (Google-only accounts don't) — that
-// check happens in the action, not here.
+// Every account has a password now (Google/email sign-in was removed), so
+// current_password is always required to change it.
 export const changePasswordSchema = z.object({
-  current_password: z.string().optional(),
+  current_password: z.string().min(1),
   new_password: z.string().min(6),
   confirm_password: z.string().min(6),
 });
 
-export const changeEmailSchema = z.object({
-  current_password: z.string().optional(),
-  new_email: z.string().email(),
+// Creating a shareable password requires re-entering the real admin
+// password, not just an already-authenticated owner session — see
+// app/lib/actions/share-passwords.ts.
+export const createSharePasswordSchema = z.object({
+  admin_password: z.string().min(1),
+  new_password: z.string().min(6),
+  label: z.string().max(255).optional(),
 });

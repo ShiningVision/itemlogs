@@ -20,10 +20,10 @@ const languages = [
 ];
 
 const types = [
-  { id: '1', name: 'Action' },
-  { id: '2', name: 'Adventure' },
-  { id: '3', name: 'RPG' },
-  { id: '4', name: 'Strategy' },
+  { id: '1', name: 'Strategy' },
+  { id: '2', name: 'Type Moon' },
+  { id: '3', name: 'Gucci' },
+  { id: '4', name: 'Square Enix' },
   { id: '5', name: 'Other' },
 ];
 
@@ -46,28 +46,18 @@ const categories = [
   { id: '8', name: 'Other' },
 ];
 
+// IDs line up with each item's main_image below (1: Dragon Quest XI,
+// 2: Canvas Tote Bag, 3: Collector Figure - Knight, 4: Strategy Handbook).
 const images = [
-  { id: '1', url: '/images/placeholder-1.png' },
-  { id: '2', url: '/images/placeholder-2.png' },
-  { id: '3', url: '/images/placeholder-3.png' },
-  { id: '4', url: '/images/placeholder-4.png' },
+  { id: '1', url: '/images/dragon_quest.jpg' },
+  { id: '2', url: '/images/bag.jpg' },
+  { id: '3', url: '/images/knight.jpg' },
+  { id: '4', url: '/images/strategy_handbook.jpg' },
 ];
 
 const packages = [
   {
     id: '1',
-    name: 'Spring 2026 Restock',
-    description: 'A selection of new items arriving from Japan.',
-    departure_date: '2026-03-01',
-    arrival_date: '2026-03-15',
-    tariff: '25.00',
-    tariff_currency: '1',
-    shipping_fee: '40.00',
-    shipping_fee_currency: '1',
-    show_on_storefront: false,
-  },
-  {
-    id: '2',
     name: 'Summer Import Batch',
     description: 'A batch of items imported for the summer season.',
     departure_date: '2026-06-01',
@@ -95,7 +85,7 @@ const items = [
     type: '3',
     category: '2',
     main_image: '1',
-    package_id: '2',
+    package_id: '1',
   },
   {
     id: '2',
@@ -111,7 +101,7 @@ const items = [
     type: '5',
     category: '1',
     main_image: '2',
-    package_id: '2',
+    package_id: '1',
   },
   {
     id: '3',

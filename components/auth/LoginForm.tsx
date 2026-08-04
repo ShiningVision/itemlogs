@@ -3,7 +3,6 @@
 
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
-import { signIn } from 'next-auth/react';
 import { authenticate } from '@/app/lib/actions/auth';
 
 export function LoginForm() {
@@ -33,23 +32,6 @@ export function LoginForm() {
       </h1>
 
       <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }}>
-          <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>{t('email')}</span>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            style={{
-              padding: 'var(--spacing-sm)',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--color-border)',
-              background: 'var(--color-background)',
-              color: 'var(--color-text)',
-            }}
-          />
-        </label>
-
         <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }}>
           <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>{t('password')}</span>
           <input
@@ -90,27 +72,6 @@ export function LoginForm() {
           )}
         </div>
       </form>
-
-      <div style={{ position: 'relative', textAlign: 'center', margin: 'var(--spacing-md) 0', color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>
-        <span style={{ background: 'var(--color-surface)', padding: '0 var(--spacing-sm)' }}>{t('or')}</span>
-        <div style={{ position: 'absolute', left: 0, top: '50%', zIndex: -1, height: '1px', width: '100%', background: 'var(--color-border)' }} />
-      </div>
-
-      <button
-        type="button"
-        onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
-        style={{
-          width: '100%',
-          background: 'var(--color-background)',
-          color: 'var(--color-text)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-md)',
-          padding: 'var(--spacing-sm) var(--spacing-md)',
-          cursor: 'pointer',
-        }}
-      >
-        {t('continueWithGoogle')}
-      </button>
     </div>
   );
 }

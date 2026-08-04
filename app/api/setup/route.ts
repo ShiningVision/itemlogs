@@ -1,0 +1,430 @@
+import bcrypt from 'bcrypt';
+import postgres from 'postgres';
+import {
+  currencies,
+  languages,
+  types,
+  categories,
+  images,
+  sales,
+  packages,
+  items,
+  salesItems,
+  itemImages,
+} from '@/app/lib/placeholder-data';
+
+// This is the first-run replacement for the old public, unauthenticated
+// /seed route (which created the schema and inserted a fixed placeholder
+// settings row + a hardcoded "123456" password, no matter who ran it, and
+// with no "already set up" guard at all). This route:
+//   - is only ever called from /setup, which itself checks the DB isn't
+//     already configured before showing the form;
+//   - re-checks that server-side too (a 409 if `settings` already has a
+//     row), since the client-side check is just UX, not a real guard;
+//   - takes the tenant's own password + starter-settings choices instead of
+//     hardcoding them.
+// Schema creation still needs a raw Postgres connection (POSTGRES_URL) —
+// Supabase's PostgREST/Supabase-JS layer (used everywhere else in the app,
+// via app/lib/db/client.ts) can't run CREATE TABLE.
+const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+
+const VALID_LANGUAGE_IDS = languages.map((l) => Number(l.id));
+const VALID_CURRENCY_IDS = currencies.map((c) => Number(c.id));
+
+interface SetupBody {
+  password?: string;
+  confirmPassword?: string;
+  language?: number;
+  currency?: number;
+  needsSellPrice?: boolean;
+  needsBarcode?: boolean;
+}
+
+export async function POST(request: Request) {
+  let body: SetupBody;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: 'Invalid request body.' }, { status: 400 });
+  }
+
+  const { password, confirmPassword, language, currency, needsSellPrice, needsBarcode } = body;
+
+  if (typeof password !== 'string' || password.length < 6) {
+    return Response.json({ error: 'Password must be at least 6 characters.' }, { status: 400 });
+  }
+  if (password !== confirmPassword) {
+    return Response.json({ error: 'Passwords do not match.' }, { status: 400 });
+  }
+  if (typeof language !== 'number' || !VALID_LANGUAGE_IDS.includes(language)) {
+    return Response.json({ error: 'Invalid language.' }, { status: 400 });
+  }
+  if (typeof currency !== 'number' || !VALID_CURRENCY_IDS.includes(currency)) {
+    return Response.json({ error: 'Invalid currency.' }, { status: 400 });
+  }
+  if (typeof needsSellPrice !== 'boolean' || typeof needsBarcode !== 'boolean') {
+    return Response.json({ error: 'Invalid request body.' }, { status: 400 });
+  }
+
+  // Guard against re-running setup on an already-configured tenant. The
+  // /setup page itself checks this too before showing the form, but that's
+  // just UX — this is the real guard, since nothing stops a direct POST.
+  try {
+    const existing = await sql`SELECT id FROM settings LIMIT 1`;
+    if (existing.length > 0) {
+      return Response.json({ error: 'This inventory is already set up.' }, { status: 409 });
+    }
+  } catch {
+    // settings table doesn't exist yet — expected on a genuinely fresh
+    // database, fall through to create everything.
+  }
+
+  // Captured once here and stored in settings.app_url rather than derived
+  // per-request — a future mobile client hitting the API has no "current
+  // page URL" of its own to infer this from, so it needs to be a plain
+  // fetchable fact instead.
+  const host = request.headers.get('host') ?? 'itemlogs.local';
+  const appUrl = `https://${host}`;
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  try {
+    await sql.begin(async (sql) => {
+      // -----------------------------------------------------------------
+      // Independent tables first (same dependency order as the old /seed).
+      // -----------------------------------------------------------------
+      await sql`
+        CREATE TABLE IF NOT EXISTS currencies (
+          id SERIAL PRIMARY KEY,
+          currency_code VARCHAR(3) NOT NULL,
+          currency_name VARCHAR(255) NOT NULL,
+          currency_symbol VARCHAR(255) NOT NULL
+        );
+      `;
+      await Promise.all(
+        currencies.map(
+          (c) => sql`
+            INSERT INTO currencies (id, currency_code, currency_name, currency_symbol)
+            VALUES (${c.id}, ${c.currency_code}, ${c.currency_name}, ${c.currency_symbol})
+            ON CONFLICT (id) DO NOTHING;
+          `
+        )
+      );
+      await sql`SELECT setval('currencies_id_seq', (SELECT MAX(id) FROM currencies));`;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS languages (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          code VARCHAR(10) NOT NULL
+        );
+      `;
+      await Promise.all(
+        languages.map(
+          (l) => sql`
+            INSERT INTO languages (id, name, code)
+            VALUES (${l.id}, ${l.name}, ${l.code})
+            ON CONFLICT (id) DO NOTHING;
+          `
+        )
+      );
+      await sql`SELECT setval('languages_id_seq', (SELECT MAX(id) FROM languages));`;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS types (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255)
+        );
+      `;
+      await Promise.all(
+        types.map(
+          (t) => sql`
+            INSERT INTO types (id, name) VALUES (${t.id}, ${t.name})
+            ON CONFLICT (id) DO NOTHING;
+          `
+        )
+      );
+      await sql`SELECT setval('types_id_seq', (SELECT MAX(id) FROM types));`;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS categories (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255)
+        );
+      `;
+      await Promise.all(
+        categories.map(
+          (c) => sql`
+            INSERT INTO categories (id, name) VALUES (${c.id}, ${c.name})
+            ON CONFLICT (id) DO NOTHING;
+          `
+        )
+      );
+      await sql`SELECT setval('categories_id_seq', (SELECT MAX(id) FROM categories));`;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS images (
+          id SERIAL PRIMARY KEY,
+          url VARCHAR(255) NOT NULL
+        );
+      `;
+      await Promise.all(
+        images.map(
+          (i) => sql`
+            INSERT INTO images (id, url) VALUES (${i.id}, ${i.url})
+            ON CONFLICT (id) DO NOTHING;
+          `
+        )
+      );
+      await sql`SELECT setval('images_id_seq', (SELECT MAX(id) FROM images));`;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS sales (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255),
+          date DATE NOT NULL
+        );
+      `;
+      await Promise.all(
+        sales.map(
+          (s) => sql`
+            INSERT INTO sales (id, name, date) VALUES (${s.id}, ${s.name}, ${s.date})
+            ON CONFLICT (id) DO NOTHING;
+          `
+        )
+      );
+      await sql`SELECT setval('sales_id_seq', (SELECT MAX(id) FROM sales));`;
+
+      // Single admin user — the tenant's own confirmed password. This route
+      // only ever runs once (guarded above), so there's no need for an
+      // ON CONFLICT clause: this INSERT either creates the one owner row or
+      // this whole request already 409'd before reaching here.
+      await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS users (
+          id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+          name VARCHAR(255),
+          password VARCHAR(255),
+          username VARCHAR(255) UNIQUE
+        );
+      `;
+      await sql`
+        INSERT INTO users (name, password, username)
+        VALUES ('Owner', ${hashedPassword}, 'owner');
+      `;
+
+      // Shareable passwords — additional credentials the owner can hand out
+      // that grant full dashboard access without being the real account
+      // (see app/lib/actions/share-passwords.ts). Empty until the owner
+      // creates one from Account & Security.
+      await sql`
+        CREATE TABLE IF NOT EXISTS share_passwords (
+          id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+          password_hash VARCHAR(255) NOT NULL,
+          label VARCHAR(255),
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+      `;
+
+      // -----------------------------------------------------------------
+      // Tables with foreign keys to the above.
+      // -----------------------------------------------------------------
+      await sql`
+        CREATE TABLE IF NOT EXISTS packages (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          description VARCHAR(255),
+          departure_date DATE,
+          arrival_date DATE,
+          tariff NUMERIC(18,2),
+          tariff_currency INTEGER NOT NULL REFERENCES currencies(id),
+          shipping_fee NUMERIC(18,2),
+          shipping_fee_currency INTEGER NOT NULL REFERENCES currencies(id),
+          show_on_storefront BOOLEAN NOT NULL DEFAULT false
+        );
+      `;
+      await Promise.all(
+        packages.map(
+          (p) => sql`
+            INSERT INTO packages (
+              id, name, description, departure_date, arrival_date,
+              tariff, tariff_currency, shipping_fee, shipping_fee_currency, show_on_storefront
+            )
+            VALUES (
+              ${p.id}, ${p.name}, ${p.description}, ${p.departure_date}, ${p.arrival_date},
+              ${p.tariff}, ${p.tariff_currency}, ${p.shipping_fee}, ${p.shipping_fee_currency}, ${p.show_on_storefront}
+            )
+            ON CONFLICT (id) DO NOTHING;
+          `
+        )
+      );
+      await sql`SELECT setval('packages_id_seq', (SELECT MAX(id) FROM packages));`;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS items (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255),
+          description VARCHAR(255),
+          location VARCHAR(255),
+          barcode VARCHAR(255),
+          status INTEGER NOT NULL,
+          cost_price NUMERIC(18,2),
+          purchase_price NUMERIC(18,2),
+          purchase_price_currency INTEGER NOT NULL REFERENCES currencies(id),
+          sell_price NUMERIC(18,2),
+          type INTEGER REFERENCES types(id) ON DELETE SET NULL,
+          category INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+          main_image INTEGER REFERENCES images(id) ON DELETE SET NULL,
+          package_id INTEGER REFERENCES packages(id) ON DELETE SET NULL,
+          is_featured BOOLEAN NOT NULL DEFAULT false
+        );
+      `;
+      await Promise.all(
+        items.map(
+          (i) => sql`
+            INSERT INTO items (
+              id, name, description, location, barcode, status,
+              cost_price, purchase_price, purchase_price_currency, sell_price,
+              type, category, main_image, package_id
+            )
+            VALUES (
+              ${i.id}, ${i.name}, ${i.description}, ${i.location}, ${i.barcode}, ${i.status},
+              ${i.cost_price}, ${i.purchase_price}, ${i.purchase_price_currency}, ${i.sell_price},
+              ${i.type}, ${i.category}, ${i.main_image}, ${i.package_id}
+            )
+            ON CONFLICT (id) DO NOTHING;
+          `
+        )
+      );
+      await sql`SELECT setval('items_id_seq', (SELECT MAX(id) FROM items));`;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS blueprints (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255),
+          description VARCHAR(255),
+          location VARCHAR(255),
+          barcode VARCHAR(255),
+          status INTEGER NOT NULL,
+          cost_price NUMERIC(18,2),
+          purchase_price NUMERIC(18,2),
+          purchase_price_currency INTEGER NOT NULL REFERENCES currencies(id),
+          sell_price NUMERIC(18,2),
+          type INTEGER REFERENCES types(id) ON DELETE SET NULL,
+          category INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+          main_image INTEGER REFERENCES images(id) ON DELETE SET NULL
+        );
+      `;
+
+      // Settings — the one real config row, built from the tenant's own
+      // answers instead of a fixed placeholder.
+      await sql`
+        CREATE TABLE IF NOT EXISTS settings (
+          id SERIAL PRIMARY KEY,
+          show BOOLEAN NOT NULL DEFAULT false,
+          show_sell_price BOOLEAN NOT NULL,
+          show_cost_price BOOLEAN NOT NULL,
+          show_purchase_price BOOLEAN NOT NULL,
+          show_status_1 BOOLEAN NOT NULL,
+          show_status_2 BOOLEAN NOT NULL,
+          show_status_3 BOOLEAN NOT NULL,
+          show_status_4 BOOLEAN NOT NULL,
+          show_message VARCHAR(255),
+          sell_price_currency INTEGER NOT NULL REFERENCES currencies(id),
+          default_purchase_price_currency INTEGER NOT NULL REFERENCES currencies(id),
+          use_sell_price BOOLEAN NOT NULL,
+          use_package_fees BOOLEAN NOT NULL,
+          use_barcode BOOLEAN NOT NULL,
+          language INTEGER NOT NULL REFERENCES languages(id),
+          name_category VARCHAR(255),
+          name_status VARCHAR(255),
+          name_type VARCHAR(255),
+          name_package VARCHAR(255),
+          name_item VARCHAR(255),
+          display_profit BOOLEAN NOT NULL,
+          display_sell_price BOOLEAN NOT NULL,
+          display_purchase_price BOOLEAN NOT NULL,
+          display_cost_price BOOLEAN NOT NULL,
+          theme VARCHAR(255),
+          owned_themes TEXT[] NOT NULL DEFAULT ARRAY['default', 'dark'],
+          tried_themes TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+          theme_trial_expires_at TIMESTAMPTZ,
+          storefront_name VARCHAR(255),
+          storefront_tagline VARCHAR(255),
+          storefront_density VARCHAR(20) NOT NULL DEFAULT 'dense',
+          show_contact BOOLEAN NOT NULL DEFAULT false,
+          contact_info VARCHAR(255),
+          show_location BOOLEAN NOT NULL DEFAULT false,
+          show_package_filter BOOLEAN NOT NULL DEFAULT false,
+          app_url VARCHAR(255)
+        );
+      `;
+      await sql`
+        INSERT INTO settings (
+          id, show, show_sell_price, show_cost_price, show_purchase_price,
+          show_status_1, show_status_2, show_status_3, show_status_4, show_message,
+          sell_price_currency, default_purchase_price_currency,
+          use_sell_price, use_package_fees, use_barcode, language,
+          name_category, name_status, name_type, name_package, name_item,
+          display_profit, display_sell_price, display_purchase_price, display_cost_price, theme,
+          owned_themes, tried_themes, theme_trial_expires_at,
+          storefront_name, storefront_tagline, storefront_density,
+          show_contact, contact_info, show_location, show_package_filter, app_url
+        )
+        VALUES (
+          1, true, ${needsSellPrice}, false, false,
+          true, false, false, false, NULL,
+          ${currency}, ${currency},
+          ${needsSellPrice}, false, ${needsBarcode}, ${language},
+          'Category', 'Status', 'Type', 'Package', 'Item',
+          false, false, false, false, 'default',
+          ARRAY['default', 'dark'], ARRAY[]::TEXT[], NULL,
+          NULL, NULL, 'dense',
+          false, NULL, false, false, ${appUrl}
+        )
+        ON CONFLICT (id) DO NOTHING;
+      `;
+
+      // -----------------------------------------------------------------
+      // Join tables last.
+      // -----------------------------------------------------------------
+      await sql`
+        CREATE TABLE IF NOT EXISTS sales_items (
+          sales_id INTEGER NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
+          item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+          PRIMARY KEY (sales_id, item_id)
+        );
+      `;
+      await Promise.all(
+        salesItems.map(
+          (si) => sql`
+            INSERT INTO sales_items (sales_id, item_id)
+            VALUES (${si.sales_id}, ${si.item_id})
+            ON CONFLICT (sales_id, item_id) DO NOTHING;
+          `
+        )
+      );
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS item_images (
+          image_id INTEGER NOT NULL REFERENCES images(id) ON DELETE CASCADE,
+          item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+          PRIMARY KEY (image_id, item_id)
+        );
+      `;
+      await Promise.all(
+        itemImages.map(
+          (ii) => sql`
+            INSERT INTO item_images (image_id, item_id)
+            VALUES (${ii.image_id}, ${ii.item_id})
+            ON CONFLICT (image_id, item_id) DO NOTHING;
+          `
+        )
+      );
+    });
+
+    return Response.json({ ok: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Setup failed.';
+    return Response.json({ error: message }, { status: 500 });
+  }
+}

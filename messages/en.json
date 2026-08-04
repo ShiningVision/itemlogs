@@ -16,15 +16,30 @@
     "openMenu": "Open menu",
     "closeMenu": "Close menu"
   },
+  "setup": {
+    "title": "Set up your inventory",
+    "intro": "This only happens once. A few questions to get sensible defaults, then you're in.",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "passwordMismatch": "Passwords do not match.",
+    "passwordHint": "This is what you'll log in with as the owner.",
+    "language": "Language",
+    "needsSellPrice": "Do you need a sell price?",
+    "needsSellPriceHint": "Track what you sell items for, not just what they cost you.",
+    "currency": "What currency do you use by default?",
+    "currencyHint": "Used for both your purchase prices and sell prices unless you change it later.",
+    "needsBarcode": "Do you need barcodes?",
+    "needsBarcodeHint": "Adds a barcode field to items, useful if you scan stock.",
+    "submit": "Complete setup",
+    "submitting": "Setting up your inventory…",
+    "genericError": "Something went wrong. Please try again."
+  },
   "login": {
     "title": "Please log in to continue.",
-    "email": "Email",
     "password": "Password",
     "submit": "Log in",
-    "invalidCredentials": "Invalid email or password.",
-    "continueWithGoogle": "Continue with Google",
-    "submitting": "Logging in...",
-    "or": "or"
+    "invalidCredentials": "Invalid password.",
+    "submitting": "Logging in..."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -204,12 +219,33 @@
   "account": {
     "sectionTitle": "Account & Security",
     "yourUrl": "Your URL",
-    "currentEmail": "Email",
-    "changePassword": "Password",
-    "newPasswordPlaceholder": "Type a new password",
+    "urlUnavailable": "Not available",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmNewPassword": "Confirm new password",
+    "submitting": "Saving...",
+    "passwordUpdated": "Password updated.",
     "showPassword": "Show password",
     "hidePassword": "Hide password",
-    "comingSoon": "Coming soon"
+    "shareSectionTitle": "Shareable Access",
+    "shareSectionHint": "Create extra passwords you can hand out for full dashboard access. Shared users can't create or delete shareable passwords, or change your login password.",
+    "noSharePasswords": "No shareable passwords yet.",
+    "unlabeled": "Unlabeled",
+    "delete": "Delete",
+    "adminPasswordToCreate": "Your admin password",
+    "newSharePassword": "New shareable password",
+    "shareLabel": "Label (optional)",
+    "shareLabelPlaceholder": "e.g. Warehouse staff",
+    "createSharePassword": "Create shareable password",
+    "sharePasswordCreated": "Shareable password created.",
+    "errors": {
+      "notAuthenticated": "You must be signed in as the owner to do this.",
+      "invalid": "Please check the fields and try again.",
+      "mismatch": "New passwords don't match.",
+      "currentIncorrect": "Current password is incorrect.",
+      "adminPasswordIncorrect": "Admin password is incorrect."
+    }
   },
   "packages": {
     "title": "Packages",

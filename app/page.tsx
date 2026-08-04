@@ -42,7 +42,21 @@ export default async function HomePage({
 }) {
   const rawSearchParams = await searchParams;
   const { categories: categoriesParam, types: typesParam, statuses: statusesParam, package: packageParam, page: pageParam, density: densityParam } = rawSearchParams;
-  const settings = await getSettings();
+
+  // On a freshly provisioned tenant, the database has no tables yet — the
+  // Supabase Marketplace resource creates an empty Postgres instance, and
+  // nothing has run schema creation/seeding against it. getSettings() then
+  // throws a raw PostgREST "relation does not exist" error straight up to
+  // Next's default error page, which is meaningless to a first-time tenant.
+  // Route them to /setup instead, which creates the schema, seeds starter
+  // data, and collects the handful of choices (password, language, default
+  // currency, etc.) that used to live in the placeholder settings row.
+  let settings: Awaited<ReturnType<typeof getSettings>>;
+  try {
+    settings = await getSettings();
+  } catch {
+    redirect('/setup');
+  }
 
   if (!settings.show) {
     redirect('/login');

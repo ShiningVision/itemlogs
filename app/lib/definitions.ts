@@ -79,6 +79,12 @@ export type Settings = {
   contact_info: string | null;
   show_location: boolean;
   show_package_filter: boolean;
+  // The tenant's own canonical URL (e.g. "https://my-shop.vercel.app"),
+  // captured once at /setup from the request's Host header. Stored rather
+  // than re-derived per-request so it's a plain queryable fact any client
+  // can read — including a future mobile app, which has no "current page
+  // URL" of its own to infer this from.
+  app_url: string | null;
   // Resolved join (see getSettings) — every item's sell_price/cost_price is
   // denominated in this single shop-wide currency.
   sell_currency?: { currency_code: string; currency_symbol: string } | null;
@@ -122,8 +128,6 @@ export type Sale = {
 export type User = {
   id: string;
   name: string | null;
-  email: string;
   password: string | null;
-  google_id: string | null;
   username: string | null;
 };
