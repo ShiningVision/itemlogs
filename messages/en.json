@@ -211,6 +211,7 @@
     "buyNow": "Buy now",
     "free": "Free",
     "trialActive": "You're trying \"{theme}\" — it reverts to Default automatically after {time}.",
+    "couldNotVerify": "Couldn't verify your theme purchases right now — paid themes are shown as locked until this reloads successfully.",
     "themeDefault": "Default",
     "themeDark": "Dark",
     "themeSunset": "Sunset",

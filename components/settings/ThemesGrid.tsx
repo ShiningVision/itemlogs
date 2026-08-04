@@ -9,12 +9,16 @@ import { CheckCircleIcon } from '@heroicons/react/24/solid';
 type ThemeState = {
   name: string;
   labelKey: string;
-  free: boolean;
-  price?: string;
+  priceCents: number;
   owned: boolean;
   tried: boolean;
   current: boolean;
+  buyUrl: string | null;
 };
+
+function formatPrice(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
 
 function formatRemaining(expiresAt: string): string {
   const ms = new Date(expiresAt).getTime() - Date.now();
@@ -25,12 +29,10 @@ function formatRemaining(expiresAt: string): string {
 
 export function ThemesGrid({
   themes,
-  returnUrl,
   trialActiveTheme,
   trialExpiresAt,
 }: {
   themes: ThemeState[];
-  returnUrl: string;
   trialActiveTheme: string | null;
   trialExpiresAt: string | null;
 }) {
@@ -52,11 +54,6 @@ export function ThemesGrid({
       await tryThemeAction(themeName);
       window.location.reload();
     });
-  }
-
-  function buyLink(themeName: string): string {
-    const params = new URLSearchParams({ theme: themeName, return_url: returnUrl });
-    return `https://itemlogs.app/buy_theme?${params.toString()}`;
   }
 
   return (
@@ -82,6 +79,7 @@ export function ThemesGrid({
           const busy = isPending && pendingTheme === theme.name;
           const showBuyState = !theme.owned && theme.tried;
           const showTryState = !theme.owned && !theme.tried;
+          const free = theme.priceCents === 0;
 
           return (
             <div
@@ -120,11 +118,8 @@ export function ThemesGrid({
                       {t('tryItOut')}
                     </button>
                   )}
-                  {showBuyState && (
-                    <a
-                      href={buyLink(theme.name)}
-                      className="theme-card-overlay-button"
-                    >
+                  {showBuyState && theme.buyUrl && (
+                    <a href={theme.buyUrl} className="theme-card-overlay-button">
                       {t('buyNow')}
                     </a>
                   )}
@@ -133,7 +128,7 @@ export function ThemesGrid({
 
               <div className="theme-card-label-row">
                 <span className="theme-card-label">{t(theme.labelKey)}</span>
-                <span className="theme-card-price">{theme.free ? t('free') : theme.price}</span>
+                <span className="theme-card-price">{free ? t('free') : formatPrice(theme.priceCents)}</span>
               </div>
             </div>
           );

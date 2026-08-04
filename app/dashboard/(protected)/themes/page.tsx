@@ -1,35 +1,48 @@
 // app/dashboard/(protected)/themes/page.tsx
 import { getSettings } from '@/app/lib/services/settings';
-import { THEME_CATALOG } from '@/app/lib/themeCatalog';
+import { THEME_DISPLAY_CATALOG } from '@/app/lib/themeCatalog';
+import { fetchThemeStatuses, buyThemeUrl } from '@/app/lib/central-site';
 import { ThemesGrid } from '@/components/settings/ThemesGrid';
 import { getTranslations } from 'next-intl/server';
-import { headers } from 'next/headers';
 
-// Trial expiry needs to be checked fresh on every visit.
+// Trial expiry (and central purchase status) need to be checked fresh on
+// every visit.
 export const dynamic = 'force-dynamic';
 
 export default async function ThemesPage() {
   const settings = await getSettings();
   const t = await getTranslations('themes');
 
-  const ownedThemes = settings.owned_themes ?? ['default', 'dark'];
-  const triedThemes = settings.tried_themes ?? [];
   const currentTheme = settings.theme ?? 'default';
+  const centralStatuses = settings.app_url ? await fetchThemeStatuses(settings.app_url) : null;
+  const couldNotVerify = settings.app_url != null && centralStatuses === null;
 
-  const themeStates = THEME_CATALOG.map((entry) => ({
-    ...entry,
-    owned: entry.free || ownedThemes.includes(entry.name),
-    tried: triedThemes.includes(entry.name),
-    current: currentTheme === entry.name,
-  }));
+  const themeStates = THEME_DISPLAY_CATALOG.map((entry) => {
+    if (entry.name === 'default') {
+      return {
+        name: entry.name,
+        labelKey: entry.labelKey,
+        priceCents: 0,
+        owned: true,
+        tried: true,
+        current: currentTheme === entry.name,
+        buyUrl: null,
+      };
+    }
 
-  // Used to build the "buy now" link back to the central store — it needs
-  // to know which install/domain to activate the purchase for once payment
-  // completes there.
-  const hdrs = await headers();
-  const host = hdrs.get('host') ?? '';
-  const protocol = host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https';
-  const returnUrl = host ? `${protocol}://${host}` : '';
+    const remote = centralStatuses?.find((s) => s.slug === entry.name);
+    return {
+      name: entry.name,
+      labelKey: entry.labelKey,
+      priceCents: remote?.priceCents ?? 0,
+      // Couldn't reach the central site — fail closed (nothing owned/tried)
+      // rather than trusting anything local.
+      owned: remote?.purchased ?? false,
+      tried: remote?.tried ?? false,
+      current: currentTheme === entry.name,
+      buyUrl: settings.app_url ? buyThemeUrl(settings.app_url, entry.name) : null,
+    };
+  });
 
   const trialActiveTheme =
     settings.theme_trial_expires_at && new Date(settings.theme_trial_expires_at).getTime() > Date.now()
@@ -47,9 +60,20 @@ export default async function ThemesPage() {
           {t('subtitle')}
         </p>
 
+        {couldNotVerify && (
+          <p
+            style={{
+              color: 'var(--color-danger)',
+              fontSize: 'var(--font-size-sm)',
+              marginBottom: 'var(--spacing-md)',
+            }}
+          >
+            {t('couldNotVerify')}
+          </p>
+        )}
+
         <ThemesGrid
           themes={themeStates}
-          returnUrl={returnUrl}
           trialActiveTheme={trialActiveTheme}
           trialExpiresAt={trialExpiresAt}
         />
