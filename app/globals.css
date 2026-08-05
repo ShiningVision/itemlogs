@@ -329,6 +329,10 @@ body {
   gap: var(--spacing-sm);
 }
 
+.dashboard-live-status-title {
+  flex: 1;
+}
+
 .dashboard-live-dot {
   width: 10px;
   height: 10px;

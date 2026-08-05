@@ -2,31 +2,32 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import type { Settings } from '@/app/lib/definitions';
-import { hasRealItem } from '@/app/lib/services/items';
+import { syncOnboardingChecklist } from '@/app/lib/services/settings';
 
 export async function OnboardingChecklist({ settings }: { settings: Settings }) {
   const t = await getTranslations('dashboard');
 
-  const [addedItem] = await Promise.all([hasRealItem()]);
-  const namedStorefront = Boolean(settings.storefront_name && settings.storefront_name.trim());
-  const storefrontLive = Boolean(settings.show);
+  // All three steps are sticky booleans on `settings` — once true, they
+  // stay true, even if the tenant later deletes their only real item or
+  // turns the storefront back off.
+  const synced = await syncOnboardingChecklist(settings);
 
   const steps = [
     {
       key: 'addItem',
-      done: addedItem,
+      done: synced.checklist_added_item,
       label: t('checklistAddItem'),
       href: '/dashboard/items',
     },
     {
       key: 'nameStorefront',
-      done: namedStorefront,
+      done: synced.checklist_named_storefront,
       label: t('checklistNameStorefront'),
       href: '/dashboard',
     },
     {
       key: 'goLive',
-      done: storefrontLive,
+      done: synced.checklist_went_live,
       label: t('checklistGoLive'),
       href: '/dashboard',
     },

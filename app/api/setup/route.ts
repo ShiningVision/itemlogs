@@ -87,6 +87,13 @@ export async function POST(request: Request) {
   const appUrl = `https://${host}`;
   const hashedPassword = await bcrypt.hash(password, 10);
 
+  // Every fresh storefront starts with this in show_message, instead of a
+  // blank field — doubles as a working example of the announcement banner
+  // and a bit of free advertising for Itemlogs itself. The tenant can edit
+  // or clear it any time from Storefront settings.
+  const DEFAULT_SHOW_MESSAGE =
+    "This storefront runs on Itemlogs — a free inventory & storefront tool for collectors and small sellers. No fees, no ads, no subscriptions. Want your own? itemlogs.com";
+
   try {
     await sql.begin(async (sql) => {
       // -----------------------------------------------------------------
@@ -384,6 +391,15 @@ export async function POST(request: Request) {
           show_location BOOLEAN NOT NULL DEFAULT false,
           show_package_filter BOOLEAN NOT NULL DEFAULT false,
           app_url VARCHAR(255),
+          -- Onboarding checklist progress (see OnboardingChecklist.tsx). All
+          -- three are sticky: once a step is detected as done it's written
+          -- here and never flips back to false, even if the underlying
+          -- condition later becomes untrue again (e.g. the tenant deletes
+          -- their only real item, or turns the storefront back off after
+          -- going live once).
+          checklist_added_item BOOLEAN NOT NULL DEFAULT false,
+          checklist_named_storefront BOOLEAN NOT NULL DEFAULT false,
+          checklist_went_live BOOLEAN NOT NULL DEFAULT false,
           -- Unassigned, reserved for future features. Once a tenant's
           -- database is provisioned there's no way to bulk-ALTER it later
           -- (see scripts/add-spare-toggles.sql for the one-time migration
@@ -416,18 +432,20 @@ export async function POST(request: Request) {
           display_profit, display_sell_price, display_purchase_price, display_cost_price, theme,
           owned_themes, tried_themes, theme_trial_expires_at,
           storefront_name, storefront_tagline, storefront_density,
-          show_contact, contact_info, show_location, show_package_filter, app_url
+          show_contact, contact_info, show_location, show_package_filter, app_url,
+          checklist_added_item, checklist_named_storefront, checklist_went_live
         )
         VALUES (
-          1, true, ${needsSellPrice}, false, false,
-          true, false, false, false, NULL,
+          1, false, ${needsSellPrice}, false, false,
+          true, false, false, false, ${DEFAULT_SHOW_MESSAGE},
           ${currency}, ${currency},
           ${needsSellPrice}, false, ${needsBarcode}, ${language},
           'Category', 'Status', 'Type', 'Package', 'Item',
           false, false, false, false, 'default',
           ARRAY['default', 'dark'], ARRAY[]::TEXT[], NULL,
           NULL, NULL, 'dense',
-          false, NULL, false, false, ${appUrl}
+          false, NULL, false, false, ${appUrl},
+          false, false, false
         )
         ON CONFLICT (id) DO NOTHING;
       `;

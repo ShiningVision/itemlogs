@@ -14,7 +14,8 @@ import { resolveLabel } from '@/app/lib/labels';
 const SHOW_MESSAGE_MAX_LENGTH = 255;
 
 const VISIBILITY_FIELDS: Array<{ key: keyof Settings; labelKey: string }> = [
-  { key: 'show', labelKey: 'show' },
+  // 'show' (the storefront on/off switch) lives in the dashboard's
+  // storefront live-status card now, not here — see StorefrontLiveToggle.
   { key: 'show_status_1', labelKey: 'showStatus1' },
   { key: 'show_status_2', labelKey: 'showStatus2' },
   { key: 'show_status_3', labelKey: 'showStatus3' },
@@ -93,50 +94,8 @@ export function SettingsForm({ settings }: { settings: Settings }) {
 
   return (
     <div>
-      <div className="settings-section">
-        <div className="settings-section-title">{t('sectionVisibility')}</div>
-        {toggleGroup(VISIBILITY_FIELDS)}
-        <div className="settings-group">
-          <div className="settings-row">
-            <span>{t('showPackageFilter', { packages: packageLabel })}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-              {statusFor('show_package_filter')}
-              <Toggle
-                name="show_package_filter"
-                defaultChecked={Boolean(settings.show_package_filter)}
-                label={t('showPackageFilter', { packages: packageLabel })}
-                onChange={(e) => autoSave('show_package_filter', e.target.checked)}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="settings-section">
-        <div className="settings-section-title">{t('sectionItemDetails')}</div>
-        {toggleGroup(ITEM_DETAIL_FIELDS)}
-      </div>
-
-      <div className="settings-section">
-        <div className="settings-section-title">{t('sectionLayout')}</div>
-        <div className="settings-group">
-          <div className="settings-row">
-            <span>{t('storefrontDensity')}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-              {statusFor('storefront_density')}
-              <select
-                defaultValue={settings.storefront_density ?? 'dense'}
-                onChange={(e) => autoSave('storefront_density', e.target.value)}
-                className="sheet-input settings-row-control"
-              >
-                <option value="dense">{t('densityDense')}</option>
-                <option value="showcase">{t('densityShowcase')}</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-
+      {/* Identity comes first — it's the first thing a new tenant should
+          fill in, ahead of visibility toggles and layout tweaks. */}
       <form action={handleTextSubmit}>
         <div className="settings-section">
           <div className="settings-section-title">{t('sectionIdentity')}</div>
@@ -212,6 +171,50 @@ export function SettingsForm({ settings }: { settings: Settings }) {
           )}
         </div>
       </form>
+
+      <div className="settings-section">
+        <div className="settings-section-title">{t('sectionVisibility')}</div>
+        {toggleGroup(VISIBILITY_FIELDS)}
+        <div className="settings-group">
+          <div className="settings-row">
+            <span>{t('showPackageFilter', { packages: packageLabel })}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+              {statusFor('show_package_filter')}
+              <Toggle
+                name="show_package_filter"
+                defaultChecked={Boolean(settings.show_package_filter)}
+                label={t('showPackageFilter', { packages: packageLabel })}
+                onChange={(e) => autoSave('show_package_filter', e.target.checked)}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <div className="settings-section-title">{t('sectionItemDetails')}</div>
+        {toggleGroup(ITEM_DETAIL_FIELDS)}
+      </div>
+
+      <div className="settings-section">
+        <div className="settings-section-title">{t('sectionLayout')}</div>
+        <div className="settings-group">
+          <div className="settings-row">
+            <span>{t('storefrontDensity')}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+              {statusFor('storefront_density')}
+              <select
+                defaultValue={settings.storefront_density ?? 'dense'}
+                onChange={(e) => autoSave('storefront_density', e.target.value)}
+                className="sheet-input settings-row-control"
+              >
+                <option value="dense">{t('densityDense')}</option>
+                <option value="showcase">{t('densityShowcase')}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

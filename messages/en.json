@@ -98,7 +98,7 @@
     "liveStatusLive": "Storefront is live",
     "liveStatusOffline": "Storefront is offline",
     "liveStatusViewButton": "View storefront",
-    "liveStatusHint": "Turn on \"Show storefront\" in Storefront settings to go live."
+    "liveStatusHint": "Flip the switch above to publish your storefront."
   },
   "items": {
     "title": "Items",

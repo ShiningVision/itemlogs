@@ -85,6 +85,14 @@ export type Settings = {
   // can read — including a future mobile app, which has no "current page
   // URL" of its own to infer this from.
   app_url: string | null;
+  // Onboarding checklist progress — sticky booleans (see
+  // app/api/setup/route.ts and OnboardingChecklist.tsx). Once true, these
+  // never flip back to false, even if the underlying condition later stops
+  // being true (e.g. the tenant turns the storefront back off, or deletes
+  // their only real item).
+  checklist_added_item: boolean;
+  checklist_named_storefront: boolean;
+  checklist_went_live: boolean;
   // Unassigned, reserved for future features (see app/api/setup/route.ts's
   // comment on the same columns). Once one gets used, rename it here to
   // match instead of adding a new field.
