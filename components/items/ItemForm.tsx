@@ -321,7 +321,7 @@ export function ItemForm({
                 <div className="sheet-field">
                   <span className="sheet-label">{categoryLabel}</span>
                   <select className="sheet-input" value={form.category ?? ''} onChange={(e) => update('category', e.target.value ? Number(e.target.value) : null)}>
-                    <option value="">{t('none')}</option>
+                    <option value="">{t('other')}</option>
                     {categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
                   </select>
                 </div>
@@ -329,7 +329,7 @@ export function ItemForm({
                 <div className="sheet-field">
                   <span className="sheet-label">{typeLabel}</span>
                   <select className="sheet-input" value={form.type ?? ''} onChange={(e) => update('type', e.target.value ? Number(e.target.value) : null)}>
-                    <option value="">{t('none')}</option>
+                    <option value="">{t('other')}</option>
                     {types.map((tp) => (<option key={tp.id} value={tp.id}>{tp.name}</option>))}
                   </select>
                 </div>

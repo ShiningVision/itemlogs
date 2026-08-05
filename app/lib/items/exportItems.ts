@@ -57,8 +57,13 @@ export async function buildItemsWorkbook(items: ExportableItem[]): Promise<Excel
       id: item.id,
       name: item.name,
       status: item.status,
-      type: item.type_ref?.name ?? '',
-      category: item.category_ref?.name ?? '',
+      // Null type/category is "Other" everywhere it's displayed (see
+      // app/lib/placeholder-data.ts) — write that literally instead of a
+      // blank cell. importItems.ts's resolveType/resolveCategory special-case
+      // this exact string back to null on the way in, so a round-trip
+      // export -> reimport doesn't recreate a real "Other" category/type row.
+      type: item.type_ref?.name ?? 'Other',
+      category: item.category_ref?.name ?? 'Other',
       location: item.location,
       description: item.description,
       barcode: item.barcode,

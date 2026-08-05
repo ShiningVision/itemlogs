@@ -9,6 +9,7 @@ import {
   getPublicCategoryCounts,
   getPublicTypeCounts,
   getFeaturedPublicItems,
+  OTHER_FILTER_ID,
 } from '@/app/lib/services/items';
 import { resolveLabel } from '@/app/lib/labels';
 import { StorefrontHeader } from '@/components/storefront/StorefrontHeader';
@@ -120,6 +121,18 @@ export default async function HomePage({
 
   const sortedCategories = [...categories].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
   const sortedTypes = [...types].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+
+  // "Other" isn't a real row (see app/lib/placeholder-data.ts) — it's how a
+  // null category/type is interpreted app-wide. Appended after sorting so
+  // it always lands last, and only shown as a filter option when at least
+  // one visible item actually has no category/type to bucket under it.
+  const otherLabel = itemsT('other');
+  if ((categoryCounts[OTHER_FILTER_ID] ?? 0) > 0) {
+    sortedCategories.push({ id: OTHER_FILTER_ID, name: otherLabel });
+  }
+  if ((typeCounts[OTHER_FILTER_ID] ?? 0) > 0) {
+    sortedTypes.push({ id: OTHER_FILTER_ID, name: otherLabel });
+  }
 
   const noFiltersActive =
     selectedCategoryIds.length === 0 &&

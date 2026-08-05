@@ -92,7 +92,7 @@ export function ReferenceDataManager({
   const affectedCount = deleteTarget ? (itemCounts[deleteTarget.id] ?? 0) : 0;
 
   return (
-    <div style={{ padding: 'var(--spacing-lg)', maxWidth: '480px' }}>
+    <div style={{ padding: 'var(--spacing-lg)', maxWidth: '480px', width: '100%', marginInline: 'auto' }}>
       <h1 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--spacing-lg)' }}>
         {t('manageLabel', { label })}
       </h1>

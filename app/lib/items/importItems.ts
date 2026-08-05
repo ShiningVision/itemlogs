@@ -255,8 +255,17 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
   const typeNameToId = new Map<string, number>((typesList ?? []).map((t: any) => [t.name, t.id]));
   let typesCreated = 0;
 
+  // "Other" isn't a real category/type row (see app/lib/placeholder-data.ts)
+  // — it's how a null category/type is displayed and how exportItems.ts
+  // writes it to the sheet. Treat that exact text (case-insensitively,
+  // trimmed) as null on the way back in, instead of creating a real "Other"
+  // row every time an exported sheet gets reimported.
+  function isOtherLabel(name: string): boolean {
+    return name.trim().toLowerCase() === 'other';
+  }
+
   async function resolveCategory(name: string | null): Promise<number | null> {
-    if (!name) return null;
+    if (!name || isOtherLabel(name)) return null;
     const existing = categoryNameToId.get(name);
     if (existing !== undefined) return existing;
     const created = await createCategory({ name });
@@ -266,7 +275,7 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
   }
 
   async function resolveType(name: string | null): Promise<number | null> {
-    if (!name) return null;
+    if (!name || isOtherLabel(name)) return null;
     const existing = typeNameToId.get(name);
     if (existing !== undefined) return existing;
     const created = await createType({ name });

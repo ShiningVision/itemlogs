@@ -19,12 +19,15 @@ const languages = [
   { id: '5', name: 'Korean', code: 'ko' },
 ];
 
+// "Other" is intentionally not a seeded row here. An item's type is
+// nullable, and a null type is now interpreted app-wide as "Other" for
+// display purposes (see ItemForm's type select and every place a type name
+// is rendered) — no real row is needed for that meaning to exist.
 const types = [
   { id: '1', name: 'Strategy' },
   { id: '2', name: 'Type Moon' },
   { id: '3', name: 'Gucci' },
   { id: '4', name: 'Square Enix' },
-  { id: '5', name: 'Other' },
 ];
 
 // FIXED: was { id, name } — table needs currency_code / currency_name / currency_symbol
@@ -35,6 +38,9 @@ const currencies = [
   { id: '4', currency_code: 'JPY', currency_name: 'Japanese Yen', currency_symbol: '¥' },
 ];
 
+// "Other" is intentionally not a seeded row here — same reasoning as
+// types above; a null category is interpreted as "Other" everywhere it's
+// displayed instead of needing a real backing row.
 const categories = [
   { id: '1', name: 'Bags' },
   { id: '2', name: 'Games' },
@@ -43,7 +49,6 @@ const categories = [
   { id: '5', name: 'Clothing' },
   { id: '6', name: 'Electronics' },
   { id: '7', name: 'Accessories' },
-  { id: '8', name: 'Other' },
 ];
 
 // IDs line up with each item's main_image below (1: Dragon Quest XI,
@@ -98,7 +103,9 @@ const items = [
     purchase_price: '8.00',
     purchase_price_currency: '2',
     sell_price: '24.99',
-    type: '5',
+    // Was type '5' ("Other") — that seeded row no longer exists; null means
+    // the same thing now (see the comment above the `types` array).
+    type: null,
     category: '1',
     main_image: '2',
     package_id: '1',

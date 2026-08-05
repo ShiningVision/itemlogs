@@ -73,12 +73,8 @@ export default async function PublicItemPage({
 
               <div className="sheet-badges">
                 <Badge tone="primary">{itemsT(`status${item.status}`)}</Badge>
-                {item.category_ref?.name && (
-                  <Badge>{categoryLabel}: {item.category_ref.name}</Badge>
-                )}
-                {item.type_ref?.name && (
-                  <Badge>{typeLabel}: {item.type_ref.name}</Badge>
-                )}
+                <Badge>{categoryLabel}: {item.category_ref?.name ?? itemsT('other')}</Badge>
+                <Badge>{typeLabel}: {item.type_ref?.name ?? itemsT('other')}</Badge>
               </div>
 
               {hasStats && (

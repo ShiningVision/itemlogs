@@ -12,6 +12,26 @@ type ItemFilters = {
   offset?: number;
 };
 
+// No real category/type row is 0 (both are SERIAL PRIMARY KEY, starting at
+// 1), so 0 is a safe sentinel for "Other" — a null category/type — in
+// filter param lists. See applyNullableInFilter below for how a category/
+// typeIds array containing this sentinel gets translated into a query that
+// also matches NULL rows.
+export const OTHER_FILTER_ID = 0;
+
+function applyNullableInFilter(query: any, column: 'category' | 'type', ids: number[]) {
+  const realIds = ids.filter((id) => id !== OTHER_FILTER_ID);
+  const includesOther = ids.includes(OTHER_FILTER_ID);
+
+  if (includesOther && realIds.length > 0) {
+    return query.or(`${column}.in.(${realIds.join(',')}),${column}.is.null`);
+  }
+  if (includesOther) {
+    return query.is(column, null);
+  }
+  return query.in(column, realIds);
+}
+
 // Items no longer carry their own sell_price_currency — every item's
 // sell_price/cost_price is denominated in the single, shop-wide
 // settings.sell_price_currency. Only purchase_price still has a per-item
@@ -30,9 +50,9 @@ export async function getItems(filters: ItemFilters = {}): Promise<{ items: any[
     .select(ITEM_SELECT, { count: 'exact' })
     .order('id', { ascending: false });
 
-  if (filters.categoryIds !== undefined) query = query.in('category', filters.categoryIds);
+  if (filters.categoryIds !== undefined) query = applyNullableInFilter(query, 'category', filters.categoryIds);
   if (filters.statuses !== undefined) query = query.in('status', filters.statuses);
-  if (filters.typeIds !== undefined) query = query.in('type', filters.typeIds);
+  if (filters.typeIds !== undefined) query = applyNullableInFilter(query, 'type', filters.typeIds);
   else if (filters.typeId !== undefined) query = query.eq('type', filters.typeId);
   if (filters.packageId !== undefined) query = query.eq('package_id', filters.packageId);
 
@@ -157,9 +177,13 @@ export async function getPublicCategoryCounts(allowedStatuses: number[]): Promis
   const { data, error } = await supabase.from('items').select('category').in('status', allowedStatuses);
   if (error) throw error;
 
+  // A null category counts under the OTHER_FILTER_ID bucket instead of
+  // being dropped — those items are "Other" and get their own filter
+  // option/count in FilterSidebar now, not just an invisible gap.
   const counts: Record<number, number> = {};
   for (const row of data ?? []) {
-    if (row.category !== null) counts[row.category] = (counts[row.category] ?? 0) + 1;
+    const key = row.category ?? OTHER_FILTER_ID;
+    counts[key] = (counts[key] ?? 0) + 1;
   }
   return counts;
 }
@@ -171,7 +195,8 @@ export async function getPublicTypeCounts(allowedStatuses: number[]): Promise<Re
 
   const counts: Record<number, number> = {};
   for (const row of data ?? []) {
-    if (row.type !== null) counts[row.type] = (counts[row.type] ?? 0) + 1;
+    const key = row.type ?? OTHER_FILTER_ID;
+    counts[key] = (counts[key] ?? 0) + 1;
   }
   return counts;
 }

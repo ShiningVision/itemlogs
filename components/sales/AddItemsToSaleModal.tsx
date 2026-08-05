@@ -24,6 +24,7 @@ export function AddItemsToSaleModal({
   onAdded: () => void;
 }) {
   const t = useTranslations('sales');
+  const itemsT = useTranslations('items');
   const [items, setItems] = useState<AvailableItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [search, setSearch] = useState('');
@@ -135,11 +136,9 @@ export function AddItemsToSaleModal({
                     <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-bold)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {item.name}
                     </span>
-                    {item.category_ref?.name && (
-                      <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {item.category_ref.name}
-                      </span>
-                    )}
+                    <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {item.category_ref?.name ?? itemsT('other')}
+                    </span>
 
                     {selected && (
                       <CheckCircleIcon
