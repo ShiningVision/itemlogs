@@ -218,6 +218,147 @@ body {
   margin-inline: auto;
 }
 
+/* Wraps the dashboard page's whole storefront-settings block (SettingsForm)
+   under one labeled card, distinguishing it from the "Change Themes"
+   button and any other dashboard content around it. */
+.settings-storefront-wrapper {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+}
+
+.settings-storefront-heading {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--spacing-md);
+}
+
+/* First-login dashboard content: onboarding checklist, at-a-glance stats,
+   storefront live-status card. Shares the same card look as
+   .settings-storefront-wrapper so the dashboard reads as one visual family. */
+.dashboard-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.dashboard-card-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  margin: 0;
+}
+
+.dashboard-checklist-list {
+  list-style: none;
+  margin: var(--spacing-md) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.dashboard-checklist-item {
+  margin: 0;
+}
+
+.dashboard-checklist-link {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.dashboard-checklist-link:hover {
+  color: var(--color-primary);
+}
+
+.dashboard-checklist-box {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.dashboard-widgets-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+@media (min-width: 720px) {
+  .dashboard-widgets-row {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+.dashboard-stats-strip {
+  display: flex;
+  gap: var(--spacing-lg);
+  align-items: center;
+  justify-content: space-around;
+  height: 100%;
+}
+
+.dashboard-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.dashboard-stat-value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+}
+
+.dashboard-stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.dashboard-live-status-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.dashboard-live-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dashboard-live-dot-on {
+  background: var(--color-success, #2e7d32);
+}
+
+.dashboard-live-dot-off {
+  background: var(--color-text-muted);
+}
+
+.dashboard-live-status-link,
+.dashboard-live-status-hint {
+  display: block;
+  margin-top: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+}
+
+.dashboard-live-status-link {
+  color: var(--color-primary);
+}
+
+.dashboard-live-status-hint {
+  color: var(--color-text-muted);
+}
+
 /* Toggle settings: single column on mobile, 2 columns on desktop to use
    horizontal space instead of stretching down the page. */
 .settings-toggle-grid {

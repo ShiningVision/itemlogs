@@ -128,7 +128,9 @@ export function ThemesGrid({
 
               <div className="theme-card-label-row">
                 <span className="theme-card-label">{t(theme.labelKey)}</span>
-                <span className="theme-card-price">{free ? t('free') : formatPrice(theme.priceCents)}</span>
+                <span className="theme-card-price">
+                  {free ? t('free') : theme.owned ? t('acquired') : formatPrice(theme.priceCents)}
+                </span>
               </div>
             </div>
           );

@@ -1,6 +1,9 @@
 // app/dashboard/(protected)/page.tsx
 import { getSettings } from '@/app/lib/services/settings';
 import { SettingsForm } from '@/components/dashboard/SettingsForm';
+import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
+import { DashboardStats } from '@/components/dashboard/DashboardStats';
+import { StorefrontLiveStatus } from '@/components/dashboard/StorefrontLiveStatus';
 import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 
@@ -36,8 +39,19 @@ export default async function DashboardPage() {
         >
           {flavourText}
         </p>
+
+        <OnboardingChecklist settings={settings} />
+
+        <div className="dashboard-widgets-row">
+          <DashboardStats />
+          <StorefrontLiveStatus settings={settings} />
+        </div>
+
         <div className="settings-storefront-group">
-          <SettingsForm settings={settings} />
+          <div className="settings-storefront-wrapper">
+            <h2 className="settings-storefront-heading">{t('storefrontSettingsHeading')}</h2>
+            <SettingsForm settings={settings} />
+          </div>
 
           <div className="theme-portal-wrap">
             <Link href="/dashboard/themes" className="theme-portal-btn">

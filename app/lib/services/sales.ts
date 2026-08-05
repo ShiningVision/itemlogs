@@ -1,6 +1,16 @@
 import { supabase } from '../../lib/db/client';
 import type { CreateSaleInput, UpdateSaleInput } from '../../lib/validation/sales';
 
+// Dashboard "total sales" stat — cheap count-only query, no row fetch.
+export async function getSalesTotalCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from('sales')
+    .select('id', { count: 'exact', head: true });
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function getSales() {
   const { data, error } = await supabase
     .from('sales')

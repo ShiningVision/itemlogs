@@ -29,7 +29,12 @@ const PREFERENCE_NAME_FIELDS: Array<{ key: keyof Settings; labelKey: string }> =
   { key: 'name_type', labelKey: 'nameType' },
   { key: 'name_status', labelKey: 'nameStatus' },
   { key: 'name_package', labelKey: 'namePackage' },
-  { key: 'name_item', labelKey: 'nameItem' },
+  // name_item is intentionally hidden — nothing in the app reads it, so
+  // this field currently has zero visible effect. Left in the database,
+  // validation schema, and the save action untouched; only hidden here.
+  // Re-add { key: 'name_item', labelKey: 'nameItem' } once something
+  // actually renders it.
+  // { key: 'name_item', labelKey: 'nameItem' },
 ];
 
 type FieldStatus = 'saving' | 'saved' | 'error';
@@ -180,7 +185,21 @@ export function GeneralSettingsForm({
         <form action={handleNamesSubmit} className="settings-group">
           {PREFERENCE_NAME_FIELDS.map(({ key, labelKey }) => (
             <div key={key} className="settings-row">
-              <span>{t(labelKey)}</span>
+              <span>
+                {t(labelKey)}
+                {key === 'name_package' && (
+                  <span
+                    style={{
+                      display: 'block',
+                      fontSize: 'var(--font-size-sm)',
+                      color: 'var(--color-text-muted)',
+                      fontWeight: 'normal',
+                    }}
+                  >
+                    {t('namePackageHint')}
+                  </span>
+                )}
+              </span>
               <input
                 type="text"
                 name={key}

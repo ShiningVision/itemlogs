@@ -110,6 +110,32 @@ export async function updateItem(id: number, input: UpdateItemInput) {
   return data;
 }
 
+// Dashboard "total items" stat — cheap count-only query, no row fetch.
+export async function getItemsTotalCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from('items')
+    .select('id', { count: 'exact', head: true });
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
+// Onboarding checklist "added your first item" step. Every fresh tenant is
+// seeded with placeholder items 1-4 (see app/lib/placeholder-data.ts), so a
+// naive "items table has rows" check would always read as done. This checks
+// for any item whose id isn't one of the seeded placeholder ids instead.
+const PLACEHOLDER_ITEM_IDS = [1, 2, 3, 4];
+
+export async function hasRealItem(): Promise<boolean> {
+  const { count, error } = await supabase
+    .from('items')
+    .select('id', { count: 'exact', head: true })
+    .not('id', 'in', `(${PLACEHOLDER_ITEM_IDS.join(',')})`);
+
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}
+
 export async function getPublicItemsCount(allowedStatuses: number[]): Promise<number> {
   if (allowedStatuses.length === 0) return 0;
   const { count, error } = await supabase

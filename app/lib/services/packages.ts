@@ -17,6 +17,16 @@ export async function getPackageItemCounts(): Promise<Record<number, number>> {
   return counts;
 }
 
+// Dashboard "total packages" stat — cheap count-only query, no row fetch.
+export async function getPackagesTotalCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from('packages')
+    .select('id', { count: 'exact', head: true });
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function getPackages() {
   const { data, error } = await supabase
     .from('packages')

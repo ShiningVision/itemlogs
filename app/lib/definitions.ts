@@ -85,6 +85,19 @@ export type Settings = {
   // can read — including a future mobile app, which has no "current page
   // URL" of its own to infer this from.
   app_url: string | null;
+  // Unassigned, reserved for future features (see app/api/setup/route.ts's
+  // comment on the same columns). Once one gets used, rename it here to
+  // match instead of adding a new field.
+  spare_toggle_1: boolean;
+  spare_toggle_2: boolean;
+  spare_toggle_3: boolean;
+  spare_toggle_4: boolean;
+  spare_toggle_5: boolean;
+  spare_toggle_6: boolean;
+  spare_toggle_7: boolean;
+  spare_toggle_8: boolean;
+  spare_toggle_9: boolean;
+  spare_toggle_10: boolean;
   // Resolved join (see getSettings) — every item's sell_price/cost_price is
   // denominated in this single shop-wide currency.
   sell_currency?: { currency_code: string; currency_symbol: string } | null;

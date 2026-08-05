@@ -92,6 +92,18 @@ export async function POST(request: Request) {
       // -----------------------------------------------------------------
       // Independent tables first (same dependency order as the old /seed).
       // -----------------------------------------------------------------
+      //
+      // Every table below gets RLS enabled immediately after it's created,
+      // with zero policies defined. That means default-deny for Supabase's
+      // `anon`/`authenticated` PostgREST roles — this app never uses either
+      // (app/lib/db/client.ts talks to Supabase exclusively via the
+      // service-role key, which always bypasses RLS regardless of policies,
+      // and schema DDL here goes over a raw Postgres connection), so there
+      // is no legitimate access path this could break. Without it, a plain
+      // `CREATE TABLE` on Supabase is reachable by anyone with the project
+      // URL and the anon key through the PostgREST API — the anon key is
+      // meant to be public by Supabase's own design, so RLS (not key
+      // secrecy) is the only thing that was ever supposed to gate that.
       await sql`
         CREATE TABLE IF NOT EXISTS currencies (
           id SERIAL PRIMARY KEY,
@@ -100,6 +112,7 @@ export async function POST(request: Request) {
           currency_symbol VARCHAR(255) NOT NULL
         );
       `;
+      await sql`ALTER TABLE currencies ENABLE ROW LEVEL SECURITY;`;
       await Promise.all(
         currencies.map(
           (c) => sql`
@@ -118,6 +131,7 @@ export async function POST(request: Request) {
           code VARCHAR(10) NOT NULL
         );
       `;
+      await sql`ALTER TABLE languages ENABLE ROW LEVEL SECURITY;`;
       await Promise.all(
         languages.map(
           (l) => sql`
@@ -135,6 +149,7 @@ export async function POST(request: Request) {
           name VARCHAR(255)
         );
       `;
+      await sql`ALTER TABLE types ENABLE ROW LEVEL SECURITY;`;
       await Promise.all(
         types.map(
           (t) => sql`
@@ -151,6 +166,7 @@ export async function POST(request: Request) {
           name VARCHAR(255)
         );
       `;
+      await sql`ALTER TABLE categories ENABLE ROW LEVEL SECURITY;`;
       await Promise.all(
         categories.map(
           (c) => sql`
@@ -167,6 +183,7 @@ export async function POST(request: Request) {
           url VARCHAR(255) NOT NULL
         );
       `;
+      await sql`ALTER TABLE images ENABLE ROW LEVEL SECURITY;`;
       await Promise.all(
         images.map(
           (i) => sql`
@@ -184,6 +201,7 @@ export async function POST(request: Request) {
           date DATE NOT NULL
         );
       `;
+      await sql`ALTER TABLE sales ENABLE ROW LEVEL SECURITY;`;
       await Promise.all(
         sales.map(
           (s) => sql`
@@ -207,6 +225,11 @@ export async function POST(request: Request) {
           username VARCHAR(255) UNIQUE
         );
       `;
+      // This is one of the two tables Supabase's automated scanner flags as
+      // "sensitive columns exposed" (password hashes) when RLS is off —
+      // enabling it here is what actually closes that, not just the
+      // generic "table publicly accessible" finding.
+      await sql`ALTER TABLE users ENABLE ROW LEVEL SECURITY;`;
       await sql`
         INSERT INTO users (name, password, username)
         VALUES ('Owner', ${hashedPassword}, 'owner');
@@ -224,6 +247,8 @@ export async function POST(request: Request) {
           created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         );
       `;
+      // The other table with password hashes in it — same reasoning as users.
+      await sql`ALTER TABLE share_passwords ENABLE ROW LEVEL SECURITY;`;
 
       // -----------------------------------------------------------------
       // Tables with foreign keys to the above.
@@ -242,6 +267,7 @@ export async function POST(request: Request) {
           show_on_storefront BOOLEAN NOT NULL DEFAULT false
         );
       `;
+      await sql`ALTER TABLE packages ENABLE ROW LEVEL SECURITY;`;
       await Promise.all(
         packages.map(
           (p) => sql`
@@ -278,6 +304,7 @@ export async function POST(request: Request) {
           is_featured BOOLEAN NOT NULL DEFAULT false
         );
       `;
+      await sql`ALTER TABLE items ENABLE ROW LEVEL SECURITY;`;
       await Promise.all(
         items.map(
           (i) => sql`
@@ -314,6 +341,7 @@ export async function POST(request: Request) {
           main_image INTEGER REFERENCES images(id) ON DELETE SET NULL
         );
       `;
+      await sql`ALTER TABLE blueprints ENABLE ROW LEVEL SECURITY;`;
 
       // Settings — the one real config row, built from the tenant's own
       // answers instead of a fixed placeholder.
@@ -355,9 +383,29 @@ export async function POST(request: Request) {
           contact_info VARCHAR(255),
           show_location BOOLEAN NOT NULL DEFAULT false,
           show_package_filter BOOLEAN NOT NULL DEFAULT false,
-          app_url VARCHAR(255)
+          app_url VARCHAR(255),
+          -- Unassigned, reserved for future features. Once a tenant's
+          -- database is provisioned there's no way to bulk-ALTER it later
+          -- (see scripts/add-spare-toggles.sql for the one-time migration
+          -- needed on already-existing tenants) — having these ready ahead
+          -- of time means a new toggle-shaped feature can ship by just
+          -- claiming one of these instead of needing a fresh migration
+          -- rolled out to every tenant. Rename in place when one gets used
+          -- (e.g. ALTER TABLE settings RENAME COLUMN spare_toggle_1 TO
+          -- whatever_it_actually_is), and document what it became here.
+          spare_toggle_1 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_2 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_3 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_4 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_5 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_6 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_7 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_8 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_9 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_10 BOOLEAN NOT NULL DEFAULT false
         );
       `;
+      await sql`ALTER TABLE settings ENABLE ROW LEVEL SECURITY;`;
       await sql`
         INSERT INTO settings (
           id, show, show_sell_price, show_cost_price, show_purchase_price,
@@ -394,6 +442,7 @@ export async function POST(request: Request) {
           PRIMARY KEY (sales_id, item_id)
         );
       `;
+      await sql`ALTER TABLE sales_items ENABLE ROW LEVEL SECURITY;`;
       await Promise.all(
         salesItems.map(
           (si) => sql`
@@ -411,6 +460,7 @@ export async function POST(request: Request) {
           PRIMARY KEY (image_id, item_id)
         );
       `;
+      await sql`ALTER TABLE item_images ENABLE ROW LEVEL SECURITY;`;
       await Promise.all(
         itemImages.map(
           (ii) => sql`
