@@ -44,7 +44,7 @@
     "title": "Dashboard",
     "flavourTexts": [
       "Need barcode scanning? Enable it in the settings! It works only in the mobile app though.",
-      "Did you know you can distribute your shipping costs and tariffs among your items with 1 button click? Enable it in settings with use_package_fees!",
+      "Did you know you can distribute your shipping costs and tariffs among your items with 1 button click? \n Enable it in settings FUNCTIONALITY -> Use package fees!",
       "Itemlogs is free and hosted on the cloud. How can that be? By you only having 1GB space for images. But don't worry. We compress your images heavily!",
       "Like the app? Support the dev! Buy a theme!",
       "You can change the label for \"Category\", \"Type\", \"Status\" and \"Package\" in the settings. Make it your own!",
@@ -163,7 +163,12 @@
     "markSoldFailed": "Failed to mark item as sold.",
     "featureThisItem": "Feature this item on the storefront",
     "featuredCapReached": "You can feature up to {cap} items at a time. Unfeature another item first.",
-    "package": "Package"
+    "package": "Package",
+    "scanBarcode": "Scan barcode",
+    "scanModalTitle": "Scan barcode",
+    "scanCameraError": "Couldn't access the camera. Check permissions and try again.",
+    "scanToSell": "Scan to sell",
+    "scanNoMatch": "No available item matches that barcode."
   },
   "referenceData": {
     "defaultCategoryLabel": "Categories",

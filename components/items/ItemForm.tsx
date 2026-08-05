@@ -4,10 +4,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, QrCodeIcon } from '@heroicons/react/24/outline';
 import { MainImagePicker } from './MainImagePicker';
 import { ImageGalleryEditor } from './ImageGalleryEditor';
 import { BlueprintPickerModal } from './BlueprintPickerModal';
+import { BarcodeScannerModal } from './BarcodeScannerModal';
 import { Button } from '@/widgets/Button';
 import { Toggle } from '@/components/ui/Toggle';
 import type { Settings } from '@/app/lib/definitions';
@@ -85,6 +86,7 @@ export function ItemForm({
   );
   const [stayOnPage, setStayOnPage] = useState(false);
   const [blueprintModalOpen, setBlueprintModalOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const categoryLabel = resolveLabel(settings.name_category, t('category'));
@@ -422,7 +424,23 @@ export function ItemForm({
             {settings.use_barcode && (
               <div className="sheet-field">
                 <span className="sheet-label">{t('barcode')}</span>
-                <input className="sheet-input" value={form.barcode} onChange={(e) => update('barcode', e.target.value)} />
+                <div style={{ display: 'flex', gap: 'var(--spacing-xs)' }}>
+                  <input
+                    className="sheet-input"
+                    style={{ flex: 1 }}
+                    value={form.barcode}
+                    onChange={(e) => update('barcode', e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="barcode-scan-icon-btn"
+                    aria-label={t('scanBarcode')}
+                    title={t('scanBarcode')}
+                    onClick={() => setScannerOpen(true)}
+                  >
+                    <QrCodeIcon style={{ width: '20px', height: '20px' }} />
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -469,6 +487,16 @@ export function ItemForm({
 
       {blueprintModalOpen && (
         <BlueprintPickerModal onSelect={applyBlueprint} onClose={() => setBlueprintModalOpen(false)} />
+      )}
+
+      {scannerOpen && (
+        <BarcodeScannerModal
+          onScan={(text) => {
+            update('barcode', text);
+            setScannerOpen(false);
+          }}
+          onClose={() => setScannerOpen(false)}
+        />
       )}
     </div>
   );

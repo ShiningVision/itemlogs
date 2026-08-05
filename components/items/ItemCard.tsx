@@ -12,6 +12,7 @@ import { NoImagePlaceholder } from '@/components/ui/NoImagePlaceholder';
 import { DeleteXButton } from '@/components/ui/DeleteXButton';
 import { RemoveXButton } from '@/components/ui/RemoveXButton';
 import { getProfitColorClass } from '@/app/lib/locale/profitColor';
+import { sellItemToSale } from '@/app/lib/items/sellItemClient';
 
 type ItemWithRelations = {
   id: number;
@@ -99,34 +100,12 @@ export function ItemCard({
     if (!saleId) return;
     setIsSelling(true);
     try {
-      const statusRes = await fetch(`/api/v1/items/${item.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 2 }),
+      const ok = await sellItemToSale(item.id, saleId);
+      setNotification({
+        type: ok ? 'success' : 'error',
+        message: ok ? t('markSoldSuccess') : t('markSoldFailed'),
       });
-      if (!statusRes.ok) {
-        setNotification({ type: 'error', message: t('markSoldFailed') });
-        return;
-      }
-
-      const saleRes = await fetch(`/api/v1/sales/${saleId}/items`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ item_id: item.id }),
-      });
-      if (!saleRes.ok) {
-        // Roll back the status change so the item isn't stuck "sold" without being on a sale.
-        await fetch(`/api/v1/items/${item.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 1 }),
-        });
-        setNotification({ type: 'error', message: t('markSoldFailed') });
-        return;
-      }
-
-      setNotification({ type: 'success', message: t('markSoldSuccess') });
-      router.refresh(); // item now fails the status=1 filter and drops off the list
+      if (ok) router.refresh(); // item now fails the status=1 filter and drops off the list
     } catch {
       setNotification({ type: 'error', message: t('markSoldFailed') });
     } finally {

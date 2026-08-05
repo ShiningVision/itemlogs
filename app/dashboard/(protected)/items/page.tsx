@@ -8,6 +8,7 @@ import { ItemFiltersBar } from '@/components/items/ItemFiltersBar';
 import { SellModeControls } from '@/components/items/SellModeControls';
 import { ItemGrid } from '@/components/items/ItemGrid';
 import { ImportExcelButton } from '@/components/items/ImportExcelButton';
+import { BarcodeSellScanner } from '@/components/items/BarcodeSellScanner';
 import { Pagination } from '@/components/ui/Pagination';
 import { parsePage, getOffset, getTotalPages, buildPageHref } from '@/app/lib/pagination';
 import { getTranslations } from 'next-intl/server';
@@ -93,6 +94,8 @@ export default async function ItemsPage({
               {t('exportExcel')}
             </Button>
           </a>
+
+          {sellModeActive && settings.use_barcode && <BarcodeSellScanner saleId={saleId} />}
         </div>
       </div>
 

@@ -969,6 +969,111 @@ body {
   flex-wrap: wrap;
 }
 
+/* Barcode scanning feature (gated behind settings.use_barcode). */
+
+/* Small icon button next to the ItemForm barcode input that opens the
+   camera scanner (components/items/BarcodeScannerModal.tsx). */
+.barcode-scan-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 42px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: border-color var(--motion-duration) var(--motion-easing), background var(--motion-duration) var(--motion-easing);
+}
+
+.barcode-scan-icon-btn:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+/* Scan-to-sell button on the dashboard items page. Deliberately larger than
+   the sibling Button widgets and placed rightmost in the button row so it's
+   the hardest one to mis-tap on mobile, per explicit design requirement. */
+.barcode-sell-scan-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-danger);
+  color: #fff;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  transition: opacity var(--motion-duration) var(--motion-easing);
+}
+
+.barcode-sell-scan-btn:hover {
+  opacity: 0.9;
+}
+
+.barcode-sell-scan-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Camera scanner modal overlay (components/items/BarcodeScannerModal.tsx).
+   z-index 200 is comfortably above every other stacking context in this
+   file (highest prior usage was 60). */
+.barcode-scanner-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  padding: var(--spacing-md);
+}
+
+.barcode-scanner-panel {
+  width: 100%;
+  max-width: 420px;
+  background: var(--color-background);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.barcode-scanner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-weight: var(--font-weight-bold);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.barcode-scanner-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.barcode-scanner-viewport {
+  width: 100%;
+  min-height: 280px;
+  background: #000;
+}
+
+.barcode-scanner-error {
+  padding: var(--spacing-lg) var(--spacing-md);
+  text-align: center;
+  color: var(--color-danger);
+}
+
 /* Themes page: a row of theme preview tiles. Hover reveals the relevant
    action (switch / try / buy) over a darkened image; not-yet-purchased
    themes that have already had their one-time trial are shown permanently

@@ -254,6 +254,26 @@ export async function getAvailableItems() {
   return data;
 }
 
+// Barcode-to-item lookup for the "scan to sell" flow (see
+// components/items/BarcodeSellScanner.tsx) — only ever needs to consider
+// available (status=1) items, since scanning an already-sold/reserved/lost
+// item to sell it doesn't make sense. Exact match; barcode has no unique
+// constraint in the schema, so this takes the first match (lowest id) if a
+// barcode is somehow duplicated across multiple available items.
+export async function getAvailableItemByBarcode(barcode: string): Promise<{ id: number; name: string | null } | null> {
+  const { data, error } = await supabase
+    .from('items')
+    .select('id, name')
+    .eq('status', 1)
+    .eq('barcode', barcode)
+    .order('id', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function getPublicItems(
   filters: { categoryIds?: number[]; statuses?: number[]; typeIds?: number[]; packageId?: number; limit?: number; offset?: number },
   allowedStatuses: number[]
