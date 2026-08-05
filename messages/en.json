@@ -38,7 +38,6 @@
     "title": "Please log in to continue.",
     "password": "Password",
     "submit": "Log in",
-    "invalidCredentials": "Invalid password.",
     "submitting": "Logging in..."
   },
   "dashboard": {
@@ -50,11 +49,12 @@
       "Like the app? Support the dev! Buy a theme!",
       "You can change the label for \"Category\", \"Type\", \"Status\" and \"Package\" in the settings. Make it your own!",
       "You can feature items on your storefront. Feature up to 5 items at a time. Unfeature another item first if you want to feature a new one.",
-      "You can create blueprints for your items. Create a blueprint from an item, then create a new item from that blueprint. Saves time!"
+      "You can create blueprints for your items. Create a blueprint from an item, then create a new item from that blueprint. Saves time!",
+      "Got a spreadsheet of inventory already? Import Excel on the Items page brings it all in at once — and Export Excel lets you take your data right back out whenever you want.",
+      "Want to hand someone access without giving out your real password? Create a shareable password in Account & Security — they get in, but can't change your login or create more."
     ],
     "storefrontSettingsHeading": "Storefront settings",
     "sectionVisibility": "Visibility",
-    "sectionPricing": "Pricing",
     "sectionItemDetails": "Item Details",
     "sectionLayout": "Layout",
     "sectionIdentity": "Identity",
@@ -102,7 +102,6 @@
   },
   "items": {
     "title": "Items",
-    "comingSoon": "Coming soon",
     "noImage": "No image",
     "addItem": "Add item",
     "importExcel": "Import Excel",
@@ -113,10 +112,7 @@
     "importFailed": "Import failed.",
     "exportExcel": "Export Excel",
     "filtersTitle": "Filters",
-    "filterCategories": "Filter categories",
     "filterStatuses": "Availability",
-    "filterType": "Filter types",
-    "allTypes": "All types",
     "searching": "Searching...",
     "status1": "AVAILABLE",
     "status2": "SOLD",
@@ -138,7 +134,6 @@
     "status": "Status",
     "category": "Category",
     "type": "Type",
-    "none": "None",
     "other": "Other",
     "purchasePrice": "Purchase price",
     "purchasePriceCurrency": "Currency",
@@ -152,8 +147,6 @@
     "save": "Save",
     "saving": "Saving...",
     "saveFailed": "Failed to save.",
-    "manageCategories": "Manage categories",
-    "manageTypes": "Manage types",
     "manageLabel": "Manage {label}",
     "allLabel": "All",
     "removeFromPackage": "Remove from package",
@@ -218,7 +211,7 @@
   },
   "themes": {
     "title": "Themes",
-    "subtitle": "Pick a look for your storefront and dashboard.",
+    "subtitle": "Pick a look for your app and storefront. You can try any theme for free for 10 minutes.",
     "current": "Current",
     "switchTo": "Switch",
     "tryItOut": "Try it out once!",
@@ -267,7 +260,6 @@
     "title": "Packages",
     "addPackage": "Add Package",
     "noPackages": "No packages yet.",
-    "arrival": "Arrival",
     "itemCount": "{count, plural, one {# item} other {# items}}",
     "statusPending": "Pending",
     "statusInTransit": "In Transit",
@@ -353,8 +345,6 @@
     "cancelSelection": "Cancel"
   },
   "storefront": {
-    "login": "Login",
-    "unavailable": "This storefront is currently unavailable.",
     "noItems": "No items available.",
     "sellPrice": "Price",
     "purchasePrice": "Purchase price",

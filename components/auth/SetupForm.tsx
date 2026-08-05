@@ -11,11 +11,13 @@ import { Toggle } from '@/components/ui/Toggle';
 // same lists) — not fetched from the DB since the DB doesn't have any rows
 // yet at this point.
 const LANGUAGE_OPTIONS = [
-  { id: 1, label: 'English' },
-  { id: 2, label: 'German' },
-  { id: 3, label: 'Chinese' },
-  { id: 4, label: 'Japanese' },
-  { id: 5, label: 'Korean' },
+  { id: 1, name: 'English' },
+  { id: 2, name: 'German'},
+  { id: 3, name: 'Chinese'},
+  { id: 4, name: 'Japanese'},
+  { id: 5, name: 'Korean'},
+  { id: 6, name: 'French'},
+  { id: 7, name: 'Spanish'},
 ];
 
 const CURRENCY_OPTIONS = [
@@ -23,6 +25,15 @@ const CURRENCY_OPTIONS = [
   { id: 2, label: 'EUR (€)' },
   { id: 3, label: 'CNY (¥)' },
   { id: 4, label: 'JPY (¥)' },
+  { id: 5, label: 'KRW (₩)' },
+  { id: 6, label: 'GBP (£)' },
+  { id: 7, label: 'CAD ($)' },
+  { id: 8, label: 'AUD ($)' },
+  { id: 9, label: 'CHF (CHF)' },
+  { id: 10, label: 'SEK (kr)' },
+  { id: 11, label: 'HKD ($)' },
+  { id: 12, label: 'SGD ($)' },
+  { id: 13, label: 'TWD ($)' },
 ];
 
 const inputStyle: React.CSSProperties = {
@@ -165,7 +176,7 @@ export function SetupForm() {
           >
             {LANGUAGE_OPTIONS.map((opt) => (
               <option key={opt.id} value={opt.id}>
-                {opt.label}
+                {opt.name}
               </option>
             ))}
           </select>

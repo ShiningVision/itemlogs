@@ -14,9 +14,9 @@ const languages = [
   { id: '2', name: 'German', code: 'de' },
   { id: '3', name: 'Chinese', code: 'zh' },
   { id: '4', name: 'Japanese', code: 'ja' },
-  // Placeholder — messages/ko.json is currently just a copy of en.json.
-  // Real Korean translations to be filled in later.
   { id: '5', name: 'Korean', code: 'ko' },
+  { id: '6', name: 'French', code: 'fr' },
+  { id: '7', name: 'Spanish', code: 'es' },
 ];
 
 // "Other" is intentionally not a seeded row here. An item's type is
@@ -36,6 +36,15 @@ const currencies = [
   { id: '2', currency_code: 'EUR', currency_name: 'Euro', currency_symbol: '€' },
   { id: '3', currency_code: 'CNY', currency_name: 'Chinese Yuan', currency_symbol: '¥' },
   { id: '4', currency_code: 'JPY', currency_name: 'Japanese Yen', currency_symbol: '¥' },
+  { id: '5', currency_code: 'KRW', currency_name: 'South Korean Won', currency_symbol: '₩' },
+  { id: '6', currency_code: 'GBP', currency_name: 'British Pound Sterling', currency_symbol: '£' },
+  { id: '7', currency_code: 'CAD', currency_name: 'Canadian Dollar', currency_symbol: '$' },
+  { id: '8', currency_code: 'AUD', currency_name: 'Australian Dollar', currency_symbol: '$' },
+  { id: '9', currency_code: 'CHF', currency_name: 'Swiss Franc', currency_symbol: 'CHF' },
+  { id: '10', currency_code: 'SEK', currency_name: 'Swedish Krona', currency_symbol: 'kr' },
+  { id: '11', currency_code: 'HKD', currency_name: 'Hong Kong Dollar', currency_symbol: '$' },
+  { id: '12', currency_code: 'SGD', currency_name: 'Singapore Dollar', currency_symbol: '$' },
+  { id: '13', currency_code: 'TWD', currency_name: 'New Taiwan Dollar', currency_symbol: '$' },
 ];
 
 // "Other" is intentionally not a seeded row here — same reasoning as
@@ -55,7 +64,7 @@ const categories = [
 // 2: Canvas Tote Bag, 3: Collector Figure - Knight, 4: Strategy Handbook).
 const images = [
   { id: '1', url: '/images/dragon_quest.jpg' },
-  { id: '2', url: '/images/bag.jpg' },
+  { id: '2', url: '/images/pc.png' },
   { id: '3', url: '/images/knight.jpg' },
   { id: '4', url: '/images/strategy_handbook.jpg' },
 ];
@@ -94,19 +103,19 @@ const items = [
   },
   {
     id: '2',
-    name: 'Canvas Tote Bag',
-    description: 'Reinforced canvas bag with leather straps.',
+    name: 'My PC',
+    description: 'CPU: AMD Ryzen 9 7900 316€, GPU: NVIDIA RTX 5070 Twin 12GB 537€, RAM: Kingston FURY 64GB DDR5 6000MT/s 630€, SSD: Samsung 990 PRO - 2 TB 220€',
     location: 'Germany',
     barcode: '4006381333931',
     status: 2,
-    cost_price: '10.00',
-    purchase_price: '8.00',
+    cost_price: '1703.00',
+    purchase_price: '1703.00',
     purchase_price_currency: '2',
-    sell_price: '24.99',
+    sell_price: '0.00',
     // Was type '5' ("Other") — that seeded row no longer exists; null means
     // the same thing now (see the comment above the `types` array).
     type: null,
-    category: '1',
+    category: '6',
     main_image: '2',
     package_id: '1',
   },
@@ -169,7 +178,7 @@ const settings = [
   {
     id: '1',
     theme: 'default',
-    owned_themes: ['default', 'dark'],
+    owned_themes: ['default'],
     tried_themes: [],
     theme_trial_expires_at: null,
     storefront_name: null,
@@ -191,14 +200,14 @@ const settings = [
     default_purchase_price_currency: '1',
     language: '1',
     show_message:
-      'Itemlogs is a FREE inventory system for collectors, hobbyists, and small businesses. \n No gatekeeping of functionalities, no ads, no subscriptions, and no tracking. \n Try it out!',
+      'Itemlogs is a FREE inventory system for collectors, hobbyists, and small retail businesses. \n No gatekeeping of functionalities, no ads, no subscriptions, and no tracking. \n Try it out at itemlogs.com!',
     use_sell_price: true,
     use_package_fees: false,
     use_barcode: false,
     name_category: 'Category',
     name_status: 'Status',
     name_type: 'Type',
-    name_package: 'Package',
+    name_package: 'Packages',
     name_item: 'Item',
     display_profit: false,
     display_sell_price: false,

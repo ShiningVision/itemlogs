@@ -11,6 +11,7 @@ import {
   items,
   salesItems,
   itemImages,
+  settings
 } from '@/app/lib/placeholder-data';
 
 // This is the first-run replacement for the old public, unauthenticated
@@ -86,13 +87,6 @@ export async function POST(request: Request) {
   const host = request.headers.get('host') ?? 'itemlogs.local';
   const appUrl = `https://${host}`;
   const hashedPassword = await bcrypt.hash(password, 10);
-
-  // Every fresh storefront starts with this in show_message, instead of a
-  // blank field — doubles as a working example of the announcement banner
-  // and a bit of free advertising for Itemlogs itself. The tenant can edit
-  // or clear it any time from Storefront settings.
-  const DEFAULT_SHOW_MESSAGE =
-    "This storefront runs on Itemlogs — a free inventory & storefront tool for collectors and small sellers. No fees, no ads, no subscriptions. Want your own? itemlogs.com";
 
   try {
     await sql.begin(async (sql) => {
@@ -380,7 +374,7 @@ export async function POST(request: Request) {
           display_purchase_price BOOLEAN NOT NULL,
           display_cost_price BOOLEAN NOT NULL,
           theme VARCHAR(255),
-          owned_themes TEXT[] NOT NULL DEFAULT ARRAY['default', 'dark'],
+          owned_themes TEXT[] NOT NULL DEFAULT ARRAY['default'],
           tried_themes TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
           theme_trial_expires_at TIMESTAMPTZ,
           storefront_name VARCHAR(255),
@@ -437,12 +431,12 @@ export async function POST(request: Request) {
         )
         VALUES (
           1, false, ${needsSellPrice}, false, false,
-          true, false, false, false, ${DEFAULT_SHOW_MESSAGE},
+          true, false, false, false, ${settings[0].show_message},
           ${currency}, ${currency},
           ${needsSellPrice}, false, ${needsBarcode}, ${language},
-          'Category', 'Status', 'Type', 'Package', 'Item',
+          ${settings[0].name_category}, ${settings[0].name_status}, ${settings[0].name_type}, ${settings[0].name_package}, ${settings[0].name_item},
           false, false, false, false, 'default',
-          ARRAY['default', 'dark'], ARRAY[]::TEXT[], NULL,
+          ARRAY['default'], ARRAY[]::TEXT[], NULL,
           NULL, NULL, 'dense',
           false, NULL, false, false, ${appUrl},
           false, false, false
