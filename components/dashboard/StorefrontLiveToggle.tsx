@@ -15,13 +15,27 @@ import { Toggle } from '@/components/ui/Toggle';
 export function StorefrontLiveToggle({ defaultChecked }: { defaultChecked: boolean }) {
   const t = useTranslations('dashboard');
   const [isLive, setIsLive] = useState(defaultChecked);
+  const [saveError, setSaveError] = useState(false);
   const [, startTransition] = useTransition();
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const checked = e.target.checked;
     setIsLive(checked);
+    setSaveError(false);
     startTransition(async () => {
-      await updateStorefrontSettingFieldAction('show', checked);
+      try {
+        const result = await updateStorefrontSettingFieldAction('show', checked);
+        if (result && 'error' in result) throw new Error(result.error);
+      } catch {
+        // A failed save (e.g. a transient edge/network error, or hitting a
+        // freshly-attached custom domain before it's fully verified) must
+        // not leave the toggle showing "live" with a working-looking "View
+        // storefront" link while the database still says otherwise — that
+        // link would just bounce the tenant to /login. Roll the optimistic
+        // state back to what it actually was before this click.
+        setIsLive(!checked);
+        setSaveError(true);
+      }
     });
   }
 
@@ -35,7 +49,10 @@ export function StorefrontLiveToggle({ defaultChecked }: { defaultChecked: boole
         <h2 className="dashboard-card-title dashboard-live-status-title">
           {isLive ? t('liveStatusLive') : t('liveStatusOffline')}
         </h2>
-        <Toggle name="show" defaultChecked={defaultChecked} label={t('show')} onChange={handleChange} />
+        {/* Keyed on isLive so a programmatic revert (the catch block above)
+            actually re-renders the underlying uncontrolled checkbox to
+            match — defaultChecked alone only applies on mount. */}
+        <Toggle key={String(isLive)} name="show" defaultChecked={isLive} label={t('show')} onChange={handleChange} />
       </div>
       {isLive ? (
         <Link href="/" className="dashboard-live-status-link">
@@ -43,6 +60,11 @@ export function StorefrontLiveToggle({ defaultChecked }: { defaultChecked: boole
         </Link>
       ) : (
         <p className="dashboard-live-status-hint">{t('liveStatusHint')}</p>
+      )}
+      {saveError && (
+        <p style={{ color: 'var(--color-danger)', fontSize: 'var(--font-size-sm)', marginTop: 'var(--spacing-xs)' }}>
+          {t('saveFailed')}
+        </p>
       )}
     </div>
   );
