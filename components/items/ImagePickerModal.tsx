@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { CameraIcon } from '@heroicons/react/24/outline';
 import { compressImageFile } from '@/app/lib/images/compressImage';
 
 type ImageRow = { id: number; url: string };
@@ -124,19 +125,42 @@ export function ImagePickerModal({
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
           <h2 style={{ fontWeight: 'var(--font-weight-bold)' }}>{t('selectImage')}</h2>
-          <label
-            style={{
-              background: 'var(--color-primary)',
-              color: '#fff',
-              padding: 'var(--spacing-sm) var(--spacing-md)',
-              borderRadius: 'var(--radius-md)',
-              cursor: 'pointer',
-              fontSize: 'var(--font-size-sm)',
-            }}
-          >
-            {isUploading ? t('uploading') : t('uploadNew')}
-            <input type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} disabled={isUploading} />
-          </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}>
+            <label
+              aria-label={t('takePhoto')}
+              title={t('takePhoto')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '36px',
+                height: '36px',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text)',
+                borderRadius: 'var(--radius-md)',
+                cursor: isUploading ? 'not-allowed' : 'pointer',
+                opacity: isUploading ? 0.6 : 1,
+              }}
+            >
+              <CameraIcon style={{ width: '18px', height: '18px' }} />
+              <input type="file" accept="image/*" capture="environment" onChange={handleUpload} style={{ display: 'none' }} disabled={isUploading} />
+            </label>
+            <label
+              style={{
+                background: 'var(--color-primary)',
+                color: '#fff',
+                padding: 'var(--spacing-sm) var(--spacing-md)',
+                borderRadius: 'var(--radius-md)',
+                cursor: isUploading ? 'not-allowed' : 'pointer',
+                opacity: isUploading ? 0.6 : 1,
+                fontSize: 'var(--font-size-sm)',
+              }}
+            >
+              {isUploading ? t('uploading') : t('uploadNew')}
+              <input type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} disabled={isUploading} />
+            </label>
+          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 'var(--spacing-sm)' }}>

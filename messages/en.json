@@ -43,7 +43,7 @@
   "dashboard": {
     "title": "Dashboard",
     "flavourTexts": [
-      "Need barcode scanning? Enable it in the settings! It works only in the mobile app though.",
+      "Need barcode scanning? Enable it in the settings!",
       "Did you know you can distribute your shipping costs and tariffs among your items with 1 button click? \n Enable it in settings FUNCTIONALITY -> Use package fees!",
       "Itemlogs is free and hosted on the cloud. How can that be? By you only having 1GB space for images. But don't worry. We compress your images heavily!",
       "Like the app? Support the dev! Buy a theme!",
@@ -121,7 +121,8 @@
     "selectImage": "Select image",
     "uploading": "Uploading...",
     "uploadNew": "Upload new",
-    "selectOrUploadImage": "Select or upload image",
+    "takePhoto": "Take photo",
+    "selectOrUploadImage": "Select, upload or take image",
     "addGalleryImage": "Add gallery image",
     "selectBlueprint": "Select blueprint",
     "createItem": "Create Item",
@@ -331,6 +332,7 @@
   "gallery": {
     "title": "Gallery",
     "uploadImage": "Upload image",
+    "takePhoto": "Take photo",
     "uploading": "Uploading...",
     "noImages": "No images yet.",
     "noOrphanImages": "No unused images — nothing to clean up.",
