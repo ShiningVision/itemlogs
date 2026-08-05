@@ -1862,10 +1862,10 @@ body {
 }
 
 /* ---------------------------------------------------------------------
-   Skeleton loading screens (widgets/Skeleton.tsx + app/**/loading.tsx).
-   A single shimmering block, composed per-page into rows/cards/grids that
-   roughly match the real layout so content doesn't jump around once it
-   loads.
+   Skeleton loading screens (widgets/Skeleton.tsx + each dashboard route's
+   loading.tsx file). A single shimmering block, composed per-page into
+   rows/cards/grids that roughly match the real layout so content does not
+   jump around once it loads.
 --------------------------------------------------------------------- */
 @keyframes skeleton-shimmer {
   0% { background-position: 200% 0; }
