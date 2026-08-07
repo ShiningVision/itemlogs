@@ -794,6 +794,18 @@ body {
   gap: var(--spacing-md);
 }
 
+/* Revenue/Profit summary line on the sale detail page, sitting above the
+   name/date field grid. Only rendered when the sale has items. */
+.sale-summary-line {
+  display: flex;
+  gap: var(--spacing-lg);
+  flex-wrap: wrap;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-md);
+}
+
 @media (min-width: 640px) {
   .sheet-field-grid {
     grid-template-columns: repeat(2, 1fr);

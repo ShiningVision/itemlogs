@@ -9,7 +9,21 @@ import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import type { Sale } from '@/app/lib/definitions';
 import { parseApiError } from '@/app/lib/errors/parseApiError';
 
-export function SaleForm({ mode, sale }: { mode: 'create' | 'update'; sale?: Sale }) {
+export function SaleForm({
+  mode,
+  sale,
+  revenue,
+  profit,
+  currencySymbol,
+}: {
+  mode: 'create' | 'update';
+  sale?: Sale;
+  // null (not just absent) means "this sale has no items yet" — the
+  // summary line only renders when both are non-null.
+  revenue?: number | null;
+  profit?: number | null;
+  currencySymbol?: string;
+}) {
   const t = useTranslations('sales');
   const router = useRouter();
   const today = new Date().toISOString().slice(0, 10);
@@ -73,6 +87,17 @@ export function SaleForm({ mode, sale }: { mode: 'create' | 'update'; sale?: Sal
 
       <div className="sheet-frame">
         <div className="sheet-body">
+          {revenue !== null && revenue !== undefined && profit !== null && profit !== undefined && (
+            <div className="sale-summary-line">
+              <span>
+                {t('revenue')}: {currencySymbol}{revenue.toFixed(2)}
+              </span>
+              <span>
+                {t('profit')}: {currencySymbol}{profit.toFixed(2)}
+              </span>
+            </div>
+          )}
+
           <div className="sheet-field-grid">
             <div className="sheet-field">
               <span className="sheet-label">{t('name')}</span>

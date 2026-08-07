@@ -313,6 +313,8 @@
     "exportExcel": "Export Excel",
     "name": "Name",
     "date": "Date",
+    "revenue": "Revenue",
+    "profit": "Profit",
     "save": "Save",
     "saving": "Saving...",
     "saveFailed": "Failed to save.",
