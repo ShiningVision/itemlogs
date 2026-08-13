@@ -82,19 +82,22 @@ export default async function PublicItemPage({
                   {settings.show_sell_price && item.sell_price !== null && (
                     <StatBox
                       label={t('sellPrice')}
-                      value={`${item.sell_price.toFixed(2)} ${settings.sell_currency?.currency_code ?? ''}`}
+                      currency={settings.sell_currency?.currency_code ?? ''}
+                      value={item.sell_price.toFixed(2)}
                     />
                   )}
                   {settings.show_purchase_price && item.purchase_price !== null && (
                     <StatBox
                       label={t('purchasePrice')}
-                      value={`${item.purchase_price.toFixed(2)} ${item.purchase_currency?.currency_code ?? ''}`}
+                      currency={item.purchase_currency?.currency_code ?? ''}
+                      value={item.purchase_price.toFixed(2)}
                     />
                   )}
                   {settings.show_cost_price && item.cost_price !== null && (
                     <StatBox
                       label={t('costPrice')}
-                      value={`${item.cost_price.toFixed(2)} ${settings.sell_currency?.currency_code ?? ''}`}
+                      currency={settings.sell_currency?.currency_code ?? ''}
+                      value={item.cost_price.toFixed(2)}
                     />
                   )}
                 </div>

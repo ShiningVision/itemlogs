@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { ImagePickerModal } from './ImagePickerModal';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 type ImageRow = { id: number; url: string };
 
@@ -54,27 +55,28 @@ export function ImageGalleryEditor({
           </div>
         ))}
 
-        <button
-          type="button"
-          className="gallery-add-btn"
-          onClick={() => setModalOpen(true)}
-          aria-label={t('addGalleryImage')}
-          title={t('addGalleryImage')}
-          style={{
-            width: '80px',
-            height: '80px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'var(--color-surface)',
-            border: '1px dashed var(--color-border)',
-            borderRadius: 'var(--radius-sm)',
-            color: 'var(--color-text-muted)',
-            cursor: 'pointer',
-          }}
-        >
-          <PlusIcon style={{ width: '24px', height: '24px' }} />
-        </button>
+        <Tooltip text={t('addGalleryImage')}>
+          <button
+            type="button"
+            className="gallery-add-btn"
+            onClick={() => setModalOpen(true)}
+            aria-label={t('addGalleryImage')}
+            style={{
+              width: '80px',
+              height: '80px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'var(--color-surface)',
+              border: '1px dashed var(--color-border)',
+              borderRadius: 'var(--radius-sm)',
+              color: 'var(--color-text-muted)',
+              cursor: 'pointer',
+            }}
+          >
+            <PlusIcon style={{ width: '24px', height: '24px' }} />
+          </button>
+        </Tooltip>
       </div>
 
       {modalOpen && (

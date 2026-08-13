@@ -12,6 +12,7 @@ export function ItemGrid({
   onItemRemovedFromPackage,
   removeFromSaleButton = false,
   onItemRemovedFromSale,
+  density = 'dense',
 }: {
   items: any[];
   settings: Settings;
@@ -22,14 +23,17 @@ export function ItemGrid({
   onItemRemovedFromPackage?: () => void;
   removeFromSaleButton?: boolean;
   onItemRemovedFromSale?: () => void;
+  // Reuses the same dense/showcase grid CSS the public storefront grid
+  // uses (see .storefront-grid--dense/--showcase in globals.css) — it's a
+  // plain column-count/gap variant, not actually storefront-specific.
+  density?: 'dense' | 'showcase';
 }) {
   if (items.length === 0) {
     return <div style={{ color: 'var(--color-text-muted)' }}>No items match these filters.</div>;
   }
 
-
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 'var(--spacing-md)' }}>
+    <div className={density === 'showcase' ? 'storefront-grid--showcase' : 'storefront-grid--dense'}>
       {items.map((item) => (
         <ItemCard
           key={item.id}

@@ -2,12 +2,15 @@
 import { supabase } from '@/app/lib/db/client';
 import type { CreateItemInput, UpdateItemInput } from '@/app/lib/validation/items';
 
+export type ItemSort = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc';
+
 type ItemFilters = {
   categoryIds?: number[];
   statuses?: number[];
   typeId?: number;     // single-select, used by admin items page
   typeIds?: number[];  // multi-select, used by storefront
   packageId?: number;  // single-select, used by storefront package filter
+  sort?: ItemSort;
   limit?: number;
   offset?: number;
 };
@@ -44,11 +47,35 @@ const ITEM_SELECT = `
   purchase_currency:purchase_price_currency(currency_code, currency_symbol)
 `;
 
+// id doubles as "date added" — the items table has no created_at column,
+// but id is a SERIAL PRIMARY KEY, so higher id reliably means added later.
+// Every sort mode ends with an id tiebreak so results stay in a stable
+// order even when many rows share the same name/price (and null values,
+// e.g. items with no sell_price yet, always sort to the end).
+function applySort(query: any, sort: ItemSort = 'newest') {
+  switch (sort) {
+    case 'oldest':
+      return query.order('id', { ascending: true });
+    case 'name_asc':
+      return query.order('name', { ascending: true, nullsFirst: false }).order('id', { ascending: false });
+    case 'name_desc':
+      return query.order('name', { ascending: false, nullsFirst: false }).order('id', { ascending: false });
+    case 'price_asc':
+      return query.order('sell_price', { ascending: true, nullsFirst: false }).order('id', { ascending: false });
+    case 'price_desc':
+      return query.order('sell_price', { ascending: false, nullsFirst: false }).order('id', { ascending: false });
+    case 'newest':
+    default:
+      return query.order('id', { ascending: false });
+  }
+}
+
 export async function getItems(filters: ItemFilters = {}): Promise<{ items: any[]; totalCount: number }> {
   let query = supabase
     .from('items')
-    .select(ITEM_SELECT, { count: 'exact' })
-    .order('id', { ascending: false });
+    .select(ITEM_SELECT, { count: 'exact' });
+
+  query = applySort(query, filters.sort);
 
   if (filters.categoryIds !== undefined) query = applyNullableInFilter(query, 'category', filters.categoryIds);
   if (filters.statuses !== undefined) query = query.in('status', filters.statuses);
@@ -275,7 +302,15 @@ export async function getAvailableItemByBarcode(barcode: string): Promise<{ id: 
 }
 
 export async function getPublicItems(
-  filters: { categoryIds?: number[]; statuses?: number[]; typeIds?: number[]; packageId?: number; limit?: number; offset?: number },
+  filters: {
+    categoryIds?: number[];
+    statuses?: number[];
+    typeIds?: number[];
+    packageId?: number;
+    sort?: ItemSort;
+    limit?: number;
+    offset?: number;
+  },
   allowedStatuses: number[]
 ) {
   const statuses = filters.statuses?.length

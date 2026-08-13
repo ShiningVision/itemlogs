@@ -4,6 +4,7 @@
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { DeleteXButton } from '@/components/ui/DeleteXButton';
 import { Card } from '@/widgets/Card';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { formatBytes } from '@/app/lib/storage/format-bytes';
 
 type ImageRow = { id: number; url: string };
@@ -43,26 +44,27 @@ export function GalleryImageCard({
         outlineOffset: selected ? '-2px' : undefined,
       }}
     >
-      <button
-        type="button"
-        onClick={selectionMode ? onToggleSelect : onZoom}
-        title={title}
-        style={{
-          display: 'block',
-          width: '100%',
-          height: '100%',
-          padding: 0,
-          border: 'none',
-          background: 'none',
-          cursor: selectionMode ? 'pointer' : 'zoom-in',
-        }}
-      >
-        <img
-          src={image.url}
-          alt=""
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-        />
-      </button>
+      <Tooltip text={title}>
+        <button
+          type="button"
+          onClick={selectionMode ? onToggleSelect : onZoom}
+          style={{
+            display: 'block',
+            width: '100%',
+            height: '100%',
+            padding: 0,
+            border: 'none',
+            background: 'none',
+            cursor: selectionMode ? 'pointer' : 'zoom-in',
+          }}
+        >
+          <img
+            src={image.url}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        </button>
+      </Tooltip>
 
       {title && (
         <span

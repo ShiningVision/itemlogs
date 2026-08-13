@@ -1,9 +1,11 @@
 // app/dashboard/(protected)/sales/page.tsx
 import { getSales, getSaleItemCounts } from '@/app/lib/services/sales';
+import { getSettings } from '@/app/lib/services/settings';
 import { SalesTimeline } from '@/components/sales/SalesTimeline';
 import { Pagination } from '@/components/ui/Pagination';
 import { parsePage, paginateArray, getTotalPages, buildPageHref } from '@/app/lib/pagination';
 import { getTranslations } from 'next-intl/server';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/widgets/Button';
 
@@ -15,6 +17,15 @@ export default async function SalesPage({
   searchParams: Promise<{ page?: string }>;
 }) {
   const rawSearchParams = await searchParams;
+  const settings = await getSettings();
+  // The whole Sales section only makes sense when sell prices are in use —
+  // same switch (use_sell_price) that shows/hides sell-price fields and the
+  // items page's sell-mode button. Direct-URL access is blocked server-side
+  // here rather than just hiding the nav link, since hiding a link alone
+  // wouldn't stop someone who already has a /dashboard/sales/... URL saved.
+  if (!settings.use_sell_price) {
+    redirect('/dashboard/items');
+  }
   const [sales, itemCounts] = await Promise.all([getSales(), getSaleItemCounts()]);
   const t = await getTranslations('sales');
 

@@ -10,6 +10,7 @@ import { formatBytes } from '@/app/lib/storage/format-bytes';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ImageZoomModal } from '@/components/ui/ImageZoomModal';
 import { GalleryImageCard } from './GalleryImageCard';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 type ImageRow = { id: number; url: string };
 type SortMode = 'newest' | 'largest';
@@ -182,15 +183,16 @@ export function GalleryGrid({
                 <CheckIcon style={{ width: '16px', height: '16px' }} />
                 {t('select')}
               </button>
-              <label
-                className="gallery-camera-btn"
-                aria-label={t('takePhoto')}
-                title={t('takePhoto')}
-                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', borderRadius: 'var(--radius-md)', cursor: isUploading ? 'not-allowed' : 'pointer', opacity: isUploading ? 0.6 : 1 }}
-              >
-                <CameraIcon style={{ width: '18px', height: '18px' }} />
-                <input type="file" accept="image/*" capture="environment" onChange={handleUpload} style={{ display: 'none' }} disabled={isUploading} />
-              </label>
+              <Tooltip text={t('takePhoto')}>
+                <label
+                  className="gallery-camera-btn"
+                  aria-label={t('takePhoto')}
+                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', borderRadius: 'var(--radius-md)', cursor: isUploading ? 'not-allowed' : 'pointer', opacity: isUploading ? 0.6 : 1 }}
+                >
+                  <CameraIcon style={{ width: '18px', height: '18px' }} />
+                  <input type="file" accept="image/*" capture="environment" onChange={handleUpload} style={{ display: 'none' }} disabled={isUploading} />
+                </label>
+              </Tooltip>
               <label style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', background: 'var(--color-primary)', color: '#fff', padding: 'var(--spacing-xs) var(--spacing-md)', borderRadius: 'var(--radius-md)', cursor: isUploading ? 'not-allowed' : 'pointer', fontWeight: 'var(--font-weight-bold)', opacity: isUploading ? 0.6 : 1, fontSize: 'var(--font-size-sm)' }}>
                 <PlusIcon style={{ width: '16px', height: '16px' }} />
                 {isUploading ? t('uploading') : t('uploadImage')}

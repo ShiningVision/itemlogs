@@ -6,7 +6,13 @@ import { signOut } from 'next-auth/react';
 import { NavLinks } from './NavLinks';
 import { ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline';
 
-export function Sidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
+export function Sidebar({
+  onNavigate,
+  showSales = true,
+}: {
+  onNavigate?: () => void;
+  showSales?: boolean;
+} = {}) {
   const t = useTranslations('nav');
 
   return (
@@ -21,7 +27,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }}>
-        <NavLinks onNavigate={onNavigate} />
+        <NavLinks onNavigate={onNavigate} showSales={showSales} />
       </div>
 
       <button

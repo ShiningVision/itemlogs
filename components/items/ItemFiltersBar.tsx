@@ -63,6 +63,18 @@ export function ItemFiltersBar({
   const t = useTranslations('items');
   const { isPending, setParam, toggleInList } = useFilterParams();
 
+  // Deselecting the last status pill needs to mean "show every status" —
+  // but the shared toggleInList removes the param entirely when the list
+  // empties out, and an absent `statuses` param is what a fresh page load
+  // uses to mean "Available only" (see app/dashboard/(protected)/items/
+  // page.tsx). Without a distinct sentinel, unchecking the last pill would
+  // silently snap back to the Available-only default instead of showing
+  // everything. `all` can't collide with a real status id (those are 1-4).
+  function toggleStatus(current: number[], id: number) {
+    const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
+    setParam('statuses', next.length ? next.join(',') : 'all');
+  }
+
   function renderPillSection(
     key: string,
     label: string,
@@ -70,6 +82,7 @@ export function ItemFiltersBar({
     selected: number[],
     manageHref?: string,
     manageLabel?: string,
+    onToggle?: (selected: number[], id: number) => void,
   ) {
     return (
       <div className="filter-section">
@@ -84,7 +97,7 @@ export function ItemFiltersBar({
               label={opt.label}
               selected={selected.includes(opt.id)}
               disabled={opt.disabled}
-              onClick={() => toggleInList(key, selected, opt.id)}
+              onClick={() => (onToggle ? onToggle(selected, opt.id) : toggleInList(key, selected, opt.id))}
             />
           ))}
         </div>
@@ -113,6 +126,9 @@ export function ItemFiltersBar({
         statusLabel ?? t('filterStatuses'),
         availableStatuses.map((s) => ({ id: s, label: t(`status${s}`), disabled: sellModeActive })),
         sellModeActive ? [1] : selectedStatuses,
+        undefined,
+        undefined,
+        sellModeActive ? undefined : toggleStatus,
       )}
 
       <div className="filter-section">

@@ -8,6 +8,7 @@ import { QrCodeIcon } from '@heroicons/react/24/outline';
 import { BarcodeScannerModal } from './BarcodeScannerModal';
 import { Toast, type ToastType } from '@/components/ui/notification';
 import { sellItemToSale } from '@/app/lib/items/sellItemClient';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 // Scan-to-sell entry point rendered in the items page's button row while
 // sell mode is active (see app/dashboard/(protected)/items/page.tsx). A
@@ -48,17 +49,18 @@ export function BarcodeSellScanner({ saleId }: { saleId?: number }) {
 
   return (
     <>
-      <button
-        type="button"
-        className="barcode-sell-scan-btn"
-        aria-label={t('scanToSell')}
-        title={t('scanToSell')}
-        onClick={() => setScannerOpen(true)}
-        disabled={!saleId || isProcessing}
-      >
-        <QrCodeIcon style={{ width: '24px', height: '24px' }} />
-        {t('scanToSell')}
-      </button>
+      <Tooltip text={t('scanToSell')}>
+        <button
+          type="button"
+          className="barcode-sell-scan-btn"
+          aria-label={t('scanToSell')}
+          onClick={() => setScannerOpen(true)}
+          disabled={!saleId || isProcessing}
+        >
+          <QrCodeIcon style={{ width: '24px', height: '24px' }} />
+          {t('scanToSell')}
+        </button>
+      </Tooltip>
 
       {scannerOpen && <BarcodeScannerModal onScan={handleScan} onClose={() => setScannerOpen(false)} />}
 

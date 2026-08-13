@@ -10,6 +10,7 @@ import {
   getPublicTypeCounts,
   getFeaturedPublicItems,
   OTHER_FILTER_ID,
+  type ItemSort,
 } from '@/app/lib/services/items';
 import { resolveLabel } from '@/app/lib/labels';
 import { StorefrontHeader } from '@/components/storefront/StorefrontHeader';
@@ -20,6 +21,7 @@ import { FilterSidebar } from '@/components/storefront/FilterSidebar';
 import { PackageFilterDropdown } from '@/components/storefront/PackageFilterDropdown';
 import { PublicItemGrid } from '@/components/storefront/PublicItemGrid';
 import { DensityToggle } from '@/components/storefront/DensityToggle';
+import { SortSelect } from '@/components/ui/SortSelect';
 import { Pagination } from '@/components/ui/Pagination';
 import { parsePage, getOffset, getTotalPages, buildPageHref } from '@/app/lib/pagination';
 import { getTranslations } from 'next-intl/server';
@@ -34,7 +36,10 @@ type SearchParams = {
   package?: string;
   page?: string;
   density?: string;
+  sort?: string;
 };
+
+const VALID_SORTS: ItemSort[] = ['newest', 'oldest', 'name_asc', 'name_desc', 'price_asc', 'price_desc'];
 
 export default async function HomePage({
   searchParams,
@@ -42,7 +47,7 @@ export default async function HomePage({
   searchParams: Promise<SearchParams>;
 }) {
   const rawSearchParams = await searchParams;
-  const { categories: categoriesParam, types: typesParam, statuses: statusesParam, package: packageParam, page: pageParam, density: densityParam } = rawSearchParams;
+  const { categories: categoriesParam, types: typesParam, statuses: statusesParam, package: packageParam, page: pageParam, density: densityParam, sort: sortParam } = rawSearchParams;
 
   // On a freshly provisioned tenant, the database has no tables yet — the
   // Supabase Marketplace resource creates an empty Postgres instance, and
@@ -92,6 +97,8 @@ export default async function HomePage({
         ? 'showcase'
         : 'dense';
 
+  const sort: ItemSort = VALID_SORTS.includes(sortParam as ItemSort) ? (sortParam as ItemSort) : 'newest';
+
   const page = parsePage(pageParam);
   const offset = getOffset(page, PUBLIC_ITEMS_PAGE_SIZE);
 
@@ -103,6 +110,7 @@ export default async function HomePage({
           typeIds: selectedTypeIds.length ? selectedTypeIds : undefined,
           statuses: selectedStatuses.length ? selectedStatuses : undefined,
           packageId: selectedPackageId ?? undefined,
+          sort,
           limit: PUBLIC_ITEMS_PAGE_SIZE,
           offset,
         },
@@ -207,7 +215,21 @@ export default async function HomePage({
 
           <div className="storefront-toolbar">
             <span className="storefront-result-count">{t('resultCount', { count: totalCount })}</span>
-            <DensityToggle density={density} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
+              <SortSelect
+                value={sort}
+                label={t('sortLabel')}
+                options={[
+                  { value: 'newest', label: t('sortNewest') },
+                  { value: 'oldest', label: t('sortOldest') },
+                  { value: 'name_asc', label: t('sortNameAsc') },
+                  { value: 'name_desc', label: t('sortNameDesc') },
+                  { value: 'price_asc', label: t('sortPriceAsc') },
+                  { value: 'price_desc', label: t('sortPriceDesc') },
+                ]}
+              />
+              <DensityToggle density={density} />
+            </div>
           </div>
 
           <PublicItemGrid items={items} settings={settings} noItemsMessage={t('noItems')} noImageLabel={t('noImage')} density={density} />

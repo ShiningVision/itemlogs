@@ -117,10 +117,19 @@ export function PackageForm({
                     {mode === 'create' ? t('createPackage') : t('updatePackage')}
                 </h1>
 
-                <Button disabled title={t('comingSoon')} style={{ background: 'var(--color-success)' }}>
-                    <ArrowDownTrayIcon style={{ width: '18px', height: '18px' }} />
-                    {t('exportExcel')}
-                </Button>
+                {mode === 'update' ? (
+                    <a href={`/api/v1/packages/${pkg!.id}/export`}>
+                        <Button style={{ background: 'var(--color-success)' }}>
+                            <ArrowDownTrayIcon style={{ width: '18px', height: '18px' }} />
+                            {t('exportExcel')}
+                        </Button>
+                    </a>
+                ) : (
+                    <Button disabled title={t('saveBeforeExport')} style={{ background: 'var(--color-success)' }}>
+                        <ArrowDownTrayIcon style={{ width: '18px', height: '18px' }} />
+                        {t('exportExcel')}
+                    </Button>
+                )}
             </div>
 
             <div className="sheet-frame">
@@ -150,37 +159,39 @@ export function PackageForm({
 
                     {settings.use_package_fees && (
                         <div className="stat-grid">
-                            <div className="stat-box">
-                                <span className="stat-box-label">{t('tariff')}</span>
-                                <input
-                                    className="stat-box-input"
-                                    type="number"
-                                    step="0.01"
-                                    value={form.tariff}
-                                    onChange={(e) => update('tariff', e.target.value)}
-                                />
+                            <div className="stat-box-group">
+                                <div className="stat-box stat-box-currency-box">
+                                    <select className="stat-box-currency-select" value={form.tariff_currency} onChange={(e) => update('tariff_currency', Number(e.target.value))}>
+                                        {currencies.map((c) => (<option key={c.id} value={c.id}>{c.currency_code}</option>))}
+                                    </select>
+                                </div>
+                                <div className="stat-box">
+                                    <span className="stat-box-label">{t('tariff')}</span>
+                                    <input
+                                        className="stat-box-input"
+                                        type="number"
+                                        step="0.01"
+                                        value={form.tariff}
+                                        onChange={(e) => update('tariff', e.target.value)}
+                                    />
+                                </div>
                             </div>
-                            <div className="stat-box">
-                                <span className="stat-box-label">{t('tariffCurrency')}</span>
-                                <select className="stat-box-select" value={form.tariff_currency} onChange={(e) => update('tariff_currency', Number(e.target.value))}>
-                                    {currencies.map((c) => (<option key={c.id} value={c.id}>{c.currency_code}</option>))}
-                                </select>
-                            </div>
-                            <div className="stat-box">
-                                <span className="stat-box-label">{t('shippingFee')}</span>
-                                <input
-                                    className="stat-box-input"
-                                    type="number"
-                                    step="0.01"
-                                    value={form.shipping_fee}
-                                    onChange={(e) => update('shipping_fee', e.target.value)}
-                                />
-                            </div>
-                            <div className="stat-box">
-                                <span className="stat-box-label">{t('shippingFeeCurrency')}</span>
-                                <select className="stat-box-select" value={form.shipping_fee_currency} onChange={(e) => update('shipping_fee_currency', Number(e.target.value))}>
-                                    {currencies.map((c) => (<option key={c.id} value={c.id}>{c.currency_code}</option>))}
-                                </select>
+                            <div className="stat-box-group">
+                                <div className="stat-box stat-box-currency-box">
+                                    <select className="stat-box-currency-select" value={form.shipping_fee_currency} onChange={(e) => update('shipping_fee_currency', Number(e.target.value))}>
+                                        {currencies.map((c) => (<option key={c.id} value={c.id}>{c.currency_code}</option>))}
+                                    </select>
+                                </div>
+                                <div className="stat-box">
+                                    <span className="stat-box-label">{t('shippingFee')}</span>
+                                    <input
+                                        className="stat-box-input"
+                                        type="number"
+                                        step="0.01"
+                                        value={form.shipping_fee}
+                                        onChange={(e) => update('shipping_fee', e.target.value)}
+                                    />
+                                </div>
                             </div>
                         </div>
                     )}

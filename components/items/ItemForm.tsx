@@ -11,6 +11,8 @@ import { BlueprintPickerModal } from './BlueprintPickerModal';
 import { BarcodeScannerModal } from './BarcodeScannerModal';
 import { Button } from '@/widgets/Button';
 import { Toggle } from '@/components/ui/Toggle';
+import { Toast, type ToastType } from '@/components/ui/notification';
+import { Tooltip } from '@/components/ui/Tooltip';
 import type { Settings } from '@/app/lib/definitions';
 import { resolveLabel } from '@/app/lib/labels';
 import { parseApiError } from '@/app/lib/errors/parseApiError';
@@ -89,6 +91,8 @@ export function ItemForm({
   const [scannerOpen, setScannerOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSavingBlueprint, setIsSavingBlueprint] = useState(false);
+  const [blueprintNotification, setBlueprintNotification] = useState<{ type: ToastType; message: string } | null>(null);
   const categoryLabel = resolveLabel(settings.name_category, t('category'));
   const typeLabel = resolveLabel(settings.name_type, t('type'));
 
@@ -219,16 +223,29 @@ export function ItemForm({
     }
 
     setErrorMessage(null);
-    const payload = buildPayload();
-    const res = await fetch('/api/v1/blueprints', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+    setIsSavingBlueprint(true);
+    try {
+      const payload = buildPayload();
+      const res = await fetch('/api/v1/blueprints', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-    if (!res.ok) {
-      const json = await res.json().catch(() => null);
-      setErrorMessage(parseApiError(json, t('saveFailed')));
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        setBlueprintNotification({
+          type: 'error',
+          message: json?.error === 'duplicateBarcode' ? t('duplicateBarcode') : parseApiError(json, t('saveFailed')),
+        });
+        return;
+      }
+
+      setBlueprintNotification({ type: 'success', message: t('blueprintSaved') });
+    } catch {
+      setBlueprintNotification({ type: 'error', message: t('saveFailed') });
+    } finally {
+      setIsSavingBlueprint(false);
     }
   }
 
@@ -262,7 +279,9 @@ export function ItemForm({
           {mode === 'create' ? t('createItem') : t('updateItem')}
         </h1>
         {mode === 'create' && (
-          <Button onClick={() => setBlueprintModalOpen(true)}>{t('createFromBlueprint')}</Button>
+          <Button onClick={() => setBlueprintModalOpen(true)} title={t('createFromBlueprintHint')}>
+            {t('createFromBlueprint')}
+          </Button>
         )}
         {mode === 'update' && (
           <button
@@ -350,59 +369,69 @@ export function ItemForm({
           </div>
 
           <div className="stat-grid">
-            <div className="stat-box">
-              <span className="stat-box-label">{t('purchasePrice')}</span>
-              <input
-                className="stat-box-input"
-                type="number"
-                step="0.01"
-                value={form.purchase_price}
-                onChange={(e) => update('purchase_price', e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="stat-box">
-              <span className="stat-box-label">{t('purchasePriceCurrency')}</span>
-              <select className="stat-box-select" value={form.purchase_price_currency} onChange={(e) => update('purchase_price_currency', Number(e.target.value))}>
-                {currencies.map((c) => (
-                  <option key={c.id} value={c.id}>{c.currency_code}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="stat-box">
-              <span className="stat-box-label">{t('costPrice')}</span>
-              <input
-                className="stat-box-input"
-                type="number"
-                step="0.01"
-                value={form.cost_price}
-                onChange={(e) => update('cost_price', e.target.value)}
-              />
-            </div>
-
-            {settings.use_sell_price && (
+            {/* Purchase price currency is per-item, so it stays an editable
+                select — in its own small box, stacked directly above the
+                purchase price box (not merged into it, not side-by-side). */}
+            <div className="stat-box-group">
+              <div className="stat-box stat-box-currency-box">
+                <select
+                  className="stat-box-currency-select"
+                  value={form.purchase_price_currency}
+                  onChange={(e) => update('purchase_price_currency', Number(e.target.value))}
+                >
+                  {currencies.map((c) => (
+                    <option key={c.id} value={c.id}>{c.currency_code}</option>
+                  ))}
+                </select>
+              </div>
               <div className="stat-box">
-                <span className="stat-box-label">{t('sellPrice')}</span>
+                <span className="stat-box-label">{t('purchasePrice')}</span>
                 <input
                   className="stat-box-input"
                   type="number"
                   step="0.01"
-                  value={form.sell_price}
-                  onChange={(e) => update('sell_price', e.target.value)}
+                  value={form.purchase_price}
+                  onChange={(e) => update('purchase_price', e.target.value)}
+                  required
                 />
               </div>
-            )}
-            {/* Sell price currency is fixed shop-wide (Settings > Sell price currency) —
-                cost_price shares it too, even if sell price is hidden. */}
-            <div className="stat-box">
-              <span className="stat-box-label">{t('sellPriceCurrency')}</span>
-              <span className="stat-box-input" style={{ display: 'flex', alignItems: 'center', color: 'var(--color-text-muted)' }}>
-                {shopSellCurrency?.currency_code ?? ''}
-              </span>
             </div>
 
+            {/* Cost/sell price currency is fixed shop-wide (Settings > Sell
+                price currency), so each gets its own static small box above it. */}
+            <div className="stat-box-group">
+              <div className="stat-box stat-box-currency-box">
+                <span className="stat-box-currency">{shopSellCurrency?.currency_code ?? ''}</span>
+              </div>
+              <div className="stat-box">
+                <span className="stat-box-label">{t('costPrice')}</span>
+                <input
+                  className="stat-box-input"
+                  type="number"
+                  step="0.01"
+                  value={form.cost_price}
+                  onChange={(e) => update('cost_price', e.target.value)}
+                />
+              </div>
+            </div>
+
+            {settings.use_sell_price && (
+              <div className="stat-box-group">
+                <div className="stat-box stat-box-currency-box">
+                  <span className="stat-box-currency">{shopSellCurrency?.currency_code ?? ''}</span>
+                </div>
+                <div className="stat-box">
+                  <span className="stat-box-label">{t('sellPrice')}</span>
+                  <input
+                    className="stat-box-input"
+                    type="number"
+                    step="0.01"
+                    value={form.sell_price}
+                    onChange={(e) => update('sell_price', e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="sheet-section">
@@ -431,15 +460,16 @@ export function ItemForm({
                     value={form.barcode}
                     onChange={(e) => update('barcode', e.target.value)}
                   />
-                  <button
-                    type="button"
-                    className="barcode-scan-icon-btn"
-                    aria-label={t('scanBarcode')}
-                    title={t('scanBarcode')}
-                    onClick={() => setScannerOpen(true)}
-                  >
-                    <QrCodeIcon style={{ width: '20px', height: '20px' }} />
-                  </button>
+                  <Tooltip text={t('scanBarcode')}>
+                    <button
+                      type="button"
+                      className="barcode-scan-icon-btn"
+                      aria-label={t('scanBarcode')}
+                      onClick={() => setScannerOpen(true)}
+                    >
+                      <QrCodeIcon style={{ width: '20px', height: '20px' }} />
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
             )}
@@ -464,10 +494,12 @@ export function ItemForm({
           </div>
 
           {mode === 'create' && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}>
-              <input type="checkbox" checked={stayOnPage} onChange={(e) => setStayOnPage(e.target.checked)} />
-              {t('stayOnPage')}
-            </label>
+            <Tooltip text={t('stayOnPageHint')}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', alignSelf: 'flex-start' }}>
+                <input type="checkbox" checked={stayOnPage} onChange={(e) => setStayOnPage(e.target.checked)} />
+                {t('stayOnPage')}
+              </label>
+            </Tooltip>
           )}
 
           {errorMessage && <div style={{ color: 'var(--color-danger)' }}>{errorMessage}</div>}
@@ -477,8 +509,8 @@ export function ItemForm({
               {isSaving ? t('saving') : t('save')}
             </Button>
             {mode === 'create' && (
-              <Button onClick={handleSaveAsBlueprint} disabled={isSaving}>
-                {t('saveAsBlueprint')}
+              <Button onClick={handleSaveAsBlueprint} disabled={isSavingBlueprint} title={t('saveAsBlueprintHint')}>
+                {isSavingBlueprint ? t('saving') : t('saveAsBlueprint')}
               </Button>
             )}
           </div>
@@ -489,11 +521,36 @@ export function ItemForm({
         <BlueprintPickerModal onSelect={applyBlueprint} onClose={() => setBlueprintModalOpen(false)} />
       )}
 
+      {blueprintNotification && (
+        <Toast
+          type={blueprintNotification.type}
+          message={blueprintNotification.message}
+          onClose={() => setBlueprintNotification(null)}
+        />
+      )}
+
       {scannerOpen && (
         <BarcodeScannerModal
           onScan={(text) => {
             update('barcode', text);
             setScannerOpen(false);
+
+            // Create mode only: if a blueprint was saved under this exact
+            // barcode, apply it immediately — no confirmation step, per
+            // explicit product decision (asking first was judged too slow).
+            if (mode === 'create') {
+              fetch(`/api/v1/blueprints/by-barcode?code=${encodeURIComponent(text)}`)
+                .then((res) => (res.ok ? res.json() : null))
+                .then((json) => {
+                  if (json?.data) {
+                    applyBlueprint(json.data);
+                    setBlueprintNotification({ type: 'success', message: t('blueprintAppliedFromScan') });
+                  }
+                })
+                .catch(() => {
+                  // Silent — a failed lookup shouldn't block the scan itself.
+                });
+            }
           }}
           onClose={() => setScannerOpen(false)}
         />

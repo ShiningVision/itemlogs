@@ -8,7 +8,7 @@ import { Bars3Icon, XMarkIcon, ArrowRightStartOnRectangleIcon } from '@heroicons
 import { NavLinks } from './NavLinks';
 import { Sidebar } from './Sidebar';
 
-export function AppHeader() {
+export function AppHeader({ showSales = true }: { showSales?: boolean }) {
   const t = useTranslations('nav');
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -64,7 +64,7 @@ export function AppHeader() {
         </div>
 
         <div className="app-header-nav-links" style={{ gap: 'var(--spacing-xs)' }}>
-          <NavLinks variant="horizontal" />
+          <NavLinks variant="horizontal" showSales={showSales} />
         </div>
 
         <button
@@ -136,7 +136,7 @@ export function AppHeader() {
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto' }}>
-              <Sidebar onNavigate={() => setDrawerOpen(false)} />
+              <Sidebar onNavigate={() => setDrawerOpen(false)} showSales={showSales} />
             </div>
           </div>
         </div>

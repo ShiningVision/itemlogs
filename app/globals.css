@@ -454,13 +454,32 @@ body {
 
 /* Footer strip anchoring a Save button to the specific settings-group card
    it belongs to (used where a group is batch-saved rather than
-   auto-saving field by field, e.g. free-text label overrides). */
+   auto-saving field by field, e.g. free-text label overrides). Two
+   contexts use this class:
+   - Nested (default): the footer is the last child *inside* the same
+     .settings-group card as the fields it saves (GeneralSettingsForm's
+     Preferences section) — no extra margin needed, it's just another row.
+   - Detached (.settings-group-footer--detached): the footer sits *outside*
+     its .settings-group, as a sibling straight after the .settings-section
+     it belongs to (SettingsForm's storefront-message Save/Go to storefront
+     row) — needs the negative margin-top/margin-bottom below to sit close
+     to its own section instead of the next one. */
 .settings-group-footer {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-md);
-  background: var(--color-background);
+}
+
+.settings-group-footer--detached {
+  /* The preceding .settings-section (Announcement/Storefront message) carries
+     margin-bottom: var(--spacing-xl) before this footer — that's the section
+     spacing used everywhere else on this page, so it's left alone rather
+     than shrunk globally. Instead this negative margin-top pulls the footer
+     back up closer to its message box, while margin-bottom below keeps the
+     gap before the next section (Visibility) from collapsing to zero. */
+  margin-top: calc(var(--spacing-sm) - var(--spacing-xl));
+  margin-bottom: var(--spacing-xl);
 }
 
 @media (max-width: 480px) {
@@ -702,6 +721,45 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--color-text-muted);
+}
+
+.stat-box-currency {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+/* Same small-header look as .stat-box-currency, but an actual <select> for
+   the per-item purchase price currency (still editable, just no longer its
+   own separate labeled box). */
+.stat-box-currency-select {
+  border: none;
+  background: transparent;
+  outline: none;
+  text-align: center;
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+/* Pairs a currency box directly above its price box — two distinct .stat-box
+   elements stacked tightly, rather than merging the currency into the price
+   box or laying them out side by side in the grid. */
+.stat-box-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-box-currency-box {
+  padding: 2px var(--spacing-sm);
 }
 
 .stat-box-value {
@@ -1365,6 +1423,20 @@ body {
   font-size: var(--font-size-sm);
 }
 
+/* Shared "Sort by" control (components/ui/SortSelect.tsx) — used on both
+   the storefront toolbar and the dashboard items page's toolbar. */
+.sort-select {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.sort-select select {
+  width: auto;
+}
+
 .density-toggle-group {
   display: inline-flex;
   border: 1px solid var(--color-border);
@@ -2019,8 +2091,102 @@ body {
   gap: var(--spacing-md);
 }
 
+/* Speech-bubble hovertext (components/ui/Tooltip.tsx) — replaces the plain
+   browser tooltip everywhere in the app. Inverted text/background pair
+   (--color-text on --color-background) so it stays high-contrast and
+   themable automatically: every theme already defines both, and dark
+   themes naturally swap which one is "dark". z-index 1000 clears every
+   other stacking context in this file, so a tooltip inside a modal still
+   shows above it.
+
+   Rendered via a portal into document.body with `position: fixed` and
+   coordinates computed in JS from the trigger's bounding box (see
+   Tooltip.tsx), rather than nested + centered with `left: 50%` — that
+   broke for triggers near the edge of a narrow/left-aligned parent (the
+   bubble would render partly off-screen) and could get clipped by an
+   ancestor's overflow:hidden/auto. The arrow's position is nudged via
+   --tooltip-arrow-offset so it still points at the trigger's true center
+   even when the bubble itself has been clamped to stay on-screen. */
+.tooltip-bubble-portal {
+  position: fixed;
+  transform: translate(-50%, -100%);
+  background: var(--color-text);
+  color: var(--color-background);
+  font-size: var(--font-size-base);
+  line-height: 1.4;
+  font-weight: var(--font-weight-normal);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  white-space: normal;
+  width: max-content;
+  max-width: 260px;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.tooltip-bubble-portal::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: calc(50% + var(--tooltip-arrow-offset, 0px));
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--color-text);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .skeleton {
     animation: none;
   }
 }
+
+/* Dashboard flavour-text ticker (components/dashboard/FlavourTicker.tsx) —
+   a news-anchor-style "lower third" strip, scrolling continuously
+   right-to-left. .flavour-ticker is the fixed-width clipping frame;
+   .flavour-ticker-track holds two identical copies of the joined-up
+   flavour text side by side. Position is driven from JS (a
+   requestAnimationFrame loop, see the component) rather than a CSS
+   @keyframes animation, so it can pause on hover and be taken over by a
+   pointer drag — a CSS animation can't be paused mid-frame and resumed
+   from an arbitrary dragged-to position the way a plain transform can. */
+.flavour-ticker {
+  overflow: hidden;
+  white-space: nowrap;
+  margin-top: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-sm) 0;
+  border-top: 2px solid var(--color-border);
+  border-bottom: 2px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.flavour-ticker-track {
+  display: inline-flex;
+  width: max-content;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  will-change: transform;
+}
+
+.flavour-ticker-track-dragging {
+  cursor: grabbing;
+}
+
+.flavour-ticker-item {
+  display: inline-block;
+  flex-shrink: 0;
+  padding-right: var(--spacing-xl);
+  font-family: var(--font-casual), cursive;
+  font-style: italic;
+  color: var(--color-primary);
+  font-size: var(--font-size-xxl, 1.9rem);
+  line-height: 1.4;
+}
+
+/* No prefers-reduced-motion override needed here — the component itself
+   checks the media query and sets its auto-scroll speed to 0 when it
+   matches, while still leaving hover-pause and manual dragging available
+   (drag is user-initiated motion, not passive animation). */

@@ -2,6 +2,7 @@
 import { getSaleById } from '@/app/lib/services/sales';
 import { getSaleItems } from '@/app/lib/services/sales-items';
 import { getSettings } from '@/app/lib/services/settings';
+import { redirect } from 'next/navigation';
 import { SaleForm } from '@/components/sales/SaleForm';
 import { SaleItemsSection } from '@/components/sales/SaleItemsSection';
 
@@ -17,6 +18,10 @@ export default async function EditSalePage({
     getSaleItems(Number(id)),
     getSettings(),
   ]);
+
+  if (!settings.use_sell_price) {
+    redirect('/dashboard/items');
+  }
 
   const items = saleItems.map((si) => si.items);
 

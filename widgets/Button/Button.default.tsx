@@ -1,4 +1,6 @@
 // widgets/Button/Button.default.tsx
+import { Tooltip } from '@/components/ui/Tooltip';
+
 export function Button({
   children,
   onClick,
@@ -14,12 +16,11 @@ export function Button({
   style?: React.CSSProperties;
   title?: string;
 }) {
-  return (
+  const button = (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
-      title={title}
       style={{
         background: 'var(--color-primary)',
         color: '#fff',
@@ -38,4 +39,10 @@ export function Button({
       {children}
     </button>
   );
+
+  // `title` used to fall straight through to the native button attribute
+  // (plain browser tooltip). Routing it through Tooltip instead gives every
+  // existing <Button title="..."> call site the speech-bubble style for
+  // free, with no changes needed at each call site.
+  return title ? <Tooltip text={title}>{button}</Tooltip> : button;
 }

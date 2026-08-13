@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateBlueprintSchema } from '../../../../lib/validation/blueprints';
-import { getBlueprintById, updateBlueprint, deleteBlueprint } from '../../../../lib/services/blueprints';
+import { getBlueprintById, updateBlueprint, deleteBlueprint, DuplicateBarcodeError } from '../../../../lib/services/blueprints';
 
 export async function GET(
   request: NextRequest,
@@ -34,6 +34,9 @@ export async function PATCH(
     const blueprint = await updateBlueprint(Number(id), parsed.data);
     return NextResponse.json({ data: blueprint });
   } catch (error) {
+    if (error instanceof DuplicateBarcodeError) {
+      return NextResponse.json({ error: 'duplicateBarcode' }, { status: 409 });
+    }
     console.error('Failed to update blueprint:', error);
     return NextResponse.json({ error: 'Failed to update blueprint' }, { status: 500 });
   }

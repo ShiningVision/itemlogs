@@ -12,7 +12,7 @@ const users = [
 const languages = [
   { id: '1', name: 'English', code: 'en' },
   { id: '2', name: 'German', code: 'de' },
-  { id: '3', name: 'Chinese', code: 'zh' },
+  { id: '3', name: '中文', code: 'zh' },
   { id: '4', name: 'Japanese', code: 'ja' },
   { id: '5', name: 'Korean', code: 'ko' },
   { id: '6', name: 'French', code: 'fr' },

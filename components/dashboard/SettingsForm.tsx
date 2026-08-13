@@ -73,23 +73,28 @@ export function SettingsForm({ settings }: { settings: Settings }) {
     });
   }
 
-  const toggleGroup = (fields: Array<{ key: keyof Settings; labelKey: string }>) => (
-    <div className="settings-group">
-      {fields.map(({ key, labelKey }) => (
-        <div key={key} className="settings-row">
-          <span>{t(labelKey)}</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-            {statusFor(key)}
-            <Toggle
-              name={key}
-              defaultChecked={Boolean(settings[key])}
-              label={t(labelKey)}
-              onChange={(e) => autoSave(key, e.target.checked)}
-            />
-          </div>
+  // Bare rows, with no wrapping .settings-group card — lets a section combine
+  // a static list of toggle fields with a one-off custom row (e.g. the
+  // package-filter toggle below, which needs an interpolated label) inside
+  // a single shared card, instead of each getting its own bordered box.
+  const toggleRows = (fields: Array<{ key: keyof Settings; labelKey: string }>) =>
+    fields.map(({ key, labelKey }) => (
+      <div key={key} className="settings-row">
+        <span>{t(labelKey)}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+          {statusFor(key)}
+          <Toggle
+            name={key}
+            defaultChecked={Boolean(settings[key])}
+            label={t(labelKey)}
+            onChange={(e) => autoSave(key, e.target.checked)}
+          />
         </div>
-      ))}
-    </div>
+      </div>
+    ));
+
+  const toggleGroup = (fields: Array<{ key: keyof Settings; labelKey: string }>) => (
+    <div className="settings-group">{toggleRows(fields)}</div>
   );
 
   return (
@@ -157,7 +162,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
           </div>
         </div>
 
-        <div className="settings-group-footer">
+        <div className="settings-group-footer settings-group-footer--detached">
           <Button type="submit" disabled={isTextPending}>
             {isTextPending ? t('saving') : t('save')}
           </Button>
@@ -174,8 +179,14 @@ export function SettingsForm({ settings }: { settings: Settings }) {
 
       <div className="settings-section">
         <div className="settings-section-title">{t('sectionVisibility')}</div>
-        {toggleGroup(VISIBILITY_FIELDS)}
+        {/* show_package_filter needs the tenant's custom package-name label
+            interpolated into its toggle text, so it can't be a plain
+            translation key in the static VISIBILITY_FIELDS list — it's added
+            as its own row here instead, inside the same .settings-group card
+            as the rest of the list (via toggleRows) rather than a second,
+            separately-bordered box. */}
         <div className="settings-group">
+          {toggleRows(VISIBILITY_FIELDS)}
           <div className="settings-row">
             <span>{t('showPackageFilter', { packages: packageLabel })}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>

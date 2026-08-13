@@ -4,6 +4,7 @@ import { SettingsForm } from '@/components/dashboard/SettingsForm';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { DashboardStats } from '@/components/dashboard/DashboardStats';
 import { StorefrontLiveStatus } from '@/components/dashboard/StorefrontLiveStatus';
+import { FlavourTicker } from '@/components/dashboard/FlavourTicker';
 import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 
@@ -11,12 +12,22 @@ import Link from 'next/link';
 // statically cached.
 export const dynamic = 'force-dynamic';
 
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 export default async function DashboardPage() {
   const settings = await getSettings();
   const t = await getTranslations('dashboard');
 
-  const flavourTexts = t.raw('flavourTexts') as string[];
-  const flavourText = flavourTexts[Math.floor(Math.random() * flavourTexts.length)];
+  // Shuffled per request (see force-dynamic above) so the ticker's line-up
+  // order isn't identical on every visit.
+  const flavourTexts = shuffle(t.raw('flavourTexts') as string[]);
 
   return (
     <div style={{ padding: 'var(--spacing-lg)' }}>
@@ -24,21 +35,7 @@ export default async function DashboardPage() {
         <h1 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)' }}>
           {t('title')}
         </h1>
-        <p
-          style={{
-            fontFamily: 'var(--font-casual), cursive',
-            fontStyle: 'italic',
-            color: 'var(--color-primary)',
-            fontSize: 'var(--font-size-xxl, 1.9rem)',
-            lineHeight: 1.4,
-            textAlign: 'center',
-            marginTop: 'var(--spacing-md)',
-            marginBottom: 'var(--spacing-xl)',
-            padding: 'var(--spacing-md) var(--spacing-lg)',
-          }}
-        >
-          {flavourText}
-        </p>
+        <FlavourTicker texts={flavourTexts} />
 
         <OnboardingChecklist settings={settings} />
 

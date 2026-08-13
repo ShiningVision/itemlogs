@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createBlueprintSchema } from '../../../lib/validation/blueprints';
-import { createBlueprint, getBlueprints } from '../../../lib/services/blueprints';
+import { createBlueprint, getBlueprints, DuplicateBarcodeError } from '../../../lib/services/blueprints';
 
 export async function GET() {
   try {
@@ -24,6 +24,9 @@ export async function POST(request: NextRequest) {
     const blueprint = await createBlueprint(parsed.data);
     return NextResponse.json({ data: blueprint }, { status: 201 });
   } catch (error) {
+    if (error instanceof DuplicateBarcodeError) {
+      return NextResponse.json({ error: 'duplicateBarcode' }, { status: 409 });
+    }
     console.error('Failed to create blueprint:', error);
     return NextResponse.json({ error: 'Failed to create blueprint' }, { status: 500 });
   }

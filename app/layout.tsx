@@ -6,14 +6,13 @@ import localFont from 'next/font/local';
 import './globals.css';
 import { getSettings } from '@/app/lib/services/settings';
 
-// A handwritten-but-tidy font reserved for playful flourishes (like the
-// dashboard flavour text) — everything else keeps the system-ui font.
-// Self-hosted from public/fonts (no Google Fonts requests at build or
-// runtime — next/font/local never talks to any network).
-const patrickHand = localFont({
+// A playful font reserved for flourishes (like the dashboard flavour text)
+// — everything else keeps the system-ui font. Self-hosted from
+// public/fonts (no Google Fonts requests at build or runtime —
+// next/font/local never talks to any network).
+const casualFont = localFont({
   src: [
-    { path: '../public/fonts/PatrickHand-Regular.woff2', weight: '400', style: 'normal' },
-    { path: '../public/fonts/PatrickHand-Regular.woff', weight: '400', style: 'normal' },
+    { path: '../public/fonts/Butflow.ttf', weight: '400', style: 'normal' },
   ],
   variable: '--font-casual',
 });
@@ -34,7 +33,7 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="en" className={patrickHand.variable}>
+    <html lang="en" className={casualFont.variable}>
       <body>
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider initialThemeName={initialThemeName}>{children}</ThemeProvider>

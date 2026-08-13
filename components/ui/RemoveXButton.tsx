@@ -2,6 +2,7 @@
 'use client';
 
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { Tooltip } from './Tooltip';
 
 // A compact corner button for "unlink this item from its current context"
 // actions (remove from package, remove from sale) — same shape/position as
@@ -20,19 +21,20 @@ export function RemoveXButton({
   loading?: boolean;
 }) {
   return (
-    <button
-      type="button"
-      className="remove-x-button"
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onClick();
-      }}
-      disabled={disabled}
-      aria-label={label}
-      title={label}
-    >
-      {loading ? <span className="remove-x-button-spinner" aria-hidden="true" /> : <XMarkIcon style={{ width: '16px', height: '16px' }} />}
-    </button>
+    <Tooltip text={label}>
+      <button
+        type="button"
+        className="remove-x-button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onClick();
+        }}
+        disabled={disabled}
+        aria-label={label}
+      >
+        {loading ? <span className="remove-x-button-spinner" aria-hidden="true" /> : <XMarkIcon style={{ width: '16px', height: '16px' }} />}
+      </button>
+    </Tooltip>
   );
 }

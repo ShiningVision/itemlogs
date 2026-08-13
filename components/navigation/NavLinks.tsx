@@ -27,12 +27,20 @@ const LINKS = [
 export function NavLinks({
   variant = 'vertical',
   onNavigate,
+  showSales = true,
 }: {
   variant?: 'vertical' | 'horizontal';
   onNavigate?: () => void;
+  showSales?: boolean;
 }) {
   const pathname = usePathname();
   const t = useTranslations('nav');
+
+  // The Sales section only makes sense when sell prices are in use — see
+  // the matching server-side redirect on the sales pages themselves,
+  // which is the real gate; hiding the link here is just so the nav
+  // doesn't point at a page that'll immediately bounce you back.
+  const links = showSales ? LINKS : LINKS.filter((link) => link.key !== 'sales');
 
   return (
     <div
@@ -44,7 +52,7 @@ export function NavLinks({
         flexWrap: variant === 'horizontal' ? 'wrap' : 'nowrap',
       }}
     >
-      {LINKS.map(({ key, href, icon: Icon, exact }) => {
+      {links.map(({ key, href, icon: Icon, exact }) => {
         const isActive = exact ? pathname === href : pathname.startsWith(href);
 
         return (

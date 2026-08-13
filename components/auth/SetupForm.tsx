@@ -13,7 +13,7 @@ import { Toggle } from '@/components/ui/Toggle';
 const LANGUAGE_OPTIONS = [
   { id: 1, name: 'English' },
   { id: 2, name: 'German'},
-  { id: 3, name: 'Chinese'},
+  { id: 3, name: '中文'},
   { id: 4, name: 'Japanese'},
   { id: 5, name: 'Korean'},
   { id: 6, name: 'French'},
