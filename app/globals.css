@@ -422,7 +422,12 @@ body {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  /* Was overflow: hidden (to clip children to the rounded corners), but no
+     row here has a background of its own that needs clipping — and the
+     row-status badge (see .settings-row-status) now deliberately renders
+     outside a row's normal box, to the right of its control, so it must
+     not be clipped either. */
+  overflow: visible;
 }
 
 .settings-row {
@@ -444,9 +449,28 @@ body {
   max-width: 260px;
 }
 
-/* Transient "Saving…"/"Saved"/error text shown next to a row's control right
-   after an auto-saved field changes. */
+/* Wraps a row's control (Toggle, <select>, ...) together with its status
+   badge — position:relative anchors the badge (see .settings-row-status)
+   without affecting the control's own size. */
+.settings-row-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  position: relative;
+}
+
+/* Transient "Saving…"/"Saved"/error text shown next to a row's control
+   right after an auto-saved field changes. Absolutely positioned just to
+   the right of .settings-row-controls (rather than laid out inline before
+   the control) so it never displaces the control — appearing/disappearing
+   used to nudge the control sideways since it shared normal flex flow
+   with it. */
 .settings-row-status {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: var(--spacing-sm);
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   white-space: nowrap;
@@ -490,6 +514,25 @@ body {
 
   .settings-row-control {
     max-width: none;
+  }
+
+  .settings-row-controls {
+    justify-content: flex-end;
+  }
+
+  /* .settings-row-controls now spans the row's full width (the row itself
+     stacks to a column above), so left: 100% would push the badge off the
+     right edge of the screen. Drop back to a normal, in-flow position
+     alongside the control instead — there's no label competing for space
+     on this line anymore (it's on its own line above), so the control
+     shifting slightly when the badge appears is a non-issue here. */
+  .settings-row-status {
+    position: static;
+    top: auto;
+    left: auto;
+    transform: none;
+    margin-left: 0;
+    margin-right: var(--spacing-sm);
   }
 }
 
@@ -1039,6 +1082,42 @@ body {
   flex-wrap: wrap;
 }
 
+/* Compact density (see .item-grid--compact) — shrinks the parts of a
+   catalog card that cost the most vertical space per row: the image (a
+   square 1:1 area is the single biggest contributor) and the padding/font
+   sizes around the name and price lines. The profit badge is dropped
+   entirely rather than shrunk — at 3-per-row width there isn't room for
+   its colored block without it wrapping. */
+.catalog-card--compact {
+  border-top-width: 2px;
+}
+
+.catalog-card--compact .catalog-card-art {
+  aspect-ratio: 2 / 1;
+}
+
+.catalog-card--compact .catalog-card-body {
+  padding: var(--spacing-xs) var(--spacing-xs) var(--spacing-sm);
+  gap: 2px;
+}
+
+.catalog-card--compact .catalog-card-name {
+  font-size: var(--font-size-xs);
+}
+
+.catalog-card--compact .catalog-card-prices {
+  font-size: var(--font-size-xs);
+  gap: 0;
+}
+
+.catalog-card--compact .catalog-card-profit {
+  display: none;
+}
+
+.catalog-card--compact .catalog-card-actions {
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
 /* Barcode scanning feature (gated behind settings.use_barcode). */
 
 /* Small icon button next to the ItemForm barcode input that opens the
@@ -1478,6 +1557,25 @@ body {
   gap: var(--spacing-lg);
 }
 
+/* Dashboard-only third density option (see ItemDensityToggle) — denser
+   than --dense, mainly meant for the items list on a phone: fixed at 3
+   columns below 480px so it's a predictable 3-per-row grid rather than
+   auto-fill's variable column count, paired with .catalog-card--compact's
+   shorter image area and tighter text below. auto-fill above that width
+   still packs more/smaller tiles than --dense, since there's no reason to
+   cap it at 3 once there's room for more. */
+.item-grid--compact {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: var(--spacing-xs);
+}
+
+@media (max-width: 480px) {
+  .item-grid--compact {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 /* ---------------------------------------------------------------------
    Storefront: adaptive filter dimensions. Status stays as pills (handled
    by the existing FilterPill styling); category/type switch to this
@@ -1492,6 +1590,22 @@ body {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   margin-bottom: var(--spacing-sm);
+}
+
+/* Category/type section headers are also toggle buttons (see
+   FilterSidebar.tsx) — same look as the plain label, just interactive and
+   full-width so the whole row is a click target. */
+.storefront-filter-section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  color: var(--color-text-muted);
 }
 
 .storefront-filter-checkbox-list {
@@ -2136,6 +2250,21 @@ body {
   border-top-color: var(--color-text);
 }
 
+/* Flipped placement for triggers too close to the top of the viewport
+   (see Tooltip.tsx) — bubble sits below the trigger instead of above it,
+   so the arrow flips to point up from the bubble's top edge instead of
+   down from its bottom edge. */
+.tooltip-bubble-portal--below {
+  transform: translate(-50%, 0);
+}
+
+.tooltip-bubble-portal--below::after {
+  top: auto;
+  bottom: 100%;
+  border-top-color: transparent;
+  border-bottom-color: var(--color-text);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .skeleton {
     animation: none;
@@ -2179,14 +2308,261 @@ body {
   display: inline-block;
   flex-shrink: 0;
   padding-right: var(--spacing-xl);
-  font-family: var(--font-casual), cursive;
-  font-style: italic;
+  /* Latin default: DSEG7 Classic, a real 7-segment/LED display font — the
+     digital-billboard look the news-anchor-style ticker calls for.
+     zh/ja/ko override this below with their own self-hosted font, since no
+     LED-style font exists with CJK glyphs (see app/layout.tsx). */
+  font-family: var(--font-flavour-latin), monospace;
+  font-style: normal;
+  letter-spacing: 0.03em;
   color: var(--color-primary);
   font-size: var(--font-size-xxl, 1.9rem);
   line-height: 1.4;
+}
+
+.flavour-ticker-item--zh {
+  font-family: var(--font-flavour-zh), sans-serif;
+  letter-spacing: normal;
+}
+
+.flavour-ticker-item--ja {
+  font-family: var(--font-flavour-ja), sans-serif;
+  letter-spacing: normal;
+}
+
+.flavour-ticker-item--ko {
+  font-family: var(--font-flavour-ko), sans-serif;
+  letter-spacing: normal;
 }
 
 /* No prefers-reduced-motion override needed here — the component itself
    checks the media query and sets its auto-scroll speed to 0 when it
    matches, while still leaving hover-pause and manual dragging available
    (drag is user-initiated motion, not passive animation). */
+
+/* -----------------------------------------------------------------------
+   First-run /setup wizard — one big question-card at a time, quiz-show
+   style, instead of a single long form (see components/auth/SetupForm.tsx).
+   ----------------------------------------------------------------------- */
+.setup-wizard {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.setup-wizard-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.setup-wizard-progress-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.setup-wizard-progress-track {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.setup-wizard-progress-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+  transition: background 0.15s ease;
+}
+
+.setup-wizard-progress-dot-filled {
+  background: var(--color-primary);
+}
+
+.setup-wizard-card {
+  position: relative;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  animation: setup-wizard-card-in 0.2s ease;
+}
+
+@keyframes setup-wizard-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.setup-wizard-back {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: var(--spacing-xs);
+}
+
+.setup-wizard-back:hover {
+  color: var(--color-text);
+}
+
+.setup-wizard-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.setup-wizard-hint {
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.setup-wizard-error {
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+/* Card 0: language grid — native-name buttons, auto-advances on click. */
+.setup-wizard-language-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-sm);
+}
+
+.setup-wizard-language-option {
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-background);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.setup-wizard-language-option:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-background));
+}
+
+.setup-wizard-language-option-active {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-background));
+}
+
+/* Password + currency cards: plain labeled inputs. */
+.setup-wizard-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.setup-wizard-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.setup-wizard-input {
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-background);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  font-weight: normal;
+}
+
+.setup-wizard-continue {
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.setup-wizard-continue:hover {
+  background: var(--color-primary-hover);
+}
+
+.setup-wizard-continue:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+/* Cards 2-4: big colored yes/no buttons. */
+.setup-wizard-yesno {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+}
+
+.setup-wizard-yes,
+.setup-wizard-no {
+  padding: var(--spacing-lg);
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.1s ease, filter 0.15s ease;
+}
+
+.setup-wizard-yes:hover,
+.setup-wizard-no:hover {
+  filter: brightness(1.08);
+}
+
+.setup-wizard-yes:active,
+.setup-wizard-no:active {
+  transform: scale(0.97);
+}
+
+.setup-wizard-yes {
+  background: var(--color-success);
+}
+
+.setup-wizard-no {
+  background: var(--color-danger);
+}
+
+@media (max-width: 480px) {
+  .setup-wizard-card {
+    padding: var(--spacing-lg);
+  }
+
+  .setup-wizard-language-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .setup-wizard-yesno {
+    grid-template-columns: 1fr;
+  }
+}

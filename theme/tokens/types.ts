@@ -1,5 +1,13 @@
 // theme/tokens/types.ts
 export interface ThemeTokens {
+  // Tells the browser whether to render native form controls (select
+  // dropdown popups, scrollbars, etc.) in light or dark chrome. Not a CSS
+  // custom property like everything else here — applyThemeTokens sets it
+  // directly via the `color-scheme` CSS property instead of flattening it,
+  // since our own --color-* variables only theme elements we draw
+  // ourselves and have no effect on browser-native UI like an open
+  // <select>'s option list.
+  colorScheme: 'light' | 'dark';
   color: {
     primary: string;
     primaryHover: string;

@@ -2,6 +2,7 @@
 import { ThemeTokens } from './types';
 
 const sunsetTokens: ThemeTokens = {
+  colorScheme: 'light',
   color: {
     primary: '#f97316',
     primaryHover: '#ea580c',

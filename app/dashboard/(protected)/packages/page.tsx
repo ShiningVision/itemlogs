@@ -7,7 +7,7 @@ import { parsePage, paginateArray, getTotalPages, buildPageHref } from '@/app/li
 import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 import { Button } from '@/widgets/Button';
-import { ClockIcon, TruckIcon } from '@heroicons/react/24/outline';
+import { ClockIcon, TruckIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import type { Package } from '@/app/lib/definitions';
 
@@ -64,7 +64,12 @@ export default async function PackagesPage({
     <div className="page-container-wide" style={{ padding: 'var(--spacing-lg)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-lg)' }}>
         <h1 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)' }}>{t('title')}</h1>
-        <Link href="/dashboard/packages/new"><Button>{t('addPackage')}</Button></Link>
+        <Link href="/dashboard/packages/new">
+          <Button>
+            <PlusIcon style={{ width: '18px', height: '18px' }} />
+            {t('addPackage')}
+          </Button>
+        </Link>
       </div>
 
       {packages.length === 0 ? (

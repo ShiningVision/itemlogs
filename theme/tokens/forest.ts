@@ -2,6 +2,7 @@
 import { ThemeTokens } from './types';
 
 const forestTokens: ThemeTokens = {
+  colorScheme: 'light',
   color: {
     primary: '#15803d',
     primaryHover: '#166534',

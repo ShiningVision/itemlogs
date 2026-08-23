@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/widgets/Button';
 import { Toggle } from '@/components/ui/Toggle';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AddItemsToPackageModal } from './AddItemsToPackageModal';
 import { ItemGrid } from '@/components/items/ItemGrid';
@@ -197,7 +198,9 @@ export function PackageForm({
                     )}
 
                     <div className="settings-row" style={{ marginTop: 'var(--spacing-sm)' }}>
-                        <span>{t('showOnStorefront')}</span>
+                        <Tooltip text={t('showOnStorefrontHint')}>
+                            <span>{t('showOnStorefront')}</span>
+                        </Tooltip>
                         <Toggle
                             name="show_on_storefront"
                             defaultChecked={form.show_on_storefront}

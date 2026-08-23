@@ -94,7 +94,7 @@ export function GeneralSettingsForm({
         <div className="settings-group">
           <div className="settings-row">
             <span>{t('sellPriceCurrency')}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+            <div className="settings-row-controls">
               {statusFor('sell_price_currency')}
               <select
                 defaultValue={settings.sell_price_currency}
@@ -110,7 +110,7 @@ export function GeneralSettingsForm({
 
           <div className="settings-row">
             <span>{t('defaultPurchasePriceCurrency')}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+            <div className="settings-row-controls">
               {statusFor('default_purchase_price_currency')}
               <select
                 defaultValue={settings.default_purchase_price_currency}
@@ -126,7 +126,7 @@ export function GeneralSettingsForm({
 
           <div className="settings-row">
             <span>{t('language')}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+            <div className="settings-row-controls">
               {statusFor('language')}
               <select
                 defaultValue={settings.language}
@@ -148,7 +148,7 @@ export function GeneralSettingsForm({
           {FUNCTIONALITY_FIELDS.map(({ key, labelKey }) => (
             <div key={key} className="settings-row">
               <span>{t(labelKey)}</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+              <div className="settings-row-controls">
                 {statusFor(key)}
                 <Toggle
                   name={key}
@@ -169,7 +169,7 @@ export function GeneralSettingsForm({
           {PREFERENCE_TOGGLE_FIELDS.map(({ key, labelKey }) => (
             <div key={key} className="settings-row">
               <span>{t(labelKey)}</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+              <div className="settings-row-controls">
                 {statusFor(key)}
                 <Toggle
                   name={key}

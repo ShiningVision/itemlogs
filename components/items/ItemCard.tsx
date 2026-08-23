@@ -34,6 +34,7 @@ export function ItemCard({
   onRemovedFromPackage,
   removeFromSaleButton = false,
   onRemovedFromSale,
+  compact = false,
 }: {
   item: ItemWithRelations;
   settings: Settings;
@@ -44,6 +45,10 @@ export function ItemCard({
   onRemovedFromPackage?: () => void;
   removeFromSaleButton?: boolean;
   onRemovedFromSale?: () => void;
+  // Shorter image area, tighter padding/fonts (see .catalog-card--compact
+  // in globals.css) — used by the dashboard items page's 'compact' density
+  // option, a denser-than-dense mode meant for phones.
+  compact?: boolean;
 }) {
   const t = useTranslations('items');
   const locale = useLocale();
@@ -120,7 +125,7 @@ export function ItemCard({
   const hasAnyPrice = showPurchase || showSell || showCost || showProfit;
 
   return (
-    <div className="catalog-card interactive-card" style={{ position: 'relative' }}>
+    <div className={`catalog-card interactive-card${compact ? ' catalog-card--compact' : ''}`} style={{ position: 'relative' }}>
       {showDeleteButton && (
         <DeleteXButton onClick={() => setConfirmOpen(true)} label={t('delete')} />
       )}
@@ -133,7 +138,20 @@ export function ItemCard({
         <RemoveXButton onClick={handleRemoveFromSale} label={t('removeFromSale')} disabled={isRemovingFromSale || !saleId} loading={isRemovingFromSale} />
       )}
 
-      <Link href={`/dashboard/items/${item.id}/edit`} style={{ display: 'flex', flexDirection: 'column', textDecoration: 'none', color: 'inherit' }}>
+      <Link
+        href={
+          // Tells the nav which section to highlight on the edit page (see
+          // NavLinks.tsx) — that page always lives under /dashboard/items,
+          // but when opened from here it's really a package/sale detail
+          // context, and "back" returns there, not to the items list.
+          removeFromPackageButton
+            ? `/dashboard/items/${item.id}/edit?section=packages`
+            : removeFromSaleButton
+              ? `/dashboard/items/${item.id}/edit?section=sales`
+              : `/dashboard/items/${item.id}/edit`
+        }
+        style={{ display: 'flex', flexDirection: 'column', textDecoration: 'none', color: 'inherit' }}
+      >
         <div className="catalog-card-art">
           {item.main_image_ref?.url ? (
             <img

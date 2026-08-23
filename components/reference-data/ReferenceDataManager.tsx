@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Button } from '@/widgets/Button';
+import { Tooltip } from '@/components/ui/Tooltip';
+import { ArrowLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 type Item = { id: number; name: string | null };
 
@@ -93,9 +95,30 @@ export function ReferenceDataManager({
 
   return (
     <div style={{ padding: 'var(--spacing-lg)', maxWidth: '480px', width: '100%', marginInline: 'auto' }}>
-      <h1 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--spacing-lg)' }}>
-        {t('manageLabel', { label })}
-      </h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-lg)' }}>
+        <h1 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-bold)' }}>
+          {t('manageLabel', { label })}
+        </h1>
+        {/* Top-right arrow-back, matching the update items page (ItemForm)
+            instead of a full-width button stranded at the bottom of the
+            page — same pattern, but a fixed destination (Link) rather than
+            router.back(), since "back to items" here is a specific place,
+            not "wherever I came from". */}
+        <Link
+          href="/dashboard/items"
+          className="interactive-card"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 'var(--spacing-xs)',
+            color: 'var(--color-text-muted)',
+            fontSize: 'var(--font-size-sm)',
+          }}
+        >
+          <ArrowLeftIcon style={{ width: '16px', height: '16px' }} />
+          {t('backToItems')}
+        </Link>
+      </div>
 
       <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-lg)' }}>
         <input
@@ -141,7 +164,28 @@ export function ReferenceDataManager({
                     {itemCounts[item.id]}
                   </span>
                 )}
-                <button type="button" onClick={() => setDeleteTarget(item)}>{t('delete')}</button>
+                <Tooltip text={t('delete')}>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(item)}
+                    aria-label={t('delete')}
+                    style={{
+                      flexShrink: 0,
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'var(--color-danger)',
+                      color: '#fff',
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <XMarkIcon style={{ width: '16px', height: '16px' }} />
+                  </button>
+                </Tooltip>
               </>
             )}
           </div>
@@ -149,10 +193,6 @@ export function ReferenceDataManager({
       </div>
 
       {pagination}
-
-      <Link href="/dashboard/items" style={{ display: 'inline-block', marginTop: 'var(--spacing-lg)' }}>
-        <Button type="button">{t('backToItems')}</Button>
-      </Link>
 
       {deleteTarget && (
         <ConfirmDialog

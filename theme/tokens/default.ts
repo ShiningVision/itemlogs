@@ -2,6 +2,7 @@
 import { ThemeTokens } from './types';
 
 const defaultTokens: ThemeTokens = {
+  colorScheme: 'light',
   color: {
     primary: '#3b82f6',
     primaryHover: '#2563eb', // blue-600

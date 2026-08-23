@@ -7,27 +7,29 @@ import { updateStorefrontSettingFieldAction, updateStorefrontTextSettingsAction 
 import { Button } from '@/widgets/Button';
 import { Toggle } from '@/components/ui/Toggle';
 import { CharCountTextarea } from '@/components/ui/CharCountTextarea';
+import { Tooltip } from '@/components/ui/Tooltip';
 import Link from 'next/link';
 import type { Settings } from '@/app/lib/definitions';
 import { resolveLabel } from '@/app/lib/labels';
+import { Squares2X2Icon, ViewColumnsIcon } from '@heroicons/react/24/outline';
 
 const SHOW_MESSAGE_MAX_LENGTH = 255;
 
-const VISIBILITY_FIELDS: Array<{ key: keyof Settings; labelKey: string }> = [
+const VISIBILITY_FIELDS: Array<{ key: keyof Settings; labelKey: string; hintKey: string }> = [
   // 'show' (the storefront on/off switch) lives in the dashboard's
   // storefront live-status card now, not here — see StorefrontLiveToggle.
-  { key: 'show_status_1', labelKey: 'showStatus1' },
-  { key: 'show_status_2', labelKey: 'showStatus2' },
-  { key: 'show_status_3', labelKey: 'showStatus3' },
-  { key: 'show_status_4', labelKey: 'showStatus4' },
-  { key: 'show_contact', labelKey: 'showContact' },
+  { key: 'show_status_1', labelKey: 'showStatus1', hintKey: 'showStatus1Hint' },
+  { key: 'show_status_2', labelKey: 'showStatus2', hintKey: 'showStatus2Hint' },
+  { key: 'show_status_3', labelKey: 'showStatus3', hintKey: 'showStatus3Hint' },
+  { key: 'show_status_4', labelKey: 'showStatus4', hintKey: 'showStatus4Hint' },
+  { key: 'show_contact', labelKey: 'showContact', hintKey: 'showContactHint' },
 ];
 
-const ITEM_DETAIL_FIELDS: Array<{ key: keyof Settings; labelKey: string }> = [
-  { key: 'show_sell_price', labelKey: 'showSellPrice' },
-  { key: 'show_purchase_price', labelKey: 'showPurchasePrice' },
-  { key: 'show_cost_price', labelKey: 'showCostPrice' },
-  { key: 'show_location', labelKey: 'showLocation' },
+const ITEM_DETAIL_FIELDS: Array<{ key: keyof Settings; labelKey: string; hintKey: string }> = [
+  { key: 'show_sell_price', labelKey: 'showSellPrice', hintKey: 'showSellPriceHint' },
+  { key: 'show_purchase_price', labelKey: 'showPurchasePrice', hintKey: 'showPurchasePriceHint' },
+  { key: 'show_cost_price', labelKey: 'showCostPrice', hintKey: 'showCostPriceHint' },
+  { key: 'show_location', labelKey: 'showLocation', hintKey: 'showLocationHint' },
 ];
 
 type FieldStatus = 'saving' | 'saved' | 'error';
@@ -37,6 +39,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
   const packageLabel = resolveLabel(settings.name_package, t('packageNameFallback'));
   const [, startAutosaveTransition] = useTransition();
   const [fieldStatus, setFieldStatus] = useState<Record<string, FieldStatus>>({});
+  const [storefrontDensity, setStorefrontDensity] = useState(settings.storefront_density ?? 'dense');
 
   const [isTextPending, startTextTransition] = useTransition();
   const [textMessage, setTextMessage] = useState<string | null>(null);
@@ -77,11 +80,13 @@ export function SettingsForm({ settings }: { settings: Settings }) {
   // a static list of toggle fields with a one-off custom row (e.g. the
   // package-filter toggle below, which needs an interpolated label) inside
   // a single shared card, instead of each getting its own bordered box.
-  const toggleRows = (fields: Array<{ key: keyof Settings; labelKey: string }>) =>
-    fields.map(({ key, labelKey }) => (
+  const toggleRows = (fields: Array<{ key: keyof Settings; labelKey: string; hintKey: string }>) =>
+    fields.map(({ key, labelKey, hintKey }) => (
       <div key={key} className="settings-row">
-        <span>{t(labelKey)}</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+        <Tooltip text={t(hintKey)}>
+          <span>{t(labelKey)}</span>
+        </Tooltip>
+        <div className="settings-row-controls">
           {statusFor(key)}
           <Toggle
             name={key}
@@ -93,7 +98,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
       </div>
     ));
 
-  const toggleGroup = (fields: Array<{ key: keyof Settings; labelKey: string }>) => (
+  const toggleGroup = (fields: Array<{ key: keyof Settings; labelKey: string; hintKey: string }>) => (
     <div className="settings-group">{toggleRows(fields)}</div>
   );
 
@@ -188,8 +193,10 @@ export function SettingsForm({ settings }: { settings: Settings }) {
         <div className="settings-group">
           {toggleRows(VISIBILITY_FIELDS)}
           <div className="settings-row">
-            <span>{t('showPackageFilter', { packages: packageLabel })}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+            <Tooltip text={t('showPackageFilterHint', { packages: packageLabel })}>
+              <span>{t('showPackageFilter', { packages: packageLabel })}</span>
+            </Tooltip>
+            <div className="settings-row-controls">
               {statusFor('show_package_filter')}
               <Toggle
                 name="show_package_filter"
@@ -212,16 +219,39 @@ export function SettingsForm({ settings }: { settings: Settings }) {
         <div className="settings-group">
           <div className="settings-row">
             <span>{t('storefrontDensity')}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+            <div className="settings-row-controls">
               {statusFor('storefront_density')}
-              <select
-                defaultValue={settings.storefront_density ?? 'dense'}
-                onChange={(e) => autoSave('storefront_density', e.target.value)}
-                className="sheet-input settings-row-control"
-              >
-                <option value="dense">{t('densityDense')}</option>
-                <option value="showcase">{t('densityShowcase')}</option>
-              </select>
+              {/* Only 2 real options here, so a <select> (with its extra
+                  click to open + a dropdown popup for a single choice) was
+                  more control than the decision needs — a segmented toggle
+                  shows both options and the current one at a glance. Same
+                  component pattern as the dashboard items page's own
+                  density toggle (ItemDensityToggle), just wired to
+                  autosave a setting instead of a URL param. */}
+              <div className="density-toggle-group">
+                <button
+                  type="button"
+                  className={`density-toggle-button${storefrontDensity === 'dense' ? ' density-toggle-button--active' : ''}`}
+                  onClick={() => {
+                    setStorefrontDensity('dense');
+                    autoSave('storefront_density', 'dense');
+                  }}
+                >
+                  <Squares2X2Icon style={{ width: '14px', height: '14px' }} />
+                  {t('densityDense')}
+                </button>
+                <button
+                  type="button"
+                  className={`density-toggle-button${storefrontDensity === 'showcase' ? ' density-toggle-button--active' : ''}`}
+                  onClick={() => {
+                    setStorefrontDensity('showcase');
+                    autoSave('storefront_density', 'showcase');
+                  }}
+                >
+                  <ViewColumnsIcon style={{ width: '14px', height: '14px' }} />
+                  {t('densityShowcase')}
+                </button>
+              </div>
             </div>
           </div>
         </div>

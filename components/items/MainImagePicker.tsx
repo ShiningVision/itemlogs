@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { PhotoIcon } from '@heroicons/react/24/outline';
 import { ImagePickerModal } from './ImagePickerModal';
+import { ImageZoomModal } from '@/components/ui/ImageZoomModal';
 import { NoImagePlaceholder } from '@/components/ui/NoImagePlaceholder';
 
 type ImageRow = { id: number; url: string };
@@ -20,10 +21,12 @@ export function MainImagePicker({
 }) {
   const t = useTranslations('items');
   const [modalOpen, setModalOpen] = useState(false);
+  const [zoomOpen, setZoomOpen] = useState(false);
 
   return (
     <div>
       <div
+        onClick={value?.url ? () => setZoomOpen(true) : undefined}
         style={{
           width: '160px',
           aspectRatio: '1',
@@ -32,6 +35,7 @@ export function MainImagePicker({
           borderRadius: 'var(--radius-md)',
           marginBottom: 'var(--spacing-sm)',
           overflow: 'hidden',
+          cursor: value?.url ? 'zoom-in' : undefined,
         }}
       >
         {value?.url ? (
@@ -68,6 +72,10 @@ export function MainImagePicker({
 
       {modalOpen && (
         <ImagePickerModal onSelect={onChange} onClose={() => setModalOpen(false)} excludeIds={excludeIds} />
+      )}
+
+      {zoomOpen && value?.url && (
+        <ImageZoomModal url={value.url} onClose={() => setZoomOpen(false)} />
       )}
     </div>
   );

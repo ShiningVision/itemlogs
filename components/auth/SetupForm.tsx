@@ -3,21 +3,21 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
-import { Toggle } from '@/components/ui/Toggle';
+import enMessages from '@/messages/en.json';
 
 // These mirror the fixed IDs app/lib/placeholder-data.ts seeds languages/
 // currencies with (see app/api/setup/route.ts, which validates against the
 // same lists) — not fetched from the DB since the DB doesn't have any rows
-// yet at this point.
+// yet at this point. Names are shown in their own native language so a
+// visitor can recognize their language before anything switches.
 const LANGUAGE_OPTIONS = [
-  { id: 1, name: 'English' },
-  { id: 2, name: 'German'},
-  { id: 3, name: '中文'},
-  { id: 4, name: 'Japanese'},
-  { id: 5, name: 'Korean'},
-  { id: 6, name: 'French'},
-  { id: 7, name: 'Spanish'},
+  { id: 1, name: 'English', code: 'en' },
+  { id: 2, name: 'Deutsch', code: 'de' },
+  { id: 3, name: '中文', code: 'zh' },
+  { id: 4, name: '日本語', code: 'ja' },
+  { id: 5, name: '한국어', code: 'ko' },
+  { id: 6, name: 'Français', code: 'fr' },
+  { id: 7, name: 'Español', code: 'es' },
 ];
 
 const CURRENCY_OPTIONS = [
@@ -36,55 +36,110 @@ const CURRENCY_OPTIONS = [
   { id: 13, label: 'TWD ($)' },
 ];
 
-const inputStyle: React.CSSProperties = {
-  padding: 'var(--spacing-sm)',
-  borderRadius: 'var(--radius-sm)',
-  border: '1px solid var(--color-border)',
-  background: 'var(--color-background)',
-  color: 'var(--color-text)',
-  fontSize: 'var(--font-size-md)',
+type SetupMessages = {
+  stepOf: string;
+  back: string;
+  yes: string;
+  no: string;
+  languageCardTitle: string;
+  languageCardHint: string;
+  passwordCardTitle: string;
+  passwordCardHint: string;
+  password: string;
+  confirmPassword: string;
+  passwordMismatch: string;
+  passwordTooShort: string;
+  continueButton: string;
+  barcodeCardTitle: string;
+  barcodeCardHint: string;
+  sellPriceCardTitle: string;
+  sellPriceCardHint: string;
+  packageFeesCardTitle: string;
+  packageFeesCardHint: string;
+  currencyCardTitle: string;
+  currencyCardHint: string;
+  currency: string;
+  submit: string;
+  submitting: string;
+  genericError: string;
 };
 
-const labelStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 'var(--spacing-xs)',
-};
+// The server only knows how to resolve a locale from `settings.language`
+// (see i18n/request.ts) — and there's no settings row yet during /setup, so
+// the page is always server-rendered in English. Card 0 below lets the
+// visitor pick their language anyway, and from that point on this component
+// loads that locale's `setup` messages itself, independent of next-intl.
+const DEFAULT_MESSAGES = enMessages.setup as SetupMessages;
+const messageCache = new Map<string, SetupMessages>([['en', DEFAULT_MESSAGES]]);
 
-const labelTextStyle: React.CSSProperties = {
-  fontSize: 'var(--font-size-sm)',
-  fontWeight: 'var(--font-weight-bold)',
-  color: 'var(--color-text)',
-};
+async function loadSetupMessages(code: string): Promise<SetupMessages> {
+  const cached = messageCache.get(code);
+  if (cached) return cached;
+  const mod = await import(`../../messages/${code}.json`);
+  const msgs = mod.default.setup as SetupMessages;
+  messageCache.set(code, msgs);
+  return msgs;
+}
 
-const hintStyle: React.CSSProperties = {
-  fontSize: 'var(--font-size-sm)',
-  color: 'var(--color-text-muted)',
-};
+const TOTAL_STEPS = 6;
+
+function format(template: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce(
+    (acc, [key, value]) => acc.replaceAll(`{${key}}`, String(value)),
+    template
+  );
+}
 
 export function SetupForm() {
-  const t = useTranslations('setup');
   const router = useRouter();
+
+  const [step, setStep] = useState(0);
+  const [messages, setMessages] = useState<SetupMessages>(DEFAULT_MESSAGES);
+  const [languageId, setLanguageId] = useState(1);
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [language, setLanguage] = useState(1);
-  const [needsSellPrice, setNeedsSellPrice] = useState(true);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  const [needsBarcode, setNeedsBarcode] = useState<boolean | null>(null);
+  const [needsSellPrice, setNeedsSellPrice] = useState<boolean | null>(null);
+  const [needsPackageFees, setNeedsPackageFees] = useState<boolean | null>(null);
   const [currency, setCurrency] = useState(1);
-  const [needsBarcode, setNeedsBarcode] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
+  async function handleSelectLanguage(opt: (typeof LANGUAGE_OPTIONS)[number]) {
+    setLanguageId(opt.id);
+    if (opt.code !== 'en') {
+      try {
+        const msgs = await loadSetupMessages(opt.code);
+        setMessages(msgs);
+      } catch {
+        setMessages(DEFAULT_MESSAGES);
+      }
+    } else {
+      setMessages(DEFAULT_MESSAGES);
+    }
+    setStep(1);
+  }
 
-    if (password !== confirmPassword) {
-      setError(t('passwordMismatch'));
+  function handlePasswordContinue() {
+    if (password.length < 6) {
+      setPasswordError(messages.passwordTooShort);
       return;
     }
+    if (password !== confirmPassword) {
+      setPasswordError(messages.passwordMismatch);
+      return;
+    }
+    setPasswordError(null);
+    setStep(2);
+  }
 
+  async function handleComplete(finalNeedsPackageFees: boolean) {
     setSubmitting(true);
+    setSubmitError(null);
     try {
       const res = await fetch('/api/setup', {
         method: 'POST',
@@ -92,173 +147,234 @@ export function SetupForm() {
         body: JSON.stringify({
           password,
           confirmPassword,
-          language,
+          language: languageId,
           currency,
-          needsSellPrice,
-          needsBarcode,
+          needsSellPrice: !!needsSellPrice,
+          needsBarcode: !!needsBarcode,
+          needsPackageFees: finalNeedsPackageFees,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
 
       if (!res.ok) {
-        setError(data.error ?? t('genericError'));
+        setSubmitError(data.error ?? messages.genericError);
         setSubmitting(false);
         return;
       }
 
       router.push('/login');
     } catch {
-      setError(t('genericError'));
+      setSubmitError(messages.genericError);
       setSubmitting(false);
     }
   }
 
+  function handlePackageFeesAnswer(value: boolean) {
+    setNeedsPackageFees(value);
+    setStep(5);
+  }
+
+  const showBack = step > 0 && step < TOTAL_STEPS - 1 && !submitting;
+
   return (
-    <div
-      style={{
-        background: 'var(--color-surface)',
-        border: '1px solid var(--color-border)',
-        borderRadius: 'var(--radius-lg)',
-        padding: 'var(--spacing-xl)',
-        width: '100%',
-        maxWidth: '440px',
-      }}
-    >
-      <h1
-        style={{
-          fontSize: 'var(--font-size-lg)',
-          fontWeight: 'var(--font-weight-bold)',
-          marginBottom: 'var(--spacing-xs)',
-          color: 'var(--color-text)',
-        }}
-      >
-        {t('title')}
-      </h1>
-      <p style={{ ...hintStyle, marginBottom: 'var(--spacing-lg)' }}>{t('intro')}</p>
-
-      <form
-        onSubmit={handleSubmit}
-        style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
-          <label style={labelStyle}>
-            <span style={labelTextStyle}>{t('password')}</span>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={inputStyle}
+    <div className="setup-wizard">
+      <div className="setup-wizard-progress">
+        <div className="setup-wizard-progress-text">
+          {format(messages.stepOf, { current: step + 1, total: TOTAL_STEPS })}
+        </div>
+        <div className="setup-wizard-progress-track">
+          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+            <div
+              key={i}
+              className={
+                'setup-wizard-progress-dot' + (i <= step ? ' setup-wizard-progress-dot-filled' : '')
+              }
             />
-          </label>
-
-          <label style={labelStyle}>
-            <span style={labelTextStyle}>{t('confirmPassword')}</span>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              style={inputStyle}
-            />
-          </label>
-          <p style={hintStyle}>{t('passwordHint')}</p>
+          ))}
         </div>
+      </div>
 
-        <label style={labelStyle}>
-          <span style={labelTextStyle}>{t('language')}</span>
-          <select
-            value={language}
-            onChange={(e) => setLanguage(Number(e.target.value))}
-            style={inputStyle}
+      <div className="setup-wizard-card">
+        {showBack && (
+          <button
+            type="button"
+            className="setup-wizard-back"
+            onClick={() => setStep((s) => Math.max(0, s - 1))}
           >
-            {LANGUAGE_OPTIONS.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 'var(--spacing-md)',
-          }}
-        >
-          <div>
-            <div style={labelTextStyle}>{t('needsSellPrice')}</div>
-            <div style={hintStyle}>{t('needsSellPriceHint')}</div>
-          </div>
-          <Toggle
-            name="needsSellPrice"
-            defaultChecked={needsSellPrice}
-            onChange={(e) => setNeedsSellPrice(e.target.checked)}
-            label={t('needsSellPrice')}
-          />
-        </div>
-
-        <label style={labelStyle}>
-          <span style={labelTextStyle}>{t('currency')}</span>
-          <select
-            value={currency}
-            onChange={(e) => setCurrency(Number(e.target.value))}
-            style={inputStyle}
-          >
-            {CURRENCY_OPTIONS.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <span style={hintStyle}>{t('currencyHint')}</span>
-        </label>
-
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 'var(--spacing-md)',
-          }}
-        >
-          <div>
-            <div style={labelTextStyle}>{t('needsBarcode')}</div>
-            <div style={hintStyle}>{t('needsBarcodeHint')}</div>
-          </div>
-          <Toggle
-            name="needsBarcode"
-            defaultChecked={needsBarcode}
-            onChange={(e) => setNeedsBarcode(e.target.checked)}
-            label={t('needsBarcode')}
-          />
-        </div>
-
-        {error && (
-          <p style={{ color: 'var(--color-danger)', fontSize: 'var(--font-size-sm)' }}>{error}</p>
+            ← {messages.back}
+          </button>
         )}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          style={{
-            background: 'var(--color-primary)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 'var(--radius-md)',
-            padding: 'var(--spacing-sm) var(--spacing-md)',
-            fontWeight: 'var(--font-weight-bold)',
-            cursor: submitting ? 'default' : 'pointer',
-            opacity: submitting ? 0.7 : 1,
-          }}
-        >
-          {submitting ? t('submitting') : t('submit')}
-        </button>
-      </form>
+        {step === 0 && (
+          <>
+            <h1 className="setup-wizard-title">{messages.languageCardTitle}</h1>
+            <p className="setup-wizard-hint">{messages.languageCardHint}</p>
+            <div className="setup-wizard-language-grid">
+              {LANGUAGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className={
+                    'setup-wizard-language-option' +
+                    (opt.id === languageId ? ' setup-wizard-language-option-active' : '')
+                  }
+                  onClick={() => handleSelectLanguage(opt)}
+                >
+                  {opt.name}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {step === 1 && (
+          <>
+            <h1 className="setup-wizard-title">{messages.passwordCardTitle}</h1>
+            <p className="setup-wizard-hint">{messages.passwordCardHint}</p>
+            <div className="setup-wizard-field-group">
+              <label className="setup-wizard-label">
+                <span>{messages.password}</span>
+                <input
+                  type="password"
+                  autoFocus
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="setup-wizard-input"
+                />
+              </label>
+              <label className="setup-wizard-label">
+                <span>{messages.confirmPassword}</span>
+                <input
+                  type="password"
+                  minLength={6}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handlePasswordContinue();
+                  }}
+                  className="setup-wizard-input"
+                />
+              </label>
+            </div>
+            {passwordError && <p className="setup-wizard-error">{passwordError}</p>}
+            <button type="button" className="setup-wizard-continue" onClick={handlePasswordContinue}>
+              {messages.continueButton}
+            </button>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <h1 className="setup-wizard-title">{messages.barcodeCardTitle}</h1>
+            <p className="setup-wizard-hint">{messages.barcodeCardHint}</p>
+            <div className="setup-wizard-yesno">
+              <button
+                type="button"
+                className="setup-wizard-yes"
+                onClick={() => {
+                  setNeedsBarcode(true);
+                  setStep(3);
+                }}
+              >
+                {messages.yes}
+              </button>
+              <button
+                type="button"
+                className="setup-wizard-no"
+                onClick={() => {
+                  setNeedsBarcode(false);
+                  setStep(3);
+                }}
+              >
+                {messages.no}
+              </button>
+            </div>
+          </>
+        )}
+
+        {step === 3 && (
+          <>
+            <h1 className="setup-wizard-title">{messages.sellPriceCardTitle}</h1>
+            <p className="setup-wizard-hint">{messages.sellPriceCardHint}</p>
+            <div className="setup-wizard-yesno">
+              <button
+                type="button"
+                className="setup-wizard-yes"
+                onClick={() => {
+                  setNeedsSellPrice(true);
+                  setStep(4);
+                }}
+              >
+                {messages.yes}
+              </button>
+              <button
+                type="button"
+                className="setup-wizard-no"
+                onClick={() => {
+                  setNeedsSellPrice(false);
+                  setStep(4);
+                }}
+              >
+                {messages.no}
+              </button>
+            </div>
+          </>
+        )}
+
+        {step === 4 && (
+          <>
+            <h1 className="setup-wizard-title">{messages.packageFeesCardTitle}</h1>
+            <p className="setup-wizard-hint">{messages.packageFeesCardHint}</p>
+            <div className="setup-wizard-yesno">
+              <button
+                type="button"
+                className="setup-wizard-yes"
+                onClick={() => handlePackageFeesAnswer(true)}
+              >
+                {messages.yes}
+              </button>
+              <button
+                type="button"
+                className="setup-wizard-no"
+                onClick={() => handlePackageFeesAnswer(false)}
+              >
+                {messages.no}
+              </button>
+            </div>
+          </>
+        )}
+
+        {step === 5 && (
+          <>
+            <h1 className="setup-wizard-title">{messages.currencyCardTitle}</h1>
+            <p className="setup-wizard-hint">{messages.currencyCardHint}</p>
+            <label className="setup-wizard-label">
+              <span>{messages.currency}</span>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(Number(e.target.value))}
+                className="setup-wizard-input"
+              >
+                {CURRENCY_OPTIONS.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {submitError && <p className="setup-wizard-error">{submitError}</p>}
+            <button
+              type="button"
+              className="setup-wizard-continue"
+              disabled={submitting}
+              onClick={() => handleComplete(!!needsPackageFees)}
+            >
+              {submitting ? messages.submitting : messages.submit}
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

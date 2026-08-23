@@ -1,10 +1,11 @@
 // components/storefront/FilterSidebar.tsx
 'use client';
 
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useFilterParams } from '@/app/lib/hooks/useFilterParams';
 import { FilterPill } from '@/components/ui/FilterPill';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { useFilterDrawer } from './FilterDrawerContext';
 
 type Option = { id: number; name: string | null };
@@ -47,19 +48,61 @@ export function FilterSidebar({
   const { toggleInList } = useFilterParams();
   const { isOpen: drawerOpen, close: closeDrawer } = useFilterDrawer();
 
-  const pillSection = (title: string, options: { id: number; label: string }[], selected: number[], key: string) => (
+  // Category and type lists can get long, so their sections collapse —
+  // status stays a small fixed set of pills and doesn't need this. Open by
+  // default so the filters are still discoverable at a glance.
+  const [categoriesOpen, setCategoriesOpen] = useState(true);
+  const [typesOpen, setTypesOpen] = useState(true);
+
+  // onToggle omitted (status filter) → plain static label, always expanded;
+  // category/type pass a real toggle and get the collapsible chevron header.
+  const sectionHeader = (title: string, open: boolean, onToggle?: () => void) => {
+    if (!onToggle) {
+      return <div className="storefront-filter-section-label">{title}</div>;
+    }
+    return (
+      <button
+        type="button"
+        className="storefront-filter-section-label storefront-filter-section-toggle"
+        onClick={onToggle}
+        aria-expanded={open}
+      >
+        <span>{title}</span>
+        <ChevronDownIcon
+          aria-hidden="true"
+          style={{
+            width: '16px',
+            height: '16px',
+            transform: open ? 'rotate(180deg)' : 'none',
+            transition: 'transform var(--motion-duration, 150ms) var(--motion-easing, ease)',
+          }}
+        />
+      </button>
+    );
+  };
+
+  const pillSection = (
+    title: string,
+    options: { id: number; label: string }[],
+    selected: number[],
+    key: string,
+    open: boolean = true,
+    onToggle?: () => void
+  ) => (
     <div className="storefront-filter-section">
-      <div className="storefront-filter-section-label">{title}</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-xs)' }}>
-        {options.map((opt) => (
-          <FilterPill
-            key={opt.id}
-            label={opt.label}
-            selected={selected.includes(opt.id)}
-            onClick={() => toggleInList(key, selected, opt.id)}
-          />
-        ))}
-      </div>
+      {sectionHeader(title, open, onToggle)}
+      {open && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-xs)' }}>
+          {options.map((opt) => (
+            <FilterPill
+              key={opt.id}
+              label={opt.label}
+              selected={selected.includes(opt.id)}
+              onClick={() => toggleInList(key, selected, opt.id)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -68,25 +111,29 @@ export function FilterSidebar({
     options: { id: number; label: string }[],
     selected: number[],
     key: string,
-    counts: Record<number, number>
+    counts: Record<number, number>,
+    open: boolean,
+    onToggle: () => void
   ) => (
     <div className="storefront-filter-section">
-      <div className="storefront-filter-section-label">{title}</div>
-      <div className="storefront-filter-checkbox-list">
-        {options.map((opt) => (
-          <label key={opt.id} className="storefront-filter-checkbox-row">
-            <span className="storefront-filter-checkbox-label">
-              <input
-                type="checkbox"
-                checked={selected.includes(opt.id)}
-                onChange={() => toggleInList(key, selected, opt.id)}
-              />
-              {opt.label}
-            </span>
-            <span className="storefront-filter-count">{counts[opt.id] ?? 0}</span>
-          </label>
-        ))}
-      </div>
+      {sectionHeader(title, open, onToggle)}
+      {open && (
+        <div className="storefront-filter-checkbox-list">
+          {options.map((opt) => (
+            <label key={opt.id} className="storefront-filter-checkbox-row">
+              <span className="storefront-filter-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={selected.includes(opt.id)}
+                  onChange={() => toggleInList(key, selected, opt.id)}
+                />
+                {opt.label}
+              </span>
+              <span className="storefront-filter-count">{counts[opt.id] ?? 0}</span>
+            </label>
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -102,12 +149,12 @@ export function FilterSidebar({
       )}
 
       {categoryOptions.length > ADAPTIVE_THRESHOLD
-        ? checkboxSection(categoryLabel, categoryOptions, selectedCategoryIds, 'categories', categoryCounts)
-        : pillSection(categoryLabel, categoryOptions, selectedCategoryIds, 'categories')}
+        ? checkboxSection(categoryLabel, categoryOptions, selectedCategoryIds, 'categories', categoryCounts, categoriesOpen, () => setCategoriesOpen((v) => !v))
+        : pillSection(categoryLabel, categoryOptions, selectedCategoryIds, 'categories', categoriesOpen, () => setCategoriesOpen((v) => !v))}
 
       {typeOptions.length > ADAPTIVE_THRESHOLD
-        ? checkboxSection(typeLabel, typeOptions, selectedTypeIds, 'types', typeCounts)
-        : pillSection(typeLabel, typeOptions, selectedTypeIds, 'types')}
+        ? checkboxSection(typeLabel, typeOptions, selectedTypeIds, 'types', typeCounts, typesOpen, () => setTypesOpen((v) => !v))
+        : pillSection(typeLabel, typeOptions, selectedTypeIds, 'types', typesOpen, () => setTypesOpen((v) => !v))}
 
       {/* Status filter is omitted entirely when there's only one (or zero) selectable status — ticking a single option is meaningless */}
       {availableStatuses.length > 1 &&

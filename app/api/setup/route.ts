@@ -39,6 +39,7 @@ interface SetupBody {
   currency?: number;
   needsSellPrice?: boolean;
   needsBarcode?: boolean;
+  needsPackageFees?: boolean;
 }
 
 export async function POST(request: Request) {
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Invalid request body.' }, { status: 400 });
   }
 
-  const { password, confirmPassword, language, currency, needsSellPrice, needsBarcode } = body;
+  const { password, confirmPassword, language, currency, needsSellPrice, needsBarcode, needsPackageFees } = body;
 
   if (typeof password !== 'string' || password.length < 6) {
     return Response.json({ error: 'Password must be at least 6 characters.' }, { status: 400 });
@@ -63,7 +64,11 @@ export async function POST(request: Request) {
   if (typeof currency !== 'number' || !VALID_CURRENCY_IDS.includes(currency)) {
     return Response.json({ error: 'Invalid currency.' }, { status: 400 });
   }
-  if (typeof needsSellPrice !== 'boolean' || typeof needsBarcode !== 'boolean') {
+  if (
+    typeof needsSellPrice !== 'boolean' ||
+    typeof needsBarcode !== 'boolean' ||
+    typeof needsPackageFees !== 'boolean'
+  ) {
     return Response.json({ error: 'Invalid request body.' }, { status: 400 });
   }
 
@@ -433,7 +438,7 @@ export async function POST(request: Request) {
           1, false, ${needsSellPrice}, false, false,
           true, false, false, false, ${settings[0].show_message},
           ${currency}, ${currency},
-          ${needsSellPrice}, false, ${needsBarcode}, ${language},
+          ${needsSellPrice}, ${needsPackageFees}, ${needsBarcode}, ${language},
           ${settings[0].name_category}, ${settings[0].name_status}, ${settings[0].name_type}, ${settings[0].name_package}, ${settings[0].name_item},
           false, false, false, false, 'default',
           ARRAY['default'], ARRAY[]::TEXT[], NULL,

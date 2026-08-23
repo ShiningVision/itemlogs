@@ -2,6 +2,7 @@
 import { ThemeTokens } from './types';
 
 const darkTokens: ThemeTokens = {
+  colorScheme: 'dark',
   color: {
     primary: '#60a5fa',
     primaryHover: '#3b82f6',

@@ -80,7 +80,14 @@ export async function getItems(filters: ItemFilters = {}): Promise<{ items: any[
   if (filters.categoryIds !== undefined) query = applyNullableInFilter(query, 'category', filters.categoryIds);
   if (filters.statuses !== undefined) query = query.in('status', filters.statuses);
   if (filters.typeIds !== undefined) query = applyNullableInFilter(query, 'type', filters.typeIds);
-  else if (filters.typeId !== undefined) query = query.eq('type', filters.typeId);
+  else if (filters.typeId !== undefined) {
+    // The dashboard items page's type filter is a single-select dropdown
+    // (unlike category, which is multi-select pills already routed through
+    // applyNullableInFilter above) — special-case the "Other" sentinel here
+    // too, so picking it filters for a null type instead of matching
+    // nothing (no real type row has id 0).
+    query = filters.typeId === OTHER_FILTER_ID ? query.is('type', null) : query.eq('type', filters.typeId);
+  }
   if (filters.packageId !== undefined) query = query.eq('package_id', filters.packageId);
 
   if (filters.limit !== undefined && filters.offset !== undefined) {
@@ -90,6 +97,22 @@ export async function getItems(filters: ItemFilters = {}): Promise<{ items: any[
   const { data, error, count } = await query;
   if (error) throw error;
   return { items: data ?? [], totalCount: count ?? 0 };
+}
+
+// Tells the dashboard items page's filter bar whether to show an "Other"
+// option at all — cheap head-only counts, no row data. Mirrors why the
+// storefront's FilterSidebar only shows "Other" when it's non-empty (see
+// getPublicCategoryCounts/getPublicTypeCounts): an admin with no
+// uncategorized/untyped items shouldn't see a filter option that would
+// always return nothing.
+export async function getUncategorizedItemCounts(): Promise<{ category: number; type: number }> {
+  const [categoryResult, typeResult] = await Promise.all([
+    supabase.from('items').select('id', { count: 'exact', head: true }).is('category', null),
+    supabase.from('items').select('id', { count: 'exact', head: true }).is('type', null),
+  ]);
+  if (categoryResult.error) throw categoryResult.error;
+  if (typeResult.error) throw typeResult.error;
+  return { category: categoryResult.count ?? 0, type: typeResult.count ?? 0 };
 }
 
 // Batch existence check for the Excel importer — validating every row's

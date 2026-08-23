@@ -23,17 +23,22 @@ export function ItemGrid({
   onItemRemovedFromPackage?: () => void;
   removeFromSaleButton?: boolean;
   onItemRemovedFromSale?: () => void;
-  // Reuses the same dense/showcase grid CSS the public storefront grid
-  // uses (see .storefront-grid--dense/--showcase in globals.css) — it's a
-  // plain column-count/gap variant, not actually storefront-specific.
-  density?: 'dense' | 'showcase';
+  // dense/showcase reuse the same grid CSS the public storefront grid uses
+  // (see .storefront-grid--dense/--showcase in globals.css) — it's a plain
+  // column-count/gap variant, not actually storefront-specific. 'compact'
+  // is dashboard-only (see .item-grid--compact): a fixed 3-per-row grid
+  // with a shorter image area, for browsing the items list on a phone.
+  density?: 'dense' | 'showcase' | 'compact';
 }) {
   if (items.length === 0) {
     return <div style={{ color: 'var(--color-text-muted)' }}>No items match these filters.</div>;
   }
 
+  const gridClassName =
+    density === 'showcase' ? 'storefront-grid--showcase' : density === 'compact' ? 'item-grid--compact' : 'storefront-grid--dense';
+
   return (
-    <div className={density === 'showcase' ? 'storefront-grid--showcase' : 'storefront-grid--dense'}>
+    <div className={gridClassName}>
       {items.map((item) => (
         <ItemCard
           key={item.id}
@@ -46,6 +51,7 @@ export function ItemGrid({
           onRemovedFromPackage={onItemRemovedFromPackage}
           removeFromSaleButton={removeFromSaleButton}
           onRemovedFromSale={onItemRemovedFromSale}
+          compact={density === 'compact'}
         />
       ))}
     </div>

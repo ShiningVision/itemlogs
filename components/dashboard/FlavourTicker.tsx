@@ -2,6 +2,17 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useLocale } from 'next-intl';
+
+// No single font covers both the LED/digital-billboard look and CJK glyphs,
+// so each script gets its own self-hosted font (see app/layout.tsx) and this
+// map picks the right CSS class for the active locale. Falls back to the
+// Latin digital font for any locale not listed here.
+const LOCALE_FONT_CLASS: Record<string, string> = {
+  zh: 'flavour-ticker-item--zh',
+  ja: 'flavour-ticker-item--ja',
+  ko: 'flavour-ticker-item--ko',
+};
 
 // Pixels per second while auto-scrolling. Replaces the old fixed-duration
 // CSS animation (90s per full loop) now that position is driven from a
@@ -20,6 +31,8 @@ const PIXELS_PER_SECOND = 40;
 // together always cover the visible window seamlessly, whether we're
 // auto-scrolling or the user has dragged partway through a loop.
 export function FlavourTicker({ texts }: { texts: string[] }) {
+  const locale = useLocale();
+  const fontClass = LOCALE_FONT_CLASS[locale] ?? '';
   const trackRef = useRef<HTMLDivElement>(null);
   const positionRef = useRef(0);
   const singleWidthRef = useRef(0);
@@ -94,7 +107,12 @@ export function FlavourTicker({ texts }: { texts: string[] }) {
 
   if (texts.length === 0) return null;
 
-  const strip = texts.join(' • ');
+  // Trailing separator too, not just between items — the strip is rendered
+  // twice back-to-back for the seamless loop, so without it the last entry
+  // of the first copy runs straight into the first entry of the second
+  // copy with no dot between them at that seam.
+  const SEPARATOR = ' • ';
+  const strip = texts.join(SEPARATOR) + SEPARATOR;
 
   return (
     <div
@@ -115,8 +133,8 @@ export function FlavourTicker({ texts }: { texts: string[] }) {
         onPointerCancel={endDrag}
         onDragStart={(e) => e.preventDefault()}
       >
-        <span className="flavour-ticker-item">{strip}</span>
-        <span className="flavour-ticker-item" aria-hidden="true">
+        <span className={`flavour-ticker-item ${fontClass}`}>{strip}</span>
+        <span className={`flavour-ticker-item ${fontClass}`} aria-hidden="true">
           {strip}
         </span>
       </div>

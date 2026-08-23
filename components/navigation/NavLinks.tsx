@@ -12,7 +12,7 @@ import {
   SwatchIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 const LINKS = [
   { key: 'dashboard', href: '/dashboard', icon: HomeIcon, exact: true },
@@ -34,7 +34,18 @@ export function NavLinks({
   showSales?: boolean;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const t = useTranslations('nav');
+
+  // Editing an item always lives at /dashboard/items/[id]/edit regardless
+  // of where you opened it from (the items list, a package's item list, a
+  // sale's item list) — so pathname-based highlighting alone would always
+  // show "Items" active there, even when the back button on that page
+  // actually returns to Packages or Sales. ItemCard appends ?section=... to
+  // the edit link when it's rendered inside a package/sale context (see
+  // ItemCard.tsx), and that overrides the highlight here so it matches
+  // where "back" really goes.
+  const sectionOverride = searchParams.get('section');
 
   // The Sales section only makes sense when sell prices are in use — see
   // the matching server-side redirect on the sales pages themselves,
@@ -53,7 +64,7 @@ export function NavLinks({
       }}
     >
       {links.map(({ key, href, icon: Icon, exact }) => {
-        const isActive = exact ? pathname === href : pathname.startsWith(href);
+        const isActive = sectionOverride ? key === sectionOverride : exact ? pathname === href : pathname.startsWith(href);
 
         return (
           <Link

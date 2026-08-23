@@ -3,17 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { ThemeTokens } from './tokens/types';
 import { applyThemeTokens } from './applyTheme';
-import defaultTokens from './tokens/default';
-import darkTokens from './tokens/dark';
-import sunsetTokens from './tokens/sunset';
-import forestTokens from './tokens/forest';
-
-const themes: Record<string, ThemeTokens> = {
-  default: defaultTokens,
-  dark: darkTokens,
-  sunset: sunsetTokens,
-  forest: forestTokens,
-};
+import { themes } from './tokens';
 
 interface ThemeContextValue { themeName: string; tokens: ThemeTokens; setTheme: (name: string) => void }
 const ThemeContext = createContext<ThemeContextValue | null>(null);

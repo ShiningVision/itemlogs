@@ -1,5 +1,5 @@
 // app/dashboard/(protected)/items/page.tsx
-import { getItems, type ItemSort } from '@/app/lib/services/items';
+import { getItems, getUncategorizedItemCounts, OTHER_FILTER_ID, type ItemSort } from '@/app/lib/services/items';
 import { getCategories } from '@/app/lib/services/categories';
 import { getTypes } from '@/app/lib/services/types';
 import { getSettings } from '@/app/lib/services/settings';
@@ -7,7 +7,7 @@ import { resolveLabel } from '@/app/lib/labels';
 import { ItemFiltersBar } from '@/components/items/ItemFiltersBar';
 import { SellModeControls } from '@/components/items/SellModeControls';
 import { ItemGrid } from '@/components/items/ItemGrid';
-import { ItemDensityToggle } from '@/components/items/ItemDensityToggle';
+import { ItemDensityToggle, type ItemDensity } from '@/components/items/ItemDensityToggle';
 import { ImportExcelButton } from '@/components/items/ImportExcelButton';
 import { BarcodeSellScanner } from '@/components/items/BarcodeSellScanner';
 import { SortSelect } from '@/components/ui/SortSelect';
@@ -50,10 +50,17 @@ export default async function ItemsPage({
     sort: sortParam,
   } = rawSearchParams;
 
-  const density: 'dense' | 'showcase' = densityParam === 'showcase' ? 'showcase' : 'dense';
+  const density: ItemDensity =
+    densityParam === 'showcase' ? 'showcase' : densityParam === 'compact' ? 'compact' : 'dense';
   const sort: ItemSort = VALID_SORTS.includes(sortParam as ItemSort) ? (sortParam as ItemSort) : 'newest';
 
-  const sellModeActive = sell === '1';
+  // Settings has to be fetched before sellModeActive is computed (rather than
+  // alongside items/categories/types below) so that a stale/bookmarked
+  // ?sell=1 URL can't force sell mode on — and the per-card sell button with
+  // it — after the owner has turned use_sell_price off.
+  const settings = await getSettings();
+
+  const sellModeActive = sell === '1' && settings.use_sell_price;
   const categoryIds = categoriesParam ? categoriesParam.split(',').map(Number) : undefined;
   // Defensive: even if a stale/crafted `statuses` param exists in the URL, sell mode always forces status 1 only.
   // No `statuses` param at all (fresh page load) defaults to Available-only.
@@ -82,11 +89,11 @@ export default async function ItemsPage({
   if (typeId !== undefined) exportParams.set('type', String(typeId));
   const exportHref = `/api/v1/items/export${exportParams.toString() ? `?${exportParams.toString()}` : ''}`;
 
-  const [{ items, totalCount }, categories, types, settings] = await Promise.all([
+  const [{ items, totalCount }, categories, types, uncategorizedCounts] = await Promise.all([
     getItems({ categoryIds, statuses, typeId, sort, limit: ITEMS_PAGE_SIZE, offset }),
     getCategories(),
     getTypes(),
-    getSettings(),
+    getUncategorizedItemCounts(),
   ]);
 
   const totalPages = getTotalPages(totalCount, ITEMS_PAGE_SIZE);
@@ -98,6 +105,19 @@ export default async function ItemsPage({
   const categoryLabel = resolveLabel(settings.name_category, t('category'));
   const typeLabel = resolveLabel(settings.name_type, t('type'));
   const statusLabel = resolveLabel(settings.name_status, t('filterStatuses'));
+
+  // "Other" isn't a real row (see app/lib/placeholder-data.ts) — it's how a
+  // null category/type is interpreted app-wide (see ItemForm, Excel export/
+  // import). Appended after sorting so it always lands last, and only shown
+  // as a filter option when at least one item actually has no category/type
+  // to bucket under it — mirrors the storefront's FilterSidebar treatment.
+  const otherLabel = t('other');
+  if (uncategorizedCounts.category > 0) {
+    sortedCategories.push({ id: OTHER_FILTER_ID, name: otherLabel });
+  }
+  if (uncategorizedCounts.type > 0) {
+    sortedTypes.push({ id: OTHER_FILTER_ID, name: otherLabel });
+  }
 
   return (
     <div className="page-container-wide" style={{ padding: 'var(--spacing-lg)' }}>
