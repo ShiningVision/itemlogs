@@ -84,7 +84,9 @@ export async function getBlueprints() {
     .order('id', { ascending: false });
 
   if (error) throw error;
-  return (data ?? []).map(flattenBlueprintJoins);
+  // Cast to `any[]` — BLUEPRINT_SELECT is widened to plain `string` (see the
+  // comment above it) so Supabase-JS can't infer a real row shape on its own.
+  return ((data ?? []) as any[]).map(flattenBlueprintJoins);
 }
 
 export async function getBlueprintById(id: number) {
@@ -95,7 +97,7 @@ export async function getBlueprintById(id: number) {
     .single();
 
   if (error) throw error;
-  return flattenBlueprintJoins(data);
+  return flattenBlueprintJoins(data as any);
 }
 
 // Barcode-to-blueprint lookup for ItemForm's "scan barcode while creating an
@@ -111,7 +113,7 @@ export async function getBlueprintByBarcode(barcode: string) {
     .maybeSingle();
 
   if (error) throw error;
-  return data ? flattenBlueprintJoins(data) : data;
+  return data ? flattenBlueprintJoins(data as any) : data;
 }
 
 export async function createBlueprint(input: CreateBlueprintInput) {

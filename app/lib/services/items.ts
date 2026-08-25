@@ -185,7 +185,10 @@ export async function getItems(filters: ItemFilters = {}): Promise<{ items: any[
 
   const { data, error, count } = await query;
   if (error) throw error;
-  return { items: (data ?? []).map(flattenItemJoins), totalCount: count ?? 0 };
+  // Cast to `any[]` — the select string is widened to plain `string` (see
+  // the comment on ITEM_SELECT) to dodge the type-level select parser, which
+  // means Supabase-JS can no longer infer a real row shape here on its own.
+  return { items: ((data ?? []) as any[]).map(flattenItemJoins), totalCount: count ?? 0 };
 }
 
 // Tells the dashboard items page's filter bar whether to show an "Other"
@@ -237,7 +240,8 @@ export async function getItemById(id: number, options: { public?: boolean } = {}
     .single();
 
   if (error) throw error;
-  return flattenItemJoins(data);
+  // Cast to `any` — see the comment in getItems above.
+  return flattenItemJoins(data as any);
 }
 
 // Featured items get a dedicated spotlight strip on the storefront — capped
@@ -449,7 +453,8 @@ export async function getFeaturedPublicItems(allowedStatuses: number[]) {
     .limit(FEATURED_ITEM_CAP);
 
   if (error) throw error;
-  return (data ?? []).map(flattenItemJoins);
+  // Cast to `any[]` — see the comment in getItems above.
+  return ((data ?? []) as any[]).map(flattenItemJoins);
 }
 
 export async function deleteItem(id: number) {
@@ -465,7 +470,8 @@ export async function getItemsByPackageId(packageId: number) {
     .order('id', { ascending: false });
 
   if (error) throw error;
-  return (data ?? []).map(flattenItemJoins);
+  // Cast to `any[]` — see the comment in getItems above.
+  return ((data ?? []) as any[]).map(flattenItemJoins);
 }
 
 // Widened to `string` — see the comment above ITEM_SELECT for why (same
@@ -481,7 +487,8 @@ export async function getUnassignedItems() {
     .order('name', { ascending: true });
 
   if (error) throw error;
-  return (data ?? []).map(flattenItemJoins);
+  // Cast to `any[]` — see the comment in getItems above.
+  return ((data ?? []) as any[]).map(flattenItemJoins);
 }
 
 export async function getAvailableItems() {
@@ -492,7 +499,8 @@ export async function getAvailableItems() {
     .order('name', { ascending: true });
 
   if (error) throw error;
-  return (data ?? []).map(flattenItemJoins);
+  // Cast to `any[]` — see the comment in getItems above.
+  return ((data ?? []) as any[]).map(flattenItemJoins);
 }
 
 // Barcode-to-item lookup for the "scan to sell" flow (see
