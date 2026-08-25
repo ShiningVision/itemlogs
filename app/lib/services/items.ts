@@ -88,7 +88,14 @@ async function resolveJoinFilterItemIds(
 // an array of join rows (e.g. `item_categories: [{ category: {...} }, ...]`)
 // which flattenItemJoins() below flattens into plain `item.categories` /
 // `item.types` arrays for callers to use directly.
-const ITEM_SELECT = `
+// Typed as plain `string` (not left as an inferred template-literal type) —
+// Supabase-JS's generic `.select()` overload tries to parse a literal select
+// string at the type level to build the result type, and its parser chokes
+// on this shape's nested embedded resources (item_categories(category:
+// categories(...))), which produced a ParserError type and failed the build.
+// Widening to `string` here makes `.select()` fall back to its untyped
+// overload instead — same runtime query, just not statically parsed.
+const ITEM_SELECT: string = `
   *,
   main_image_ref:main_image(url),
   location_ref:location_id(name),
@@ -102,7 +109,8 @@ const ITEM_SELECT = `
 // getItemById when called from app/items/[id]/page.tsx). `*` can't exclude a
 // single column in PostgREST, so this enumerates the rest by hand; keep it
 // in sync with the items table (see app/api/setup/route.ts).
-const PUBLIC_ITEM_SELECT = `
+// Also widened to `string` — see the comment above ITEM_SELECT.
+const PUBLIC_ITEM_SELECT: string = `
   id, name, description, location_id, barcode, status,
   cost_price, purchase_price, purchase_price_currency, sell_price,
   main_image, package_id, is_featured,
@@ -460,10 +468,15 @@ export async function getItemsByPackageId(packageId: number) {
   return (data ?? []).map(flattenItemJoins);
 }
 
+// Widened to `string` — see the comment above ITEM_SELECT for why (same
+// nested-embedded-resource shape trips the type-level select parser).
+const UNASSIGNED_ITEM_SELECT: string =
+  'id, name, main_image_ref:main_image(url), item_categories(category:categories(id, name))';
+
 export async function getUnassignedItems() {
   const { data, error } = await supabase
     .from('items')
-    .select('id, name, main_image_ref:main_image(url), item_categories(category:categories(id, name))')
+    .select(UNASSIGNED_ITEM_SELECT)
     .is('package_id', null)
     .order('name', { ascending: true });
 
@@ -474,7 +487,7 @@ export async function getUnassignedItems() {
 export async function getAvailableItems() {
   const { data, error } = await supabase
     .from('items')
-    .select('id, name, main_image_ref:main_image(url), item_categories(category:categories(id, name))')
+    .select(UNASSIGNED_ITEM_SELECT)
     .eq('status', 1)
     .order('name', { ascending: true });
 

@@ -22,7 +22,11 @@ type ItemRow = {
 // Items no longer have their own sell_price_currency — sell_price/cost_price
 // are always in the shop-wide settings.sell_price_currency (resolved by the
 // caller), so there's nothing to join here for sell currency anymore.
-const SALE_ITEM_SELECT = `
+// Typed as plain `string` — see the identical comment on ITEM_SELECT in
+// app/lib/services/items.ts: Supabase-JS's `.select()` tries to parse a
+// literal select string at the type level, and its parser fails on this
+// shape's nested embedded resources, breaking the build.
+const SALE_ITEM_SELECT: string = `
   item_id,
   items(
     *,

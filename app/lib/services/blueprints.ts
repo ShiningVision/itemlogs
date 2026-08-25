@@ -30,7 +30,12 @@ async function assertBarcodeAvailable(barcode: string | null | undefined, exclud
 // Same many-to-many shape as items (see app/lib/services/items.ts) —
 // blueprint_categories/blueprint_types nested joins, flattened into plain
 // `categories`/`types` arrays for callers.
-const BLUEPRINT_SELECT = `
+// Typed as plain `string` — Supabase-JS's `.select()` overload otherwise
+// tries to parse a literal select string at the type level, and its parser
+// fails on this shape's nested embedded resources (see the identical
+// comment on ITEM_SELECT in app/lib/services/items.ts, where this first
+// broke the build).
+const BLUEPRINT_SELECT: string = `
   *,
   images:main_image(url),
   location_ref:location_id(name),
