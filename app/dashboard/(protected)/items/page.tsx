@@ -1,7 +1,8 @@
 // app/dashboard/(protected)/items/page.tsx
 import { getItems, getUncategorizedItemCounts, OTHER_FILTER_ID, type ItemSort } from '@/app/lib/services/items';
-import { getCategories } from '@/app/lib/services/categories';
-import { getTypes } from '@/app/lib/services/types';
+import { getCategories, getCategoryItemCounts } from '@/app/lib/services/categories';
+import { getTypes, getTypeItemCounts } from '@/app/lib/services/types';
+import { getLocations, getLocationItemCounts } from '@/app/lib/services/locations';
 import { getSettings } from '@/app/lib/services/settings';
 import { resolveLabel } from '@/app/lib/labels';
 import { ItemFiltersBar } from '@/components/items/ItemFiltersBar';
@@ -23,7 +24,8 @@ const ITEMS_PAGE_SIZE = 24;
 type SearchParams = {
   categories?: string;
   statuses?: string;
-  type?: string;
+  types?: string;
+  location?: string;
   sell?: string;
   saleId?: string;
   page?: string;
@@ -42,7 +44,8 @@ export default async function ItemsPage({
   const {
     categories: categoriesParam,
     statuses: statusesParam,
-    type: typeParam,
+    types: typesParam,
+    location: locationParam,
     sell,
     saleId: saleIdParam,
     page: pageParam,
@@ -75,7 +78,8 @@ export default async function ItemsPage({
       : statusesParam === 'all'
         ? undefined
         : statusesParam.split(',').map(Number);
-  const typeId = typeParam ? Number(typeParam) : undefined;
+  const typeIds = typesParam ? typesParam.split(',').map(Number) : undefined;
+  const locationId = locationParam ? Number(locationParam) : undefined;
   const saleId = saleIdParam ? Number(saleIdParam) : undefined;
 
   const page = parsePage(pageParam);
@@ -86,24 +90,39 @@ export default async function ItemsPage({
   const exportParams = new URLSearchParams();
   if (categoryIds?.length) exportParams.set('categories', categoryIds.join(','));
   if (statuses?.length) exportParams.set('statuses', statuses.join(','));
-  if (typeId !== undefined) exportParams.set('type', String(typeId));
+  if (typeIds?.length) exportParams.set('types', typeIds.join(','));
+  if (locationId !== undefined) exportParams.set('location', String(locationId));
   const exportHref = `/api/v1/items/export${exportParams.toString() ? `?${exportParams.toString()}` : ''}`;
 
-  const [{ items, totalCount }, categories, types, uncategorizedCounts] = await Promise.all([
-    getItems({ categoryIds, statuses, typeId, sort, limit: ITEMS_PAGE_SIZE, offset }),
+  const [{ items, totalCount }, categories, types, locations, uncategorizedCounts, categoryItemCounts, typeItemCounts, locationItemCounts] = await Promise.all([
+    getItems({
+      categoryIds,
+      statuses,
+      typeIds,
+      locationIds: locationId !== undefined ? [locationId] : undefined,
+      sort,
+      limit: ITEMS_PAGE_SIZE,
+      offset,
+    }),
     getCategories(),
     getTypes(),
+    getLocations(),
     getUncategorizedItemCounts(),
+    getCategoryItemCounts(),
+    getTypeItemCounts(),
+    getLocationItemCounts(),
   ]);
 
   const totalPages = getTotalPages(totalCount, ITEMS_PAGE_SIZE);
 
   const sortedCategories = [...categories].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
   const sortedTypes = [...types].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+  const sortedLocations = [...locations].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
 
   const t = await getTranslations('items');
   const categoryLabel = resolveLabel(settings.name_category, t('category'));
   const typeLabel = resolveLabel(settings.name_type, t('type'));
+  const locationLabel = resolveLabel(settings.name_location, t('location'));
   const statusLabel = resolveLabel(settings.name_status, t('filterStatuses'));
 
   // "Other" isn't a real row (see app/lib/placeholder-data.ts) — it's how a
@@ -150,17 +169,19 @@ export default async function ItemsPage({
       <ItemFiltersBar
         categories={sortedCategories}
         types={sortedTypes}
+        locations={sortedLocations}
+        categoryItemCounts={categoryItemCounts}
+        typeItemCounts={typeItemCounts}
+        locationItemCounts={locationItemCounts}
         selectedCategoryIds={categoryIds ?? []}
         selectedStatuses={statuses ?? []}
-        selectedTypeId={typeId}
+        selectedTypeIds={typeIds ?? []}
+        selectedLocationId={locationId}
         sellModeActive={sellModeActive}
         categoryLabel={categoryLabel}
         typeLabel={typeLabel}
+        locationLabel={locationLabel}
         statusLabel={statusLabel}
-        manageCategoriesHref="/dashboard/categories"
-        manageCategoriesLabel={t('manageLabel', { label: categoryLabel })}
-        manageTypesHref="/dashboard/types"
-        manageTypesLabel={t('manageLabel', { label: typeLabel })}
       />
 
       <div className="storefront-toolbar" style={{ marginTop: 'var(--spacing-lg)' }}>

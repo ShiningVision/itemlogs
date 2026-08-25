@@ -23,10 +23,12 @@ const languages = [
 // nullable, and a null type is now interpreted app-wide as "Other" for
 // display purposes (see ItemForm's type select and every place a type name
 // is rendered) — no real row is needed for that meaning to exist.
+// `type` is used here as "manufacturer/publisher" — fits a toy/collectible
+// inventory better than the item's general kind, which `category` covers.
 const types = [
-  { id: '1', name: 'Strategy' },
-  { id: '2', name: 'Type Moon' },
-  { id: '3', name: 'Gucci' },
+  { id: '1', name: 'Good Smile Company' },
+  { id: '2', name: 'Crypton Future Media' },
+  { id: '3', name: 'The Pokémon Company' },
   { id: '4', name: 'Square Enix' },
 ];
 
@@ -51,128 +53,148 @@ const currencies = [
 // types above; a null category is interpreted as "Other" everywhere it's
 // displayed instead of needing a real backing row.
 const categories = [
-  { id: '1', name: 'Bags' },
-  { id: '2', name: 'Games' },
-  { id: '3', name: 'Figures' },
-  { id: '4', name: 'Books' },
-  { id: '5', name: 'Clothing' },
-  { id: '6', name: 'Electronics' },
+  { id: '1', name: 'Figures' },
+  { id: '2', name: 'Art Books' },
+  { id: '3', name: 'Plushies' },
+  { id: '4', name: 'Video Games' },
+  { id: '5', name: 'Apparel' },
+  { id: '6', name: 'Trading Cards' },
   { id: '7', name: 'Accessories' },
 ];
 
-// IDs line up with each item's main_image below (1: Dragon Quest XI,
-// 2: Canvas Tote Bag, 3: Collector Figure - Knight, 4: Strategy Handbook).
+// "Other" is intentionally not a seeded row here — same reasoning as
+// types/categories above; a null location_id is interpreted as "no
+// location" everywhere it's displayed instead of needing a real backing row.
+const locations = [
+  { id: '1', name: 'Japan' },
+  { id: '2', name: 'Germany' },
+  { id: '3', name: 'China' },
+  { id: '4', name: 'USA' },
+];
+
+// IDs line up with each item's main_image below (1: Hatsune Miku 15th
+// Anniversary Figure, 2: Witch Hat Atelier Art Book, 3: Kimono Pikachu
+// Plushie, 4: Dragon Quest XI).
 const images = [
-  { id: '1', url: '/images/dragon_quest.jpg' },
-  { id: '2', url: '/images/pc.png' },
-  { id: '3', url: '/images/knight.jpg' },
-  { id: '4', url: '/images/strategy_handbook.jpg' },
+  { id: '1', url: '/images/miku_figure.jpg' },
+  { id: '2', url: '/images/artbook.jpg' },
+  { id: '3', url: '/images/pikachu.jpg' },
+  { id: '4', url: '/images/dragon_quest.jpg' },
 ];
 
 const packages = [
   {
     id: '1',
-    name: 'Summer Import Batch',
-    description: 'A batch of items imported for the summer season.',
-    departure_date: '2026-06-01',
-    arrival_date: '2026-06-20',
-    tariff: '18.50',
+    name: 'Tokyo Import Haul',
+    description: 'Figures and plushies shipped in from Japan.',
+    departure_date: '2026-03-15',
+    arrival_date: '2026-04-02',
+    tariff: '22.00',
     tariff_currency: '2',
-    shipping_fee: '55.00',
+    shipping_fee: '48.00',
     shipping_fee_currency: '2',
     show_on_storefront: false,
   },
 ];
 
+// category_ids/type_ids replace the old scalar category/type columns —
+// category and type are now many-to-many with items (item_categories/
+// item_types join tables below), same as location's single-select FK but
+// allowing more than one value. An empty array means "no categories" /
+// "no types", displayed as "Other" everywhere (same meaning a null scalar
+// used to have) — see OTHER_FILTER_ID in app/lib/services/items.ts.
 const items = [
   {
     id: '1',
-    name: 'Dragon Quest XI',
-    description: 'A classic JRPG in great condition.',
-    location: 'Japan',
-    barcode: '4988601234567',
+    name: '1/7 Scale Hatsune Miku 15th Anniversary Figure',
+    description: 'Good Smile Company 1/7 scale figure celebrating Hatsune Miku\'s 15th anniversary. Still sealed in original box.',
+    location_id: '1',
+    barcode: '4571245123456',
     status: 1,
-    cost_price: '25.00',
-    purchase_price: '20.00',
+    cost_price: '26500.00',
+    purchase_price: '24800.00',
     purchase_price_currency: '4',
-    sell_price: '45.00',
-    type: '3',
-    category: '2',
+    sell_price: '34800.00',
+    // Two types, to seed a real multi-select example (figure + music brand).
+    type_ids: ['1', '2'],
+    category_ids: ['1'],
     main_image: '1',
     package_id: '1',
   },
   {
     id: '2',
-    name: 'My PC',
-    description: 'CPU: AMD Ryzen 9 7900 316€, GPU: NVIDIA RTX 5070 Twin 12GB 537€, RAM: Kingston FURY 64GB DDR5 6000MT/s 630€, SSD: Samsung 990 PRO - 2 TB 220€',
-    location: 'Germany',
-    barcode: '4006381333931',
+    name: 'Witch Hat Atelier Art Book',
+    description: 'Kadokawa art book collecting illustrations and behind-the-scenes art from Witch Hat Atelier. Softcover, near-mint.',
+    location_id: '2',
+    barcode: '9784041083879',
     status: 2,
-    cost_price: '1703.00',
-    purchase_price: '1703.00',
+    cost_price: '30.00',
+    purchase_price: '28.00',
     purchase_price_currency: '2',
-    sell_price: '0.00',
-    // Was type '5' ("Other") — that seeded row no longer exists; null means
-    // the same thing now (see the comment above the `types` array).
-    type: null,
-    category: '6',
+    sell_price: '42.00',
+    // No types — displays as "Other" (see the comment above the `types`
+    // array for why no real "Other" row is seeded).
+    type_ids: [],
+    // Two categories, to seed a real multi-select example.
+    category_ids: ['2', '6'],
     main_image: '2',
-    package_id: '1',
+    package_id: null,
   },
   {
     id: '3',
-    name: 'Collector Figure - Knight',
-    description: 'Limited-edition painted resin figure.',
-    location: 'China',
-    barcode: '6941234567890',
-    status: 2,
-    cost_price: '38.00',
-    purchase_price: '30.00',
-    purchase_price_currency: '3',
-    sell_price: '79.99',
-    type: '2',
-    category: '3',
+    name: 'Pokémon Center Exclusive Kimono Pikachu Plushie',
+    description: 'Pokémon Center exclusive plush wearing a kimono outfit, released for a seasonal event. Tag attached, unopened.',
+    location_id: '1',
+    barcode: '4521329123456',
+    status: 1,
+    cost_price: '3600.00',
+    purchase_price: '3200.00',
+    purchase_price_currency: '4',
+    sell_price: '6800.00',
+    type_ids: ['3'],
+    category_ids: ['3'],
     main_image: '3',
     package_id: '1',
   },
   {
     id: '4',
-    name: 'Strategy Handbook',
-    description: 'Hardcover guide, some shelf wear.',
-    location: 'USA',
-    barcode: '9780306406157',
+    name: 'Dragon Quest XI',
+    description: 'Physical copy of Dragon Quest XI: Echoes of an Elusive Age. Case and manual included, disc in great condition.',
+    location_id: '4',
+    barcode: '4988601234567',
     status: 2,
-    cost_price: '7.00',
-    purchase_price: '5.00',
+    cost_price: '24.00',
+    purchase_price: '22.00',
     purchase_price_currency: '1',
-    sell_price: '15.00',
-    type: '4',
-    category: '4',
+    sell_price: '39.99',
+    type_ids: ['4'],
+    category_ids: ['4'],
     main_image: '4',
     package_id: null,
   },
 ];
 
+// join tables: items <-> categories / items <-> types — derived from each
+// item's category_ids/type_ids above rather than duplicated by hand, so
+// there's exactly one place to edit the seed assignments.
+const itemCategories = items.flatMap((i) => i.category_ids.map((category_id) => ({ item_id: i.id, category_id })));
+const itemTypes = items.flatMap((i) => i.type_ids.map((type_id) => ({ item_id: i.id, type_id })));
+
 const sales = [
-  { id: '1', name: 'Spring Clearance', date: '2026-04-01' },
-  { id: '2', name: 'Anniversary Sale', date: '2026-07-01' },
+  { id: '1', name: 'Convention Meetup Sale', date: '2026-05-10' },
+  { id: '2', name: 'Online Marketplace Sale', date: '2026-07-20' },
 ];
 
-// join table: sales <-> items
+// join table: sales <-> items — only the two Sold items (2, 4) are linked.
 const salesItems = [
   { sales_id: '1', item_id: '2' },
-  { sales_id: '1', item_id: '4' },
-  { sales_id: '2', item_id: '3' },
+  { sales_id: '2', item_id: '4' },
 ];
 
-// join table: items <-> images (extra gallery images beyond main_image)
-const itemImages = [
-  { image_id: '1', item_id: '1' },
-  { image_id: '2', item_id: '1' },
-  { image_id: '2', item_id: '2' },
-  { image_id: '3', item_id: '3' },
-  { image_id: '4', item_id: '4' },
-];
+// join table: items <-> images (extra gallery images beyond main_image) —
+// left empty since each seeded item only has the one dedicated photo (see
+// the `images` array above); no separate gallery shots to attach.
+const itemImages: { image_id: string; item_id: string }[] = [];
 
 const settings = [
   {
@@ -223,9 +245,12 @@ export {
   types,
   currencies,
   categories,
+  locations,
   images,
   packages,
   items,
+  itemCategories,
+  itemTypes,
   sales,
   salesItems,
   itemImages,

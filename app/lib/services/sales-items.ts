@@ -5,7 +5,7 @@ type ItemRow = {
   id: number;
   name: string | null;
   status: number;
-  location: string | null;
+  location_id: number | null;
   description: string | null;
   barcode: string | null;
   sell_price: number | null;
@@ -13,8 +13,10 @@ type ItemRow = {
   cost_price: number | null;
   main_image_ref: { url: string } | null;
   purchase_currency: { currency_code: string } | null;
-  category_ref: { name: string } | null;
-  type_ref: { name: string } | null;
+  // Many-to-many now — see app/lib/services/items.ts's flattenItemJoins.
+  categories: { id: number; name: string | null }[];
+  types: { id: number; name: string | null }[];
+  location_ref: { name: string } | null;
 };
 
 // Items no longer have their own sell_price_currency — sell_price/cost_price
@@ -24,12 +26,21 @@ const SALE_ITEM_SELECT = `
   item_id,
   items(
     *,
-    category_ref:category(name),
-    type_ref:type(name),
+    item_categories(category:categories(id, name)),
+    item_types(type:types(id, name)),
+    location_ref:location_id(name),
     main_image_ref:main_image(url),
     purchase_currency:purchase_price_currency(currency_code)
   )
 `;
+
+function flattenItemRowJoins(row: any): any {
+  if (!row) return row;
+  const categories = (row.item_categories ?? []).map((r: any) => r.category).filter(Boolean);
+  const types = (row.item_types ?? []).map((r: any) => r.type).filter(Boolean);
+  const { item_categories, item_types, ...rest } = row;
+  return { ...rest, categories, types };
+}
 
 export async function getSaleItems(saleId: number): Promise<{ item_id: number; items: ItemRow }[]> {
   const { data, error } = await supabase
@@ -42,7 +53,7 @@ export async function getSaleItems(saleId: number): Promise<{ item_id: number; i
   // Same array-vs-object inference issue as item_images — normalize here.
   return (data ?? []).map((row: any) => ({
     item_id: row.item_id,
-    items: Array.isArray(row.items) ? row.items[0] : row.items,
+    items: flattenItemRowJoins(Array.isArray(row.items) ? row.items[0] : row.items),
   }));
 }
 

@@ -47,6 +47,7 @@ export function ImportExcelButton() {
         updated: r.updated,
         categoriesCreated: r.categoriesCreated,
         typesCreated: r.typesCreated,
+        locationsCreated: r.locationsCreated,
         imagesFetched: r.imagesFetched,
         imagesSkipped: r.imagesSkipped,
       });

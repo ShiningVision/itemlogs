@@ -2,12 +2,14 @@
 import { getSettings } from '@/app/lib/services/settings';
 import { getCategories } from '@/app/lib/services/categories';
 import { getTypes } from '@/app/lib/services/types';
+import { getLocations } from '@/app/lib/services/locations';
 import { getPublicPackages } from '@/app/lib/services/packages';
 import {
   getPublicItems,
   getPublicItemsCount,
   getPublicCategoryCounts,
   getPublicTypeCounts,
+  getPublicLocationCounts,
   getFeaturedPublicItems,
   OTHER_FILTER_ID,
   type ItemSort,
@@ -32,6 +34,7 @@ const PUBLIC_ITEMS_PAGE_SIZE = 24;
 type SearchParams = {
   categories?: string;
   types?: string;
+  locations?: string;
   statuses?: string;
   package?: string;
   page?: string;
@@ -47,7 +50,7 @@ export default async function HomePage({
   searchParams: Promise<SearchParams>;
 }) {
   const rawSearchParams = await searchParams;
-  const { categories: categoriesParam, types: typesParam, statuses: statusesParam, package: packageParam, page: pageParam, density: densityParam, sort: sortParam } = rawSearchParams;
+  const { categories: categoriesParam, types: typesParam, locations: locationsParam, statuses: statusesParam, package: packageParam, page: pageParam, density: densityParam, sort: sortParam } = rawSearchParams;
 
   // On a freshly provisioned tenant, the database has no tables yet — the
   // Supabase Marketplace resource creates an empty Postgres instance, and
@@ -82,11 +85,13 @@ export default async function HomePage({
 
   const categoryLabel = resolveLabel(settings.name_category, itemsT('category'));
   const typeLabel = resolveLabel(settings.name_type, itemsT('type'));
+  const locationLabel = resolveLabel(settings.name_location, itemsT('location'));
   const statusLabel = resolveLabel(settings.name_status, itemsT('filterStatuses'));
   const packageLabel = resolveLabel(settings.name_package, itemsT('package'));
 
   const selectedCategoryIds = categoriesParam ? categoriesParam.split(',').map(Number) : [];
   const selectedTypeIds = typesParam ? typesParam.split(',').map(Number) : [];
+  const selectedLocationIds = locationsParam ? locationsParam.split(',').map(Number) : [];
   const selectedStatuses = statusesParam ? statusesParam.split(',').map(Number) : [];
   const selectedPackageId = packageParam ? Number(packageParam) : null;
 
@@ -102,12 +107,13 @@ export default async function HomePage({
   const page = parsePage(pageParam);
   const offset = getOffset(page, PUBLIC_ITEMS_PAGE_SIZE);
 
-  const [{ items, totalCount }, categories, types, collectionItemCount, categoryCounts, typeCounts, featuredItems, publicPackages] =
+  const [{ items, totalCount }, categories, types, locations, collectionItemCount, categoryCounts, typeCounts, locationCounts, featuredItems, publicPackages] =
     await Promise.all([
       getPublicItems(
         {
           categoryIds: selectedCategoryIds.length ? selectedCategoryIds : undefined,
           typeIds: selectedTypeIds.length ? selectedTypeIds : undefined,
+          locationIds: selectedLocationIds.length ? selectedLocationIds : undefined,
           statuses: selectedStatuses.length ? selectedStatuses : undefined,
           packageId: selectedPackageId ?? undefined,
           sort,
@@ -118,9 +124,11 @@ export default async function HomePage({
       ),
       getCategories(),
       getTypes(),
+      settings.show_location_filter ? getLocations() : Promise.resolve([]),
       getPublicItemsCount(allowedStatuses),
       getPublicCategoryCounts(allowedStatuses),
       getPublicTypeCounts(allowedStatuses),
+      settings.show_location_filter ? getPublicLocationCounts(allowedStatuses) : Promise.resolve({}),
       getFeaturedPublicItems(allowedStatuses),
       settings.show_package_filter ? getPublicPackages() : Promise.resolve([]),
     ]);
@@ -129,6 +137,7 @@ export default async function HomePage({
 
   const sortedCategories = [...categories].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
   const sortedTypes = [...types].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+  const sortedLocations = [...locations].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
 
   // "Other" isn't a real row (see app/lib/placeholder-data.ts) — it's how a
   // null category/type is interpreted app-wide. Appended after sorting so
@@ -145,6 +154,7 @@ export default async function HomePage({
   const noFiltersActive =
     selectedCategoryIds.length === 0 &&
     selectedTypeIds.length === 0 &&
+    selectedLocationIds.length === 0 &&
     selectedStatuses.length === 0 &&
     selectedPackageId === null;
 
@@ -174,17 +184,22 @@ export default async function HomePage({
         <FilterSidebar
           categories={sortedCategories}
           types={sortedTypes}
+          locations={sortedLocations}
           selectedCategoryIds={selectedCategoryIds}
           selectedTypeIds={selectedTypeIds}
+          selectedLocationIds={selectedLocationIds}
           availableStatuses={allowedStatuses}
           selectedStatuses={selectedStatuses}
           categoryLabel={categoryLabel}
           typeLabel={typeLabel}
+          locationLabel={locationLabel}
           statusLabel={statusLabel}
           statusOptionLabels={statusOptionLabels}
           categoryCounts={categoryCounts}
           typeCounts={typeCounts}
+          locationCounts={locationCounts}
           packageFilter={packageFilterDropdown}
+          locationFilter={settings.show_location_filter}
         />
 
         <main className="storefront-main" style={{ flex: 1, minWidth: 0 }}>

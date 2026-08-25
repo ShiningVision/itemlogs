@@ -1,67 +1,78 @@
 // components/items/ItemFiltersBar.tsx
 'use client';
 
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import Link from 'next/link';
 import { FilterPill } from '@/components/ui/FilterPill';
 import { useFilterParams } from '@/app/lib/hooks/useFilterParams';
+import { TagManagerModal } from '@/components/reference-data/TagManagerModal';
 
 type FilterOption = { id: number; name: string | null };
+type ManagedResource = 'category' | 'type' | 'location';
 
-function ManageButton({ href, label }: { href: string; label?: string }) {
+function ManageButton({ label, onClick }: { label?: string; onClick: () => void }) {
   return (
-    <Link href={href}>
-      <button
-        type="button"
-        style={{
-          background: 'var(--color-secondary)',
-          color: '#fff',
-          border: 'none',
-          borderRadius: 'var(--radius-md)',
-          padding: 'var(--spacing-xs) var(--spacing-sm)',
-          fontSize: 'var(--font-size-sm)',
-          fontWeight: 'var(--font-weight-bold)',
-        }}
-      >
-        {label}
-      </button>
-    </Link>
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        background: 'var(--color-secondary)',
+        color: '#fff',
+        border: 'none',
+        borderRadius: 'var(--radius-md)',
+        padding: 'var(--spacing-xs) var(--spacing-sm)',
+        fontSize: 'var(--font-size-sm)',
+        fontWeight: 'var(--font-weight-bold)',
+        cursor: 'pointer',
+      }}
+    >
+      {label}
+    </button>
   );
 }
 
 export function ItemFiltersBar({
   categories,
   types,
+  locations,
+  categoryItemCounts,
+  typeItemCounts,
+  locationItemCounts,
   selectedCategoryIds,
   selectedStatuses,
-  selectedTypeId,
+  selectedTypeIds,
+  selectedLocationId,
   sellModeActive = false,
   categoryLabel,
   typeLabel,
+  locationLabel,
   statusLabel,
   availableStatuses = [1, 2, 3, 4],
-  manageCategoriesHref,
-  manageCategoriesLabel,
-  manageTypesHref,
-  manageTypesLabel,
 }: {
   categories: FilterOption[];
   types: FilterOption[];
+  locations: FilterOption[];
+  categoryItemCounts: Record<number, number>;
+  typeItemCounts: Record<number, number>;
+  locationItemCounts: Record<number, number>;
   selectedCategoryIds: number[];
   selectedStatuses: number[];
-  selectedTypeId: number | undefined;
+  selectedTypeIds: number[];
+  selectedLocationId: number | undefined;
   sellModeActive?: boolean;
   categoryLabel: string;
   typeLabel: string;
+  locationLabel: string;
   statusLabel?: string;
   availableStatuses?: number[];
-  manageCategoriesHref?: string;
-  manageCategoriesLabel?: string;
-  manageTypesHref?: string;
-  manageTypesLabel?: string;
 }) {
   const t = useTranslations('items');
   const { isPending, setParam, toggleInList } = useFilterParams();
+  // Which "Manage X" modal (if any) is currently open — kept local to this
+  // component rather than lifted to the page, since it's fed entirely by
+  // props this component already has (categories/types/locations +
+  // their item counts). See TagManagerModal for the shared modal itself.
+  const [openManager, setOpenManager] = useState<ManagedResource | null>(null);
 
   // Deselecting the last status pill needs to mean "show every status" —
   // but the shared toggleInList removes the param entirely when the list
@@ -80,7 +91,7 @@ export function ItemFiltersBar({
     label: string,
     options: Array<{ id: number; label: string; disabled?: boolean }>,
     selected: number[],
-    manageHref?: string,
+    onManage?: () => void,
     manageLabel?: string,
     onToggle?: (selected: number[], id: number) => void,
   ) {
@@ -88,7 +99,7 @@ export function ItemFiltersBar({
       <div className="filter-section">
         <div className="filter-section-header">
           <span className="filter-section-label">{label}</span>
-          {manageHref && <ManageButton href={manageHref} label={manageLabel} />}
+          {onManage && <ManageButton label={manageLabel} onClick={onManage} />}
         </div>
         <div className="filter-pill-row">
           {options.map((opt) => (
@@ -117,8 +128,8 @@ export function ItemFiltersBar({
         categoryLabel,
         categories.map((c) => ({ id: c.id, label: c.name ?? '' })),
         selectedCategoryIds,
-        manageCategoriesHref,
-        manageCategoriesLabel,
+        () => setOpenManager('category'),
+        t('manageLabel', { label: categoryLabel }),
       )}
 
       {renderPillSection(
@@ -131,23 +142,67 @@ export function ItemFiltersBar({
         sellModeActive ? undefined : toggleStatus,
       )}
 
+      {renderPillSection(
+        'types',
+        typeLabel,
+        types.map((tp) => ({ id: tp.id, label: tp.name ?? '' })),
+        selectedTypeIds,
+        () => setOpenManager('type'),
+        t('manageLabel', { label: typeLabel }),
+      )}
+
       <div className="filter-section">
         <div className="filter-section-header">
-          <span className="filter-section-label">{typeLabel}</span>
-          {manageTypesHref && <ManageButton href={manageTypesHref} label={manageTypesLabel} />}
+          <span className="filter-section-label">{locationLabel}</span>
+          <ManageButton label={t('manageLabel', { label: locationLabel })} onClick={() => setOpenManager('location')} />
         </div>
         <select
-          value={selectedTypeId ?? ''}
-          onChange={(e) => setParam('type', e.target.value || null)}
+          value={selectedLocationId ?? ''}
+          onChange={(e) => setParam('location', e.target.value || null)}
           className="sheet-input"
           style={{ maxWidth: '280px' }}
         >
-          <option value="">{t('allLabel', { label: typeLabel })}</option>
-          {types.map((tp) => (
-            <option key={tp.id} value={tp.id}>{tp.name}</option>
+          <option value="">{t('allLabel', { label: locationLabel })}</option>
+          {locations.map((loc) => (
+            <option key={loc.id} value={loc.id}>{loc.name}</option>
           ))}
         </select>
       </div>
+
+      {/* The "Other" pill (id 0, synthetic — see OTHER_FILTER_ID in
+          app/lib/services/items.ts) is appended into `categories`/`types`
+          purely for filtering; it isn't a real row and must never be
+          offered as something to rename/delete in the manage modal. */}
+      {openManager === 'category' && (
+        <TagManagerModal
+          mode="manage"
+          apiPath="/api/v1/categories"
+          label={categoryLabel}
+          items={categories.filter((c) => c.id !== 0)}
+          itemCounts={categoryItemCounts}
+          onClose={() => setOpenManager(null)}
+        />
+      )}
+      {openManager === 'type' && (
+        <TagManagerModal
+          mode="manage"
+          apiPath="/api/v1/types"
+          label={typeLabel}
+          items={types.filter((tp) => tp.id !== 0)}
+          itemCounts={typeItemCounts}
+          onClose={() => setOpenManager(null)}
+        />
+      )}
+      {openManager === 'location' && (
+        <TagManagerModal
+          mode="manage"
+          apiPath="/api/v1/locations"
+          label={locationLabel}
+          items={locations.filter((loc) => loc.id !== 0)}
+          itemCounts={locationItemCounts}
+          onClose={() => setOpenManager(null)}
+        />
+      )}
     </div>
   );
 }

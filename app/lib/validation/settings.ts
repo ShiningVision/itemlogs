@@ -39,6 +39,9 @@ export const updateSettingsSchema = z.object({
   contact_info: z.string().max(255).nullable().optional(),
   show_location: z.boolean().optional(),
   show_package_filter: z.boolean().optional(),
+  use_secret_notes: z.boolean().optional(),
+  show_location_filter: z.boolean().optional(),
+  name_location: z.string().nullable().optional(),
   // Reserved for future features — see app/api/setup/route.ts. Kept valid
   // to PATCH here ahead of time so a future feature only needs to start
   // reading/writing one, not also wire up validation for it.

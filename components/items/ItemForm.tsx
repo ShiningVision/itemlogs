@@ -4,11 +4,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { ArrowLeftIcon, QrCodeIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, QrCodeIcon, InformationCircleIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import { MainImagePicker } from './MainImagePicker';
 import { ImageGalleryEditor } from './ImageGalleryEditor';
 import { BlueprintPickerModal } from './BlueprintPickerModal';
 import { BarcodeScannerModal } from './BarcodeScannerModal';
+import { TagManagerModal, type Tag } from '@/components/reference-data/TagManagerModal';
 import { Button } from '@/widgets/Button';
 import { Toggle } from '@/components/ui/Toggle';
 import { Toast, type ToastType } from '@/components/ui/notification';
@@ -24,17 +25,28 @@ type ImageRow = { id: number; url: string };
 type ItemFormData = {
   name: string;
   description: string;
-  location: string;
+  // Location is now a lookup-table assignment (like category/type), reached
+  // via TagManagerModal instead of typed freehand — null means "no
+  // location" (see the comment above the `locations` seed array in
+  // placeholder-data.ts).
+  location: Tag | null;
   barcode: string;
   status: number;
-  category: number | null;
-  type: number | null;
+  // Many-to-many now (item_categories/item_types join tables) — held here
+  // as arrays of {id, name} tags, same shape as `location`, so the chip UI
+  // below can render names without a separate lookup. Empty array means
+  // "no categories"/"no types" (displayed as "Other").
+  categories: Tag[];
+  types: Tag[];
   main_image: ImageRow | null;
   cost_price: string;
   purchase_price: string;
   purchase_price_currency: number;
   sell_price: string;
   is_featured: boolean;
+  // Private, owner-only — only rendered/sent when settings.use_secret_notes
+  // is on. Never present on blueprints (see applyBlueprint below).
+  notes: string;
 };
 
 const STATUSES = [1, 2, 3, 4];
@@ -45,6 +57,8 @@ export function ItemForm({
   initialGalleryImages = [],
   categories,
   types,
+  locations,
+  locationItemCounts,
   currencies,
   settings,
   featuredCount = 0,
@@ -55,6 +69,8 @@ export function ItemForm({
   initialGalleryImages?: Array<{ image_id: number; images: ImageRow }>;
   categories: Option[];
   types: Option[];
+  locations: Option[];
+  locationItemCounts: Record<number, number>;
   currencies: Currency[];
   settings: Settings;
   featuredCount?: number;
@@ -66,17 +82,18 @@ export function ItemForm({
   const [form, setForm] = useState<ItemFormData>({
     name: item?.name ?? '',
     description: item?.description ?? '',
-    location: item?.location ?? '',
+    location: item?.location_ref ? { id: item.location_id, name: item.location_ref.name } : null,
     barcode: item?.barcode?.toString() ?? '',
     status: item?.status ?? 1,
-    category: item?.category ?? null,
-    type: item?.type ?? null,
+    categories: item?.categories ?? [],
+    types: item?.types ?? [],
     main_image: item?.main_image_ref ? { id: item.main_image, url: item.main_image_ref.url } : null,
     cost_price: item?.cost_price?.toString() ?? '',
     purchase_price: item?.purchase_price?.toString() ?? '',
     purchase_price_currency: item?.purchase_price_currency ?? settings.default_purchase_price_currency,
     sell_price: item?.sell_price?.toString() ?? '',
     is_featured: item?.is_featured ?? false,
+    notes: item?.notes ?? '',
   });
 
   // Sell price is always in the shop's single sell_price_currency — no
@@ -88,6 +105,9 @@ export function ItemForm({
   );
   const [stayOnPage, setStayOnPage] = useState(false);
   const [blueprintModalOpen, setBlueprintModalOpen] = useState(false);
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [typeModalOpen, setTypeModalOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -104,17 +124,23 @@ export function ItemForm({
     setForm({
       name: bp.name ?? '',
       description: bp.description ?? '',
-      location: bp.location ?? '',
+      // Blueprints only carry a raw location_id (their service doesn't join
+      // location_ref — see app/lib/services/blueprints.ts) — resolve the
+      // name from this form's own `locations` prop instead.
+      location: bp.location_id != null ? locations.find((l) => l.id === bp.location_id) ?? null : null,
       barcode: bp.barcode?.toString() ?? '',
       status: bp.status ?? 1,
-      category: bp.category,
-      type: bp.type,
+      categories: bp.categories ?? [],
+      types: bp.types ?? [],
       main_image: bp.main_image_ref ? { id: bp.main_image, url: bp.main_image_ref.url } : null,
       cost_price: bp.cost_price?.toString() ?? '',
       purchase_price: bp.purchase_price?.toString() ?? '',
       purchase_price_currency: bp.purchase_price_currency,
       sell_price: bp.sell_price?.toString() ?? '',
       is_featured: false,
+      // Blueprints have no notes field (see app/api/setup/route.ts's items
+      // table comment) — nothing to carry over.
+      notes: '',
     });
   }
 
@@ -122,17 +148,18 @@ export function ItemForm({
     return {
       name: form.name,
       description: form.description || undefined,
-      location: form.location || undefined,
+      location_id: form.location?.id ?? null,
       barcode: settings.use_barcode && form.barcode ? form.barcode.trim() : undefined,
       status: form.status,
-      category: form.category,
-      type: form.type,
+      category_ids: form.categories.map((c) => c.id),
+      type_ids: form.types.map((tp) => tp.id),
       main_image: form.main_image?.id ?? null,
       cost_price: form.cost_price ? Number(form.cost_price) : 0,
       purchase_price: form.purchase_price ? Number(form.purchase_price) : 0,
       purchase_price_currency: form.purchase_price_currency,
       sell_price: settings.use_sell_price && form.sell_price ? Number(form.sell_price) : Number(form.sell_price || 0),
       is_featured: form.is_featured,
+      notes: settings.use_secret_notes ? form.notes || undefined : undefined,
     };
   }
 
@@ -341,18 +368,38 @@ export function ItemForm({
 
                 <div className="sheet-field">
                   <span className="sheet-label">{categoryLabel}</span>
-                  <select className="sheet-input" value={form.category ?? ''} onChange={(e) => update('category', e.target.value ? Number(e.target.value) : null)}>
-                    <option value="">{t('other')}</option>
-                    {categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
-                  </select>
+                  <button
+                    type="button"
+                    className="sheet-input"
+                    onClick={() => setCategoryModalOpen(true)}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-xs)', cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    <span style={{ color: form.categories.length ? 'inherit' : 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {form.categories.length
+                        ? form.categories.length > 2
+                          ? t('chipSummary', { first: form.categories.slice(0, 2).map((c) => c.name).join(', '), count: form.categories.length - 2 })
+                          : form.categories.map((c) => c.name).join(', ')
+                        : t('other')}
+                    </span>
+                  </button>
                 </div>
 
                 <div className="sheet-field">
                   <span className="sheet-label">{typeLabel}</span>
-                  <select className="sheet-input" value={form.type ?? ''} onChange={(e) => update('type', e.target.value ? Number(e.target.value) : null)}>
-                    <option value="">{t('other')}</option>
-                    {types.map((tp) => (<option key={tp.id} value={tp.id}>{tp.name}</option>))}
-                  </select>
+                  <button
+                    type="button"
+                    className="sheet-input"
+                    onClick={() => setTypeModalOpen(true)}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-xs)', cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    <span style={{ color: form.types.length ? 'inherit' : 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {form.types.length
+                        ? form.types.length > 2
+                          ? t('chipSummary', { first: form.types.slice(0, 2).map((tp) => tp.name).join(', '), count: form.types.length - 2 })
+                          : form.types.map((tp) => tp.name).join(', ')
+                        : t('other')}
+                    </span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -444,10 +491,46 @@ export function ItemForm({
             />
           </div>
 
+          {settings.use_secret_notes && (
+            <div className="sheet-section">
+              <div className="sheet-section-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}>
+                {t('notes')}
+                <Tooltip text={t('notesHint')}>
+                  <InformationCircleIcon style={{ width: '16px', height: '16px', opacity: 0.6 }} />
+                </Tooltip>
+              </div>
+              <textarea
+                className="sheet-input"
+                style={{ minHeight: '80px', resize: 'vertical' }}
+                value={form.notes}
+                onChange={(e) => update('notes', e.target.value)}
+              />
+            </div>
+          )}
+
           <div className="sheet-field-grid">
             <div className="sheet-field">
               <span className="sheet-label">{t('location')}</span>
-              <input className="sheet-input" value={form.location} onChange={(e) => update('location', e.target.value)} />
+              <Tooltip text={t('location')}>
+                <button
+                  type="button"
+                  className="sheet-input"
+                  onClick={() => setLocationModalOpen(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 'var(--spacing-xs)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  <span style={{ color: form.location ? 'inherit' : 'var(--color-text-muted)' }}>
+                    {form.location?.name ?? t('noLocation')}
+                  </span>
+                  <MapPinIcon style={{ width: '16px', height: '16px', flexShrink: 0, opacity: 0.6 }} />
+                </button>
+              </Tooltip>
             </div>
 
             {settings.use_barcode && (
@@ -519,6 +602,47 @@ export function ItemForm({
 
       {blueprintModalOpen && (
         <BlueprintPickerModal onSelect={applyBlueprint} onClose={() => setBlueprintModalOpen(false)} />
+      )}
+
+      {locationModalOpen && (
+        <TagManagerModal
+          mode="assign"
+          apiPath="/api/v1/locations"
+          label={t('location')}
+          items={locations}
+          itemCounts={locationItemCounts}
+          selectedIds={form.location ? [form.location.id] : []}
+          onAssign={(tags) => update('location', tags[0] ?? null)}
+          onClose={() => setLocationModalOpen(false)}
+        />
+      )}
+
+      {categoryModalOpen && (
+        <TagManagerModal
+          mode="assign"
+          multi
+          apiPath="/api/v1/categories"
+          label={categoryLabel}
+          items={categories}
+          itemCounts={{}}
+          selectedIds={form.categories.map((c) => c.id)}
+          onAssign={(tags) => update('categories', tags)}
+          onClose={() => setCategoryModalOpen(false)}
+        />
+      )}
+
+      {typeModalOpen && (
+        <TagManagerModal
+          mode="assign"
+          multi
+          apiPath="/api/v1/types"
+          label={typeLabel}
+          items={types}
+          itemCounts={{}}
+          selectedIds={form.types.map((tp) => tp.id)}
+          onAssign={(tags) => update('types', tags)}
+          onClose={() => setTypeModalOpen(false)}
+        />
       )}
 
       {blueprintNotification && (

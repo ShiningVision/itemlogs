@@ -24,11 +24,16 @@ export type Image = {
   id: number;
   url: string;
 };
+export type Location = {
+  id: number;
+  name: string | null;
+};
+
 export type Item = {
   id: number;
   name: string | null;
   description: string | null;
-  location: string | null;
+  location_id: number | null;
   barcode: string | null;
   status: number;
   cost_price: number | null;
@@ -40,6 +45,10 @@ export type Item = {
   main_image: number | null;
   package_id: number | null;
   is_featured: boolean;
+  // Private, owner-only — never present in any public/storefront-facing
+  // fetch, gated on the dashboard by settings.use_secret_notes. See
+  // app/api/setup/route.ts's items table comment.
+  notes: string | null;
 };
 
 export type Settings = {
@@ -79,6 +88,17 @@ export type Settings = {
   contact_info: string | null;
   show_location: boolean;
   show_package_filter: boolean;
+  // Gates the private items.notes field. Toggle copy/labels call this
+  // "secret notes" for the user; the column/setting name is just "notes".
+  use_secret_notes: boolean;
+  // Gates a location filter section on the storefront (mirrors
+  // show_package_filter). Distinct from show_location above, which only
+  // controls whether an item's assigned location shows on its own detail
+  // page.
+  show_location_filter: boolean;
+  // Customizable label for "location," mirrors name_category/name_type/
+  // name_package above.
+  name_location: string | null;
   // The tenant's own canonical URL (e.g. "https://my-shop.vercel.app"),
   // captured once at /setup from the request's Host header. Stored rather
   // than re-derived per-request so it's a plain queryable fact any client
@@ -128,7 +148,7 @@ export type Blueprint = {
   id: number;
   name: string | null;
   description: string | null;
-  location: string | null;
+  location_id: number | null;
   barcode: string | null;
   status: number;
   cost_price: number | null;

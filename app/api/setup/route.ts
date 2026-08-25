@@ -5,10 +5,13 @@ import {
   languages,
   types,
   categories,
+  locations,
   images,
   sales,
   packages,
   items,
+  itemCategories,
+  itemTypes,
   salesItems,
   itemImages,
   settings
@@ -184,6 +187,23 @@ export async function POST(request: Request) {
       await sql`SELECT setval('categories_id_seq', (SELECT MAX(id) FROM categories));`;
 
       await sql`
+        CREATE TABLE IF NOT EXISTS locations (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255)
+        );
+      `;
+      await sql`ALTER TABLE locations ENABLE ROW LEVEL SECURITY;`;
+      await Promise.all(
+        locations.map(
+          (l) => sql`
+            INSERT INTO locations (id, name) VALUES (${l.id}, ${l.name})
+            ON CONFLICT (id) DO NOTHING;
+          `
+        )
+      );
+      await sql`SELECT setval('locations_id_seq', (SELECT MAX(id) FROM locations));`;
+
+      await sql`
         CREATE TABLE IF NOT EXISTS images (
           id SERIAL PRIMARY KEY,
           url VARCHAR(255) NOT NULL
@@ -296,18 +316,26 @@ export async function POST(request: Request) {
           id SERIAL PRIMARY KEY,
           name VARCHAR(255),
           description VARCHAR(255),
-          location VARCHAR(255),
+          location_id INTEGER REFERENCES locations(id) ON DELETE SET NULL,
           barcode VARCHAR(255),
           status INTEGER NOT NULL,
           cost_price NUMERIC(18,2),
           purchase_price NUMERIC(18,2),
           purchase_price_currency INTEGER NOT NULL REFERENCES currencies(id),
           sell_price NUMERIC(18,2),
-          type INTEGER REFERENCES types(id) ON DELETE SET NULL,
-          category INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+          -- No scalar type/category columns — both are many-to-many now,
+          -- via the item_types/item_categories join tables created below
+          -- (after items, since they reference items.id).
           main_image INTEGER REFERENCES images(id) ON DELETE SET NULL,
           package_id INTEGER REFERENCES packages(id) ON DELETE SET NULL,
-          is_featured BOOLEAN NOT NULL DEFAULT false
+          is_featured BOOLEAN NOT NULL DEFAULT false,
+          -- Private, owner-only text (e.g. where/who an item was actually
+          -- bought from) — never included in any public/storefront select,
+          -- gated on the dashboard by settings.use_secret_notes. No
+          -- equivalent column on blueprints: a blueprint is a reusable
+          -- template, not a specific purchased unit, so a purchase note
+          -- doesn't apply to it.
+          notes TEXT
         );
       `;
       await sql`ALTER TABLE items ENABLE ROW LEVEL SECURITY;`;
@@ -315,14 +343,14 @@ export async function POST(request: Request) {
         items.map(
           (i) => sql`
             INSERT INTO items (
-              id, name, description, location, barcode, status,
+              id, name, description, location_id, barcode, status,
               cost_price, purchase_price, purchase_price_currency, sell_price,
-              type, category, main_image, package_id
+              main_image, package_id
             )
             VALUES (
-              ${i.id}, ${i.name}, ${i.description}, ${i.location}, ${i.barcode}, ${i.status},
+              ${i.id}, ${i.name}, ${i.description}, ${i.location_id}, ${i.barcode}, ${i.status},
               ${i.cost_price}, ${i.purchase_price}, ${i.purchase_price_currency}, ${i.sell_price},
-              ${i.type}, ${i.category}, ${i.main_image}, ${i.package_id}
+              ${i.main_image}, ${i.package_id}
             )
             ON CONFLICT (id) DO NOTHING;
           `
@@ -335,15 +363,15 @@ export async function POST(request: Request) {
           id SERIAL PRIMARY KEY,
           name VARCHAR(255),
           description VARCHAR(255),
-          location VARCHAR(255),
+          location_id INTEGER REFERENCES locations(id) ON DELETE SET NULL,
           barcode VARCHAR(255),
           status INTEGER NOT NULL,
           cost_price NUMERIC(18,2),
           purchase_price NUMERIC(18,2),
           purchase_price_currency INTEGER NOT NULL REFERENCES currencies(id),
           sell_price NUMERIC(18,2),
-          type INTEGER REFERENCES types(id) ON DELETE SET NULL,
-          category INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+          -- Same as items above — many-to-many via blueprint_types/
+          -- blueprint_categories, no scalar columns here.
           main_image INTEGER REFERENCES images(id) ON DELETE SET NULL
         );
       `;
@@ -389,6 +417,19 @@ export async function POST(request: Request) {
           contact_info VARCHAR(255),
           show_location BOOLEAN NOT NULL DEFAULT false,
           show_package_filter BOOLEAN NOT NULL DEFAULT false,
+          -- Gates the private items.notes field (see items table above) —
+          -- the toggle's own label/hint text calls this "secret notes" since
+          -- that's the user-facing concept, even though the underlying
+          -- column is just 'notes'.
+          use_secret_notes BOOLEAN NOT NULL DEFAULT false,
+          -- Gates a location filter section on the storefront, mirroring
+          -- show_package_filter. Separate from show_location above, which
+          -- only controls whether the assigned location shows on an item's
+          -- own detail page.
+          show_location_filter BOOLEAN NOT NULL DEFAULT false,
+          -- Customizable label for "location," mirroring name_category /
+          -- name_type / name_package below.
+          name_location VARCHAR(255),
           app_url VARCHAR(255),
           -- Onboarding checklist progress (see OnboardingChecklist.tsx). All
           -- three are sticky: once a step is detected as done it's written
@@ -431,7 +472,8 @@ export async function POST(request: Request) {
           display_profit, display_sell_price, display_purchase_price, display_cost_price, theme,
           owned_themes, tried_themes, theme_trial_expires_at,
           storefront_name, storefront_tagline, storefront_density,
-          show_contact, contact_info, show_location, show_package_filter, app_url,
+          show_contact, contact_info, show_location, show_package_filter,
+          use_secret_notes, show_location_filter, name_location, app_url,
           checklist_added_item, checklist_named_storefront, checklist_went_live
         )
         VALUES (
@@ -443,7 +485,8 @@ export async function POST(request: Request) {
           false, false, false, false, 'default',
           ARRAY['default'], ARRAY[]::TEXT[], NULL,
           NULL, NULL, 'dense',
-          false, NULL, false, false, ${appUrl},
+          false, NULL, false, false,
+          false, false, NULL, ${appUrl},
           false, false, false
         )
         ON CONFLICT (id) DO NOTHING;
@@ -487,6 +530,66 @@ export async function POST(request: Request) {
           `
         )
       );
+
+      // category/type many-to-many — items side. Seeded from placeholder-data's
+      // itemCategories/itemTypes (themselves derived from each seed item's
+      // category_ids/type_ids, see placeholder-data.ts).
+      await sql`
+        CREATE TABLE IF NOT EXISTS item_categories (
+          item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+          category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+          PRIMARY KEY (item_id, category_id)
+        );
+      `;
+      await sql`ALTER TABLE item_categories ENABLE ROW LEVEL SECURITY;`;
+      await Promise.all(
+        itemCategories.map(
+          (ic) => sql`
+            INSERT INTO item_categories (item_id, category_id)
+            VALUES (${ic.item_id}, ${ic.category_id})
+            ON CONFLICT (item_id, category_id) DO NOTHING;
+          `
+        )
+      );
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS item_types (
+          item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+          type_id INTEGER NOT NULL REFERENCES types(id) ON DELETE CASCADE,
+          PRIMARY KEY (item_id, type_id)
+        );
+      `;
+      await sql`ALTER TABLE item_types ENABLE ROW LEVEL SECURITY;`;
+      await Promise.all(
+        itemTypes.map(
+          (it) => sql`
+            INSERT INTO item_types (item_id, type_id)
+            VALUES (${it.item_id}, ${it.type_id})
+            ON CONFLICT (item_id, type_id) DO NOTHING;
+          `
+        )
+      );
+
+      // category/type many-to-many — blueprints side. No seed data (no
+      // blueprints are seeded at all — see the blueprints table above),
+      // just the empty tables ready for the app to write to.
+      await sql`
+        CREATE TABLE IF NOT EXISTS blueprint_categories (
+          blueprint_id INTEGER NOT NULL REFERENCES blueprints(id) ON DELETE CASCADE,
+          category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+          PRIMARY KEY (blueprint_id, category_id)
+        );
+      `;
+      await sql`ALTER TABLE blueprint_categories ENABLE ROW LEVEL SECURITY;`;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS blueprint_types (
+          blueprint_id INTEGER NOT NULL REFERENCES blueprints(id) ON DELETE CASCADE,
+          type_id INTEGER NOT NULL REFERENCES types(id) ON DELETE CASCADE,
+          PRIMARY KEY (blueprint_id, type_id)
+        );
+      `;
+      await sql`ALTER TABLE blueprint_types ENABLE ROW LEVEL SECURITY;`;
     });
 
     return Response.json({ ok: true });

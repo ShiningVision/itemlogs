@@ -29,6 +29,7 @@ import ExcelJS from 'exceljs';
 import { getItemsByIds, createItem, updateItem } from '@/app/lib/services/items';
 import { getCategories, createCategory } from '@/app/lib/services/categories';
 import { getTypes, createType } from '@/app/lib/services/types';
+import { getLocations, createLocation } from '@/app/lib/services/locations';
 import { getCurrencies } from '@/app/lib/services/currencies';
 import { getImageByUrl, createImage } from '@/app/lib/services/images';
 import { uploadImageBuffer } from '@/app/lib/storage/images';
@@ -56,6 +57,7 @@ export type ImportResult =
       updated: number;
       categoriesCreated: number;
       typesCreated: number;
+      locationsCreated: number;
       imagesFetched: number;
       imagesSkipped: number;
       rowErrors: string[];
@@ -241,7 +243,7 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
   }
 
   if (rows.length === 0) {
-    return { success: true, created: 0, updated: 0, categoriesCreated: 0, typesCreated: 0, imagesFetched: 0, imagesSkipped: 0, rowErrors: [] };
+    return { success: true, created: 0, updated: 0, categoriesCreated: 0, typesCreated: 0, locationsCreated: 0, imagesFetched: 0, imagesSkipped: 0, rowErrors: [] };
   }
 
   // ---- 3. Mutation pass ----
@@ -255,6 +257,10 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
   const typeNameToId = new Map<string, number>((typesList ?? []).map((t: any) => [t.name, t.id]));
   let typesCreated = 0;
 
+  const locationsList = await getLocations();
+  const locationNameToId = new Map<string, number>((locationsList ?? []).map((l: any) => [l.name, l.id]));
+  let locationsCreated = 0;
+
   // "Other" isn't a real category/type row (see app/lib/placeholder-data.ts)
   // — it's how a null category/type is displayed and how exportItems.ts
   // writes it to the sheet. Treat that exact text (case-insensitively,
@@ -264,23 +270,87 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
     return name.trim().toLowerCase() === 'other';
   }
 
-  async function resolveCategory(name: string | null): Promise<number | null> {
-    if (!name || isOtherLabel(name)) return null;
-    const existing = categoryNameToId.get(name);
-    if (existing !== undefined) return existing;
-    const created = await createCategory({ name });
-    categoryNameToId.set(name, created.id);
-    categoriesCreated++;
-    return created.id;
+  // Many-to-many now: a cell can hold several names. Split on a plain comma
+  // plus the fullwidth comma "，" (U+FF0C) and ideographic comma "、"
+  // (U+3001), covering every seeded locale (en, de, zh, ja, ko, fr, es) —
+  // matches what exportItems.ts's plain-comma join can round-trip, and
+  // additionally tolerates a sheet edited by hand in a CJK locale.
+  function splitMultiValue(cell: string | null): string[] {
+    if (!cell) return [];
+    return cell
+      .split(/[,，、]/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
   }
 
-  async function resolveType(name: string | null): Promise<number | null> {
-    if (!name || isOtherLabel(name)) return null;
-    const existing = typeNameToId.get(name);
+  const importWarnings: string[] = [];
+
+  async function resolveCategories(name: string | null, rowNumber: number): Promise<number[]> {
+    const tokens = splitMultiValue(name);
+    const otherTokens = tokens.filter(isOtherLabel);
+    const realTokens = tokens.filter((t) => !isOtherLabel(t));
+    // "Other" isn't a real row (see app/lib/placeholder-data.ts) — a lone
+    // "Other" (or several, e.g. "Other, Other") means "no categories",
+    // same meaning a null scalar used to have. "Other" mixed in alongside
+    // real names is almost certainly a mistake (can't be "no categories"
+    // and "Electronics" at once) — drop it and warn, rather than silently
+    // creating a real "Other" category row.
+    if (otherTokens.length > 0 && realTokens.length > 0) {
+      importWarnings.push(`Row ${rowNumber}: "Other" ignored in category — mixed with real category names.`);
+    }
+    if (realTokens.length === 0) return [];
+
+    const ids: number[] = [];
+    for (const t of realTokens) {
+      const existing = categoryNameToId.get(t);
+      if (existing !== undefined) {
+        ids.push(existing);
+        continue;
+      }
+      const created = await createCategory({ name: t });
+      categoryNameToId.set(t, created.id);
+      categoriesCreated++;
+      ids.push(created.id);
+    }
+    return ids;
+  }
+
+  async function resolveTypes(name: string | null, rowNumber: number): Promise<number[]> {
+    const tokens = splitMultiValue(name);
+    const otherTokens = tokens.filter(isOtherLabel);
+    const realTokens = tokens.filter((t) => !isOtherLabel(t));
+    if (otherTokens.length > 0 && realTokens.length > 0) {
+      importWarnings.push(`Row ${rowNumber}: "Other" ignored in type — mixed with real type names.`);
+    }
+    if (realTokens.length === 0) return [];
+
+    const ids: number[] = [];
+    for (const t of realTokens) {
+      const existing = typeNameToId.get(t);
+      if (existing !== undefined) {
+        ids.push(existing);
+        continue;
+      }
+      const created = await createType({ name: t });
+      typeNameToId.set(t, created.id);
+      typesCreated++;
+      ids.push(created.id);
+    }
+    return ids;
+  }
+
+  // Unlike category/type, a blank location cell has no "Other" sentinel
+  // convention to special-case here — an empty cell (or a location name that
+  // happens to literally be "Other") is just resolved/created like any other
+  // name, since a null location_id already means "no location" everywhere
+  // it's displayed.
+  async function resolveLocation(name: string | null): Promise<number | null> {
+    if (!name) return null;
+    const existing = locationNameToId.get(name);
     if (existing !== undefined) return existing;
-    const created = await createType({ name });
-    typeNameToId.set(name, created.id);
-    typesCreated++;
+    const created = await createLocation({ name });
+    locationNameToId.set(name, created.id);
+    locationsCreated++;
     return created.id;
   }
 
@@ -363,22 +433,25 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
 
   for (const row of rows) {
     try {
-      const categoryId = await resolveCategory(row.category);
-      const typeId = await resolveType(row.type);
+      const categoryIds = await resolveCategories(row.category, row.rowNumber);
+      const typeIds = await resolveTypes(row.type, row.rowNumber);
+      const locationId = await resolveLocation(row.location);
       const mainImageId = await resolveMainImage(row.main_image);
 
       const payload = {
         name: row.name,
-        // Blank description/location/barcode leave the existing value alone
-        // on update (they're omitted, not nulled) — only main_image,
-        // category, and type support explicit clearing, since those are
-        // the only nullable fields in the schema.
+        // Blank description/barcode leave the existing value alone on
+        // update (they're omitted, not nulled) — main_image, category_ids,
+        // type_ids, and location_id support explicit clearing instead,
+        // since those are the nullable/lookup fields in the schema (an
+        // empty array explicitly clears every category/type assignment,
+        // same as importing a row with "Other" in that cell).
         description: row.description ?? undefined,
-        location: row.location ?? undefined,
         barcode: row.barcode ?? undefined,
         status: row.status,
-        category: categoryId,
-        type: typeId,
+        category_ids: categoryIds,
+        type_ids: typeIds,
+        location_id: locationId,
         main_image: mainImageId,
         cost_price: row.cost_price,
         purchase_price: row.purchase_price,
@@ -407,8 +480,13 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
     updated,
     categoriesCreated,
     typesCreated,
+    locationsCreated,
     imagesFetched,
     imagesSkipped,
-    rowErrors,
+    // Non-fatal "Other mixed with real names" notices (see resolveCategories/
+    // resolveTypes) surface through the same rowErrors channel as actual
+    // save failures — there's no separate warnings field in the UI, and
+    // both are informational once we're past the hard validation gate.
+    rowErrors: [...importWarnings, ...rowErrors],
   };
 }

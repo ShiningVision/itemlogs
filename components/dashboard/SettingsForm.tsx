@@ -206,6 +206,20 @@ export function SettingsForm({ settings }: { settings: Settings }) {
               />
             </div>
           </div>
+          <div className="settings-row">
+            <Tooltip text={t('showLocationFilterHint')}>
+              <span>{t('showLocationFilter')}</span>
+            </Tooltip>
+            <div className="settings-row-controls">
+              {statusFor('show_location_filter')}
+              <Toggle
+                name="show_location_filter"
+                defaultChecked={Boolean(settings.show_location_filter)}
+                label={t('showLocationFilter')}
+                onChange={(e) => autoSave('show_location_filter', e.target.checked)}
+              />
+            </div>
+          </div>
         </div>
       </div>
 

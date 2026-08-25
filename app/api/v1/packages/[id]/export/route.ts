@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPackageById } from '@/app/lib/services/packages';
 import { getItemsByPackageId } from '@/app/lib/services/items';
+import { getSettings } from '@/app/lib/services/settings';
 import { buildItemsWorkbook, buildExportFilename } from '@/app/lib/items/exportItems';
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -9,9 +10,13 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     const { id } = await params;
     const packageId = Number(id);
 
-    const [pkg, items] = await Promise.all([getPackageById(packageId), getItemsByPackageId(packageId)]);
+    const [pkg, items, settings] = await Promise.all([
+      getPackageById(packageId),
+      getItemsByPackageId(packageId),
+      getSettings(),
+    ]);
 
-    const buffer = await buildItemsWorkbook(items);
+    const buffer = await buildItemsWorkbook(items, settings);
     // Packages don't have a single "date" field (they have separate
     // departure/arrival dates) — fall back to departure_date, then today,
     // to still get a sensibly-sorted filename like the sale export does.

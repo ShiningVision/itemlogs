@@ -19,7 +19,7 @@ export default async function PublicItemPage({
   const { id } = await params;
 
   const [item, settings] = await Promise.all([
-    getItemById(Number(id)),
+    getItemById(Number(id), { public: true }),
     getSettings(),
   ]);
 
@@ -73,8 +73,8 @@ export default async function PublicItemPage({
 
               <div className="sheet-badges">
                 <Badge tone="primary">{itemsT(`status${item.status}`)}</Badge>
-                <Badge>{categoryLabel}: {item.category_ref?.name ?? itemsT('other')}</Badge>
-                <Badge>{typeLabel}: {item.type_ref?.name ?? itemsT('other')}</Badge>
+                <Badge>{categoryLabel}: {item.categories?.length ? item.categories.map((c: { name: string | null }) => c.name).join(', ') : itemsT('other')}</Badge>
+                <Badge>{typeLabel}: {item.types?.length ? item.types.map((t: { name: string | null }) => t.name).join(', ') : itemsT('other')}</Badge>
               </div>
 
               {hasStats && (
@@ -118,10 +118,10 @@ export default async function PublicItemPage({
             </div>
           )}
 
-          {settings.show_location && item.location && (
+          {settings.show_location && item.location_ref?.name && (
             <div className="sheet-section">
-              <div className="sheet-section-title">{itemsT('location')}</div>
-              <p>{item.location}</p>
+              <div className="sheet-section-title">{resolveLabel(settings.name_location, itemsT('location'))}</div>
+              <p>{item.location_ref.name}</p>
             </div>
           )}
         </div>

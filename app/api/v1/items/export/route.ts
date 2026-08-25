@@ -1,6 +1,7 @@
 // app/api/v1/items/export/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getItems } from '@/app/lib/services/items';
+import { getSettings } from '@/app/lib/services/settings';
 import { buildItemsWorkbook } from '@/app/lib/items/exportItems';
 
 export async function GET(request: NextRequest) {
@@ -8,17 +9,22 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const categoriesParam = searchParams.get('categories');
     const statusesParam = searchParams.get('statuses');
-    const typeParam = searchParams.get('type');
+    const typesParam = searchParams.get('types');
+    const locationParam = searchParams.get('location');
 
     // Same filters the Items page's filter bar writes into the URL — but no
     // limit/offset, so every matching row is exported regardless of which
     // page of the (paginated) grid the user is currently looking at.
     const categoryIds = categoriesParam ? categoriesParam.split(',').map(Number) : undefined;
     const statuses = statusesParam ? statusesParam.split(',').map(Number) : undefined;
-    const typeId = typeParam ? Number(typeParam) : undefined;
+    const typeIds = typesParam ? typesParam.split(',').map(Number) : undefined;
+    const locationId = locationParam ? Number(locationParam) : undefined;
 
-    const { items } = await getItems({ categoryIds, statuses, typeId });
-    const buffer = await buildItemsWorkbook(items);
+    const [{ items }, settings] = await Promise.all([
+      getItems({ categoryIds, statuses, typeIds, locationIds: locationId !== undefined ? [locationId] : undefined }),
+      getSettings(),
+    ]);
+    const buffer = await buildItemsWorkbook(items, settings);
 
     return new NextResponse(buffer, {
       status: 200,

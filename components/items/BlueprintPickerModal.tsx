@@ -11,14 +11,15 @@ type BlueprintRow = {
   name: string | null;
   barcode: string | null;
   description: string | null;
-  location: string | null;
+  location_id: number | null;
   status: number;
   cost_price: number | null;
   purchase_price: number | null;
   purchase_price_currency: number;
   sell_price: number | null;
-  type: number | null;
-  category: number | null;
+  // Many-to-many now — see app/lib/services/blueprints.ts's flattenBlueprintJoins.
+  types: { id: number; name: string | null }[];
+  categories: { id: number; name: string | null }[];
   main_image: number | null;
   main_image_ref: { url: string } | null;
 };

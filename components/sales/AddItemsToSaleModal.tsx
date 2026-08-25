@@ -11,7 +11,7 @@ type AvailableItem = {
   id: number;
   name: string | null;
   main_image_ref: { url: string } | null;
-  category_ref: { name: string } | null;
+  categories: { id: number; name: string | null }[];
 };
 
 export function AddItemsToSaleModal({
@@ -137,7 +137,7 @@ export function AddItemsToSaleModal({
                       {item.name}
                     </span>
                     <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {item.category_ref?.name ?? itemsT('other')}
+                      {item.categories?.length ? item.categories.map((c) => c.name).join(', ') : itemsT('other')}
                     </span>
 
                     {selected && (
