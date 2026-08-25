@@ -12,15 +12,17 @@ export async function getTypes() {
   return data;
 }
 
+// Type is many-to-many with items now (item_types join table) — no more
+// scalar items.type column to select, so this counts join rows per type_id
+// instead (see the identical pattern in app/lib/services/categories.ts's
+// getCategoryItemCounts).
 export async function getTypeItemCounts(): Promise<Record<number, number>> {
-  const { data, error } = await supabase.from('items').select('type');
+  const { data, error } = await supabase.from('item_types').select('type_id');
   if (error) throw error;
 
   const counts: Record<number, number> = {};
-  for (const row of data ?? []) {
-    if (row.type !== null) {
-      counts[row.type] = (counts[row.type] ?? 0) + 1;
-    }
+  for (const row of (data ?? []) as any[]) {
+    counts[row.type_id] = (counts[row.type_id] ?? 0) + 1;
   }
   return counts;
 }

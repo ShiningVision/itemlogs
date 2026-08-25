@@ -12,15 +12,17 @@ export async function getCategories() {
   return data;
 }
 
+// Category is many-to-many with items now (item_categories join table) —
+// no more scalar items.category column to select, so this counts join rows
+// per category_id instead (see the identical pattern in
+// app/lib/services/items.ts's getUncategorizedItemCounts/getPublicJoinCounts).
 export async function getCategoryItemCounts(): Promise<Record<number, number>> {
-  const { data, error } = await supabase.from('items').select('category');
+  const { data, error } = await supabase.from('item_categories').select('category_id');
   if (error) throw error;
 
   const counts: Record<number, number> = {};
-  for (const row of data ?? []) {
-    if (row.category !== null) {
-      counts[row.category] = (counts[row.category] ?? 0) + 1;
-    }
+  for (const row of (data ?? []) as any[]) {
+    counts[row.category_id] = (counts[row.category_id] ?? 0) + 1;
   }
   return counts;
 }
