@@ -1,5 +1,6 @@
 // app/dashboard/(protected)/gallery/page.tsx
 import { getImages, getReferencedImageIds } from '@/app/lib/services/images';
+import { getDocuments } from '@/app/lib/services/documents';
 import { getBlobUsage, BLOB_LIMIT_BYTES } from '@/app/lib/storage/blob-usage';
 import { GalleryGrid } from '@/components/gallery/GalleryGrid';
 import { getTranslations } from 'next-intl/server';
@@ -7,10 +8,11 @@ import { getTranslations } from 'next-intl/server';
 export default async function GalleryPage() {
   // The Gallery now does its own sorting/filtering/pagination client-side
   // (sort-by-size and orphan-filtering both need the full set to work with),
-  // so we fetch every image once rather than a DB-paginated page of 40.
-  const [{ images }, referencedIds, usage] = await Promise.all([
+  // so we fetch every image/document once rather than a DB-paginated page.
+  const [{ images }, referencedIds, documents, usage] = await Promise.all([
     getImages(),
     getReferencedImageIds(),
+    getDocuments(),
     getBlobUsage(),
   ]);
 
@@ -22,10 +24,12 @@ export default async function GalleryPage() {
     <div className="page-container-wide" style={{ padding: 'var(--spacing-lg)' }}>
       <GalleryGrid
         initialImages={images}
+        initialDocuments={documents}
         title={t('title')}
         sizeByUrl={sizeByUrl}
         orphanIds={orphanIds}
-        usedBytes={usage.totalBytes}
+        imagesBytes={usage.imagesBytes}
+        documentsBytes={usage.documentsBytes}
         limitBytes={BLOB_LIMIT_BYTES}
       />
     </div>

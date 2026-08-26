@@ -3,6 +3,7 @@ import { supabase } from '../../lib/db/client';
 import type { CreatePackageInput, UpdatePackageInput } from '../../lib/validation/packages';
 import { getExchangeRate } from './exchange-rates';
 import { getItemsByPackageId } from './items';
+import { deletePackageDocuments } from './documents';
 
 export async function getPackageItemCounts(): Promise<Record<number, number>> {
   const { data, error } = await supabase.from('items').select('package_id');
@@ -85,6 +86,11 @@ export async function updatePackage(id: number, input: UpdatePackageInput) {
 }
 
 export async function deletePackage(id: number) {
+  // Documents belonging to this package would otherwise be orphaned in
+  // Vercel Blob — ON DELETE CASCADE cleans up their DB rows automatically,
+  // but can't touch the actual blob files, so delete those first.
+  await deletePackageDocuments(id);
+
   const { error } = await supabase
     .from('packages')
     .delete()

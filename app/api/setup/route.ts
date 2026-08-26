@@ -9,6 +9,7 @@ import {
   images,
   sales,
   packages,
+  documents,
   items,
   itemCategories,
   itemTypes,
@@ -310,6 +311,37 @@ export async function POST(request: Request) {
         )
       );
       await sql`SELECT setval('packages_id_seq', (SELECT MAX(id) FROM packages));`;
+
+      // Package documents (receipts, certificates of authenticity, etc.) —
+      // arbitrary file types (PDF, JPEG, ...) in Vercel Blob, kept out of the
+      // `images` table/Gallery-image-picker machinery entirely since they
+      // aren't shared/reusable across items the way images are: each
+      // document belongs to exactly one package. Uploaded under a distinct
+      // `documents/` Blob prefix (see app/lib/storage/documents.ts) so
+      // Gallery's usage bar can split images vs. documents by prefix (see
+      // app/lib/storage/blob-usage.ts).
+      await sql`
+        CREATE TABLE IF NOT EXISTS documents (
+          id SERIAL PRIMARY KEY,
+          package_id INTEGER NOT NULL REFERENCES packages(id) ON DELETE CASCADE,
+          url VARCHAR(255) NOT NULL,
+          filename VARCHAR(255) NOT NULL,
+          content_type VARCHAR(100)
+        );
+      `;
+      await sql`ALTER TABLE documents ENABLE ROW LEVEL SECURITY;`;
+      await Promise.all(
+        documents.map(
+          (d) => sql`
+            INSERT INTO documents (id, package_id, url, filename, content_type)
+            VALUES (${d.id}, ${d.package_id}, ${d.url}, ${d.filename}, ${d.content_type})
+            ON CONFLICT (id) DO NOTHING;
+          `
+        )
+      );
+      // No setval call — `documents` has no seed rows (see the empty array
+      // in placeholder-data.ts), so there are no manually-assigned ids to
+      // bump the sequence past. Same reasoning as the blueprints table above.
 
       await sql`
         CREATE TABLE IF NOT EXISTS items (

@@ -82,6 +82,12 @@ const images = [
   { id: '4', url: '/images/dragon_quest.jpg' },
 ];
 
+// Package documents (receipts, certificates of authenticity, etc.) — a
+// separate table from `images`, since they're arbitrary file types (PDF,
+// JPEG, ...) tied to exactly one package rather than shared/reusable across
+// items. No seed rows; a fresh tenant just starts with none.
+const documents: { id: string; package_id: string; url: string; filename: string; content_type: string }[] = [];
+
 const packages = [
   {
     id: '1',
@@ -248,6 +254,7 @@ export {
   locations,
   images,
   packages,
+  documents,
   items,
   itemCategories,
   itemTypes,

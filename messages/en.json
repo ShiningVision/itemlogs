@@ -350,7 +350,12 @@
     "delete": "Delete",
     "confirmDeletePackage": "Delete this package? Items inside it will become unassigned, not deleted.",
     "showOnStorefront": "Show on visitor page",
-    "showOnStorefrontHint": "This enables visitors to filter for items of this package if the \"Filter by packages\" option is on"
+    "showOnStorefrontHint": "This enables visitors to filter for items of this package if the \"Filter by packages\" option is on",
+    "documentsInPackage": "Documents ({count})",
+    "addDocument": "Add document",
+    "uploading": "Uploading...",
+    "documentUploadFailed": "Failed to upload document.",
+    "documentDeleteFailed": "Failed to delete document."
   },
   "sales": {
     "title": "Sales",
@@ -391,7 +396,10 @@
     "cancel": "Cancel",
     "confirmDeleteImage": "Delete this image? If it's used as an item's main image or in a gallery, it will be removed from there too.",
     "confirmDeleteSelected": "Delete {count} selected images? If any are used as an item's main image or in a gallery, they will be removed from there too.",
+    "confirmDeleteDocument": "Delete this document? This can't be undone.",
     "storageUsed": "{used} of {limit} used",
+    "storageImages": "Images: {used}",
+    "storageDocuments": "Documents: {used}",
     "sortNewest": "Newest",
     "sortLargest": "Largest first",
     "orphanedOnly": "Unused only",
@@ -400,7 +408,10 @@
     "selectAll": "Select all",
     "deselectAll": "Deselect all",
     "deleteSelected": "Delete selected ({count})",
-    "cancelSelection": "Cancel"
+    "cancelSelection": "Cancel",
+    "viewImages": "Images ({count})",
+    "viewDocuments": "Documents ({count})",
+    "noDocuments": "No documents yet."
   },
   "storefront": {
     "noItems": "No items available.",

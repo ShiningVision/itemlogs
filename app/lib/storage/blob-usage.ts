@@ -11,6 +11,15 @@ export const BLOB_LIMIT_BYTES = 1024 * 1024 * 1024; // 1 GB
 
 type UsageSnapshot = {
   totalBytes: number;
+  // Split out by Blob pathname prefix — `items/` (item images, see
+  // app/lib/storage/images.ts) vs `documents/` (package documents, see
+  // app/lib/storage/documents.ts). `otherBytes` catches anything under
+  // neither prefix (there shouldn't be any today, but this keeps
+  // imagesBytes + documentsBytes + otherBytes === totalBytes an invariant
+  // rather than a silent undercount if a third prefix shows up later).
+  imagesBytes: number;
+  documentsBytes: number;
+  otherBytes: number;
   sizeByUrl: Map<string, number>;
   fetchedAt: number;
 };
@@ -21,6 +30,9 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 async function fetchUsage(): Promise<UsageSnapshot> {
   const sizeByUrl = new Map<string, number>();
   let totalBytes = 0;
+  let imagesBytes = 0;
+  let documentsBytes = 0;
+  let otherBytes = 0;
   let cursor: string | undefined;
 
   do {
@@ -28,11 +40,14 @@ async function fetchUsage(): Promise<UsageSnapshot> {
     for (const blob of page.blobs) {
       sizeByUrl.set(blob.url, blob.size);
       totalBytes += blob.size;
+      if (blob.pathname.startsWith('items/')) imagesBytes += blob.size;
+      else if (blob.pathname.startsWith('documents/')) documentsBytes += blob.size;
+      else otherBytes += blob.size;
     }
     cursor = page.hasMore ? page.cursor : undefined;
   } while (cursor);
 
-  return { totalBytes, sizeByUrl, fetchedAt: Date.now() };
+  return { totalBytes, imagesBytes, documentsBytes, otherBytes, sizeByUrl, fetchedAt: Date.now() };
 }
 
 // Returns the total bytes used and a url -> size map for per-image display.
@@ -51,6 +66,13 @@ export async function getBlobUsage(options: { force?: boolean } = {}) {
     if (cache) return cache;
     // No cache to fall back on — report zero usage rather than crashing the
     // Gallery page over a storage-usage sidebar feature.
-    return { totalBytes: 0, sizeByUrl: new Map<string, number>(), fetchedAt: Date.now() };
+    return {
+      totalBytes: 0,
+      imagesBytes: 0,
+      documentsBytes: 0,
+      otherBytes: 0,
+      sizeByUrl: new Map<string, number>(),
+      fetchedAt: Date.now(),
+    };
   }
 }

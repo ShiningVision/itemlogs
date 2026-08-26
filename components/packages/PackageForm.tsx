@@ -10,6 +10,7 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AddItemsToPackageModal } from './AddItemsToPackageModal';
 import { ItemGrid } from '@/components/items/ItemGrid';
+import { DocumentListEditor, type DocumentRow } from './DocumentListEditor';
 import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import type { Package, Settings } from '@/app/lib/definitions';
 import { parseApiError } from '@/app/lib/errors/parseApiError';
@@ -20,17 +21,21 @@ export function PackageForm({
     mode,
     pkg,
     packageItems = [],
+    packageDocuments = [],
     settings,
     currencies,
 }: {
     mode: 'create' | 'update';
     pkg?: Package;
     packageItems?: any[];
+    packageDocuments?: DocumentRow[];
     settings: Settings;
     currencies: Currency[];
 }) {
     const t = useTranslations('packages');
     const router = useRouter();
+
+    const [documents, setDocuments] = useState<DocumentRow[]>(packageDocuments);
 
     const [form, setForm] = useState({
         name: pkg?.name ?? '',
@@ -260,6 +265,19 @@ export function PackageForm({
                                 settings={settings}
                                 removeFromPackageButton
                                 onItemRemovedFromPackage={() => router.refresh()}
+                            />
+                        </div>
+                    )}
+
+                    {mode === 'update' && pkg && (
+                        <div className="sheet-section">
+                            <div className="sheet-section-title">
+                                {t('documentsInPackage', { count: documents.length })}
+                            </div>
+                            <DocumentListEditor
+                                packageId={pkg.id}
+                                documents={documents}
+                                onChange={setDocuments}
                             />
                         </div>
                     )}
