@@ -25,7 +25,7 @@ type SearchParams = {
   categories?: string;
   statuses?: string;
   types?: string;
-  location?: string;
+  locations?: string;
   sell?: string;
   saleId?: string;
   page?: string;
@@ -45,7 +45,7 @@ export default async function ItemsPage({
     categories: categoriesParam,
     statuses: statusesParam,
     types: typesParam,
-    location: locationParam,
+    locations: locationsParam,
     sell,
     saleId: saleIdParam,
     page: pageParam,
@@ -79,7 +79,7 @@ export default async function ItemsPage({
         ? undefined
         : statusesParam.split(',').map(Number);
   const typeIds = typesParam ? typesParam.split(',').map(Number) : undefined;
-  const locationId = locationParam ? Number(locationParam) : undefined;
+  const locationIds = locationsParam ? locationsParam.split(',').map(Number) : undefined;
   const saleId = saleIdParam ? Number(saleIdParam) : undefined;
 
   const page = parsePage(pageParam);
@@ -91,7 +91,7 @@ export default async function ItemsPage({
   if (categoryIds?.length) exportParams.set('categories', categoryIds.join(','));
   if (statuses?.length) exportParams.set('statuses', statuses.join(','));
   if (typeIds?.length) exportParams.set('types', typeIds.join(','));
-  if (locationId !== undefined) exportParams.set('location', String(locationId));
+  if (locationIds?.length) exportParams.set('locations', locationIds.join(','));
   const exportHref = `/api/v1/items/export${exportParams.toString() ? `?${exportParams.toString()}` : ''}`;
 
   const [{ items, totalCount }, categories, types, locations, uncategorizedCounts, categoryItemCounts, typeItemCounts, locationItemCounts] = await Promise.all([
@@ -99,7 +99,7 @@ export default async function ItemsPage({
       categoryIds,
       statuses,
       typeIds,
-      locationIds: locationId !== undefined ? [locationId] : undefined,
+      locationIds,
       sort,
       limit: ITEMS_PAGE_SIZE,
       offset,
@@ -115,9 +115,19 @@ export default async function ItemsPage({
 
   const totalPages = getTotalPages(totalCount, ITEMS_PAGE_SIZE);
 
-  const sortedCategories = [...categories].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
-  const sortedTypes = [...types].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
-  const sortedLocations = [...locations].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+  // Usage first, alphabetical as the tiebreak — this decides which tags
+  // land in the filter bar's first two pill rows before the rest get
+  // tucked behind its "more" button (see ItemFiltersBar/FilterPillRow), so
+  // the most-used tags are always the ones visible by default.
+  function byUsageThenAlpha(counts: Record<number, number>) {
+    return (a: { id: number; name: string | null }, b: { id: number; name: string | null }) => {
+      const usageDiff = (counts[b.id] ?? 0) - (counts[a.id] ?? 0);
+      return usageDiff !== 0 ? usageDiff : (a.name ?? '').localeCompare(b.name ?? '');
+    };
+  }
+  const sortedCategories = [...categories].sort(byUsageThenAlpha(categoryItemCounts));
+  const sortedTypes = [...types].sort(byUsageThenAlpha(typeItemCounts));
+  const sortedLocations = [...locations].sort(byUsageThenAlpha(locationItemCounts));
 
   const t = await getTranslations('items');
   const categoryLabel = resolveLabel(settings.name_category, t('category'));
@@ -176,7 +186,7 @@ export default async function ItemsPage({
         selectedCategoryIds={categoryIds ?? []}
         selectedStatuses={statuses ?? []}
         selectedTypeIds={typeIds ?? []}
-        selectedLocationId={locationId}
+        selectedLocationIds={locationIds ?? []}
         sellModeActive={sellModeActive}
         categoryLabel={categoryLabel}
         typeLabel={typeLabel}

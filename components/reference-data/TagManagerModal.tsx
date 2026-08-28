@@ -36,6 +36,7 @@ export function TagManagerModal({
   selectedIds = [],
   onAssign,
   onClose,
+  defaultSortMode = 'alpha',
 }: {
   mode: 'manage' | 'assign';
   multi?: boolean;
@@ -46,11 +47,18 @@ export function TagManagerModal({
   selectedIds?: number[];
   onAssign?: (tags: Tag[]) => void;
   onClose: () => void;
+  // The filter bar's "more" overflow modal (see ItemFiltersBar) wants
+  // usage-first-then-alphabetical by default, since that mirrors the
+  // pill row's own default ordering (most-used tags visible before the
+  // row overflows). The original "Manage" entry points keep defaulting to
+  // alpha, unaffected — only the initial state differs, the toggle itself
+  // still works the same either way.
+  defaultSortMode?: 'alpha' | 'usage';
 }) {
   const t = useTranslations('referenceData');
   const router = useRouter();
 
-  const [sortMode, setSortMode] = useState<'alpha' | 'usage'>('alpha');
+  const [sortMode, setSortMode] = useState<'alpha' | 'usage'>(defaultSortMode);
   const [newName, setNewName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -70,7 +78,12 @@ export function TagManagerModal({
   const sortedItems = useMemo(() => {
     const copy = [...pool];
     if (sortMode === 'usage') {
-      copy.sort((a, b) => (itemCounts[b.id] ?? 0) - (itemCounts[a.id] ?? 0));
+      // Usage first, alphabetical as the tiebreak — otherwise same-count
+      // tags fall back to whatever order `pool` happens to be in.
+      copy.sort((a, b) => {
+        const usageDiff = (itemCounts[b.id] ?? 0) - (itemCounts[a.id] ?? 0);
+        return usageDiff !== 0 ? usageDiff : (a.name ?? '').localeCompare(b.name ?? '');
+      });
     } else {
       copy.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
     }

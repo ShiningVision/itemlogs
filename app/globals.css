@@ -2308,13 +2308,18 @@ body {
   display: inline-block;
   flex-shrink: 0;
   padding-right: var(--spacing-xl);
-  /* Latin default: DSEG7 Classic, a real 7-segment/LED display font — the
-     digital-billboard look the news-anchor-style ticker calls for.
-     zh/ja/ko override this below with their own self-hosted font, since no
-     LED-style font exists with CJK glyphs (see app/layout.tsx). */
-  font-family: var(--font-flavour-latin), monospace;
+  /* Latin default: a normal, readable sans-serif — previously a 7-segment
+     LED display font (DSEG7 Classic), but that's drawn for calculator/clock
+     digit displays and badly distorts or drops most accented Latin letters,
+     so non-English flavour text (é, ü, ñ, ...) came out looking broken
+     rather than stylized. Calibri first since that's a familiar, normal
+     look on Windows; Carlito is its metric-compatible open-source clone
+     (commonly present on Linux), then a plain system-ui/sans-serif
+     fallback everywhere else. zh/ja/ko override this below with their own
+     self-hosted font (see app/layout.tsx). */
+  font-family: Calibri, Carlito, system-ui, sans-serif;
   font-style: normal;
-  letter-spacing: 0.03em;
+  letter-spacing: normal;
   color: var(--color-primary);
   font-size: var(--font-size-xxl, 1.9rem);
   line-height: 1.4;

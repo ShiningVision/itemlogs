@@ -123,6 +123,14 @@ export function ItemCard({
   const showCost = settings.display_cost_price && item.cost_price !== null;
   const showProfit = settings.display_profit && profit !== null;
   const hasAnyPrice = showPurchase || showSell || showCost || showProfit;
+  // The top row pairs a left-side price with sell price pinned to the
+  // right — normally purchase price on the left. If purchase price is
+  // hidden but cost price is shown, cost price fills that same left slot
+  // instead of leaving it empty (and sell price alone stranded on the
+  // right) with cost then repeated as its own row below. Only actually
+  // happens when purchase is off; if purchase is on, cost keeps its usual
+  // separate row underneath.
+  const costInTopRow = showCost && !showPurchase;
 
   return (
     <div className={`catalog-card interactive-card${compact ? ' catalog-card--compact' : ''}`} style={{ position: 'relative' }}>
@@ -169,13 +177,14 @@ export function ItemCard({
 
           {hasAnyPrice && (
             <div className="catalog-card-prices">
-              {(showPurchase || showSell) && (
+              {(showPurchase || showSell || costInTopRow) && (
                 <div className="catalog-card-price-row">
                   {showPurchase && <span>{purchaseSymbol}{item.purchase_price!.toFixed(2)}</span>}
+                  {costInTopRow && <span>{sellSymbol}{item.cost_price!.toFixed(2)}</span>}
                   {showSell && <span className="catalog-card-sell-price" style={{ marginLeft: 'auto' }}>{sellSymbol}{item.sell_price!.toFixed(2)}</span>}
                 </div>
               )}
-              {showCost && <span>{sellSymbol}{item.cost_price!.toFixed(2)}</span>}
+              {showCost && !costInTopRow && <span>{sellSymbol}{item.cost_price!.toFixed(2)}</span>}
               {showProfit && (
                 <span className={`catalog-card-profit ${getProfitColorClass(profit!, locale)}`}>
                   {sellSymbol}{profit!.toFixed(2)}

@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const categoriesParam = searchParams.get('categories');
     const statusesParam = searchParams.get('statuses');
     const typesParam = searchParams.get('types');
-    const locationParam = searchParams.get('location');
+    const locationsParam = searchParams.get('locations');
 
     // Same filters the Items page's filter bar writes into the URL — but no
     // limit/offset, so every matching row is exported regardless of which
@@ -18,10 +18,10 @@ export async function GET(request: NextRequest) {
     const categoryIds = categoriesParam ? categoriesParam.split(',').map(Number) : undefined;
     const statuses = statusesParam ? statusesParam.split(',').map(Number) : undefined;
     const typeIds = typesParam ? typesParam.split(',').map(Number) : undefined;
-    const locationId = locationParam ? Number(locationParam) : undefined;
+    const locationIds = locationsParam ? locationsParam.split(',').map(Number) : undefined;
 
     const [{ items }, settings] = await Promise.all([
-      getItems({ categoryIds, statuses, typeIds, locationIds: locationId !== undefined ? [locationId] : undefined }),
+      getItems({ categoryIds, statuses, typeIds, locationIds }),
       getSettings(),
     ]);
     const buffer = await buildItemsWorkbook(items, settings);

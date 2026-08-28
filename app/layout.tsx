@@ -12,19 +12,17 @@ import { getSettings } from '@/app/lib/services/settings';
 // from public/fonts (no Google Fonts requests at build or runtime —
 // next/font/local never talks to any network).
 //
-// The ticker went for a "digital billboard" look, but no single typeface
-// covers both an LED/segment-display style AND CJK glyphs — that aesthetic
-// simply hasn't been drawn for Chinese/Japanese/Korean. So Latin locales get
-// a real 7-segment display font (DSEG7 Classic), while zh/ja/ko each get a
-// clean monospaced-feel Noto Sans variant for their script — FlavourTicker
-// picks between them based on the active locale.
-const flavourLatinFont = localFont({
-  src: [
-    { path: '../public/fonts/DSEG7Classic-Regular.woff2', weight: '400', style: 'normal' },
-  ],
-  variable: '--font-flavour-latin',
-});
-
+// The ticker originally went for a "digital billboard" look via a 7-segment
+// LED font (DSEG7 Classic) for Latin locales, but that font is drawn for
+// calculator/clock-style digit displays — it's missing or badly distorts
+// most accented Latin letters, so anything beyond English (é, ü, ñ, ...)
+// came out looking broken rather than stylized. Latin locales now just use
+// a normal, readable sans-serif stack instead (see .flavour-ticker-item in
+// globals.css) — no self-hosted font needed for them. zh/ja/ko still each
+// get their own clean monospaced-feel Noto Sans variant for their script,
+// since the system-ui fallback can't be trusted to have those glyphs on
+// every platform — FlavourTicker picks between them based on the active
+// locale.
 const flavourZhFont = localFont({
   src: [
     { path: '../public/fonts/NotoSansSC-Regular.woff2', weight: '400', style: 'normal' },
@@ -47,7 +45,6 @@ const flavourKoFont = localFont({
 });
 
 const flavourFontVariables = [
-  flavourLatinFont.variable,
   flavourZhFont.variable,
   flavourJaFont.variable,
   flavourKoFont.variable,
