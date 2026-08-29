@@ -1,6 +1,7 @@
 // components/ui/Pagination.tsx
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
+import { PageJumpForm } from './PageJumpForm';
 
 export async function Pagination({
   page,
@@ -38,6 +39,16 @@ export async function Pagination({
       <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
         {t('pageOf', { page, total: totalPages })}
       </span>
+
+      {totalPages > 2 && (
+        <PageJumpForm
+          page={page}
+          totalPages={totalPages}
+          goLabel={t('go')}
+          inputLabel={t('pageInputLabel')}
+          invalidMessage={t('invalidPage', { total: totalPages })}
+        />
+      )}
 
       <Link href={buildHref(Math.min(totalPages, page + 1))} aria-disabled={!hasNext} style={buttonStyle(!hasNext)}>
         {t('next')}

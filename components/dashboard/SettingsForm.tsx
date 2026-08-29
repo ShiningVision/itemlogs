@@ -12,6 +12,8 @@ import Link from 'next/link';
 import type { Settings } from '@/app/lib/definitions';
 import { resolveLabel } from '@/app/lib/labels';
 import { Squares2X2Icon, ViewColumnsIcon } from '@heroicons/react/24/outline';
+import { FeaturedItemsSection } from './FeaturedItemsSection';
+import type { FeaturedItem } from './AddFeaturedItemsModal';
 
 const SHOW_MESSAGE_MAX_LENGTH = 255;
 
@@ -22,7 +24,6 @@ const VISIBILITY_FIELDS: Array<{ key: keyof Settings; labelKey: string; hintKey:
   { key: 'show_status_2', labelKey: 'showStatus2', hintKey: 'showStatus2Hint' },
   { key: 'show_status_3', labelKey: 'showStatus3', hintKey: 'showStatus3Hint' },
   { key: 'show_status_4', labelKey: 'showStatus4', hintKey: 'showStatus4Hint' },
-  { key: 'show_contact', labelKey: 'showContact', hintKey: 'showContactHint' },
 ];
 
 const ITEM_DETAIL_FIELDS: Array<{ key: keyof Settings; labelKey: string; hintKey: string }> = [
@@ -30,11 +31,25 @@ const ITEM_DETAIL_FIELDS: Array<{ key: keyof Settings; labelKey: string; hintKey
   { key: 'show_purchase_price', labelKey: 'showPurchasePrice', hintKey: 'showPurchasePriceHint' },
   { key: 'show_cost_price', labelKey: 'showCostPrice', hintKey: 'showCostPriceHint' },
   { key: 'show_location', labelKey: 'showLocation', hintKey: 'showLocationHint' },
+  // "Show description" — claims spare_toggle_2 (see the comment on that
+  // column in app/api/setup/route.ts) instead of a dedicated column, same
+  // as spare_toggle_1 for Featured Items. Not inverted: on for new tenants
+  // via the setup route's INSERT, off by default for already-provisioned
+  // ones, same as every other field in this list.
+  { key: 'spare_toggle_2', labelKey: 'showDescription', hintKey: 'showDescriptionHint' },
 ];
 
 type FieldStatus = 'saving' | 'saved' | 'error';
 
-export function SettingsForm({ settings }: { settings: Settings }) {
+export function SettingsForm({
+  settings,
+  featuredItems,
+  featuredItemCap,
+}: {
+  settings: Settings;
+  featuredItems: FeaturedItem[];
+  featuredItemCap: number;
+}) {
   const t = useTranslations('dashboard');
   const packageLabel = resolveLabel(settings.name_package, t('packageNameFallback'));
   const [, startAutosaveTransition] = useTransition();
@@ -98,10 +113,6 @@ export function SettingsForm({ settings }: { settings: Settings }) {
       </div>
     ));
 
-  const toggleGroup = (fields: Array<{ key: keyof Settings; labelKey: string; hintKey: string }>) => (
-    <div className="settings-group">{toggleRows(fields)}</div>
-  );
-
   return (
     <div>
       {/* Identity comes first — it's the first thing a new tenant should
@@ -148,6 +159,20 @@ export function SettingsForm({ settings }: { settings: Settings }) {
                 placeholder={t('contactInfoPlaceholder')}
                 className="sheet-input settings-row-control"
               />
+            </div>
+            <div className="settings-row">
+              <Tooltip text={t('showContactHint')}>
+                <span>{t('showContact')}</span>
+              </Tooltip>
+              <div className="settings-row-controls">
+                {statusFor('show_contact')}
+                <Toggle
+                  name="show_contact"
+                  defaultChecked={Boolean(settings.show_contact)}
+                  label={t('showContact')}
+                  onChange={(e) => autoSave('show_contact', e.target.checked)}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -223,9 +248,15 @@ export function SettingsForm({ settings }: { settings: Settings }) {
         </div>
       </div>
 
+      <FeaturedItemsSection
+        initialItems={featuredItems}
+        cap={featuredItemCap}
+        defaultShowFeatured={Boolean(settings.spare_toggle_1)}
+      />
+
       <div className="settings-section">
         <div className="settings-section-title">{t('sectionItemDetails')}</div>
-        {toggleGroup(ITEM_DETAIL_FIELDS)}
+        <div className="settings-group">{toggleRows(ITEM_DETAIL_FIELDS)}</div>
       </div>
 
       <div className="settings-section">

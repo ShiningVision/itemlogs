@@ -1,22 +1,11 @@
-const users = [
-  {
-    id: '410544b2-4001-4271-9855-fec4b6a6442a',
-    name: 'User',
-    email: 'user@nextmail.com',
-    password: '123456',
-    google_id: null,
-    username: 'user',
-  },
-];
-
 const languages = [
   { id: '1', name: 'English', code: 'en' },
-  { id: '2', name: 'German', code: 'de' },
+  { id: '2', name: 'Deutsch', code: 'de' },
   { id: '3', name: '中文', code: 'zh' },
-  { id: '4', name: 'Japanese', code: 'ja' },
-  { id: '5', name: 'Korean', code: 'ko' },
-  { id: '6', name: 'French', code: 'fr' },
-  { id: '7', name: 'Spanish', code: 'es' },
+  { id: '4', name: '日本語', code: 'ja' },
+  { id: '5', name: '한국어', code: 'ko' },
+  { id: '6', name: 'Français', code: 'fr' },
+  { id: '7', name: 'Español', code: 'es' },
 ];
 
 // "Other" is intentionally not a seeded row here. An item's type is
@@ -57,19 +46,17 @@ const categories = [
   { id: '2', name: 'Art Books' },
   { id: '3', name: 'Plushies' },
   { id: '4', name: 'Video Games' },
-  { id: '5', name: 'Apparel' },
-  { id: '6', name: 'Trading Cards' },
-  { id: '7', name: 'Accessories' },
+  { id: '5', name: 'Accessories' },
 ];
 
 // "Other" is intentionally not a seeded row here — same reasoning as
 // types/categories above; a null location_id is interpreted as "no
 // location" everywhere it's displayed instead of needing a real backing row.
 const locations = [
-  { id: '1', name: 'Japan' },
-  { id: '2', name: 'Germany' },
-  { id: '3', name: 'China' },
-  { id: '4', name: 'USA' },
+  { id: '1', name: 'AmiAmi Tokyo' },
+  { id: '2', name: 'Amazon' },
+  { id: '3', name: 'Pokemon Center Kyoto' },
+  { id: '4', name: 'Gamestop' },
 ];
 
 // IDs line up with each item's main_image below (1: Hatsune Miku 15th
@@ -99,7 +86,7 @@ const packages = [
     tariff_currency: '2',
     shipping_fee: '48.00',
     shipping_fee_currency: '2',
-    show_on_storefront: false,
+    show_on_storefront: true,
   },
 ];
 
@@ -113,14 +100,14 @@ const items = [
   {
     id: '1',
     name: '1/7 Scale Hatsune Miku 15th Anniversary Figure',
-    description: 'Good Smile Company 1/7 scale figure celebrating Hatsune Miku\'s 15th anniversary. Still sealed in original box.',
+    description: 'Good Smile Company 1/7 scale figure celebrating Hatsune Miku\'s 15th anniversary. Still sealed in original box. Unopened.',
     location_id: '1',
     barcode: '4571245123456',
     status: 1,
-    cost_price: '26500.00',
+    cost_price: '0.00',
     purchase_price: '24800.00',
     purchase_price_currency: '4',
-    sell_price: '34800.00',
+    sell_price: '320.00',
     // Two types, to seed a real multi-select example (figure + music brand).
     type_ids: ['1', '2'],
     category_ids: ['1'],
@@ -130,33 +117,33 @@ const items = [
   {
     id: '2',
     name: 'Witch Hat Atelier Art Book',
-    description: 'Kadokawa art book collecting illustrations and behind-the-scenes art from Witch Hat Atelier. Softcover, near-mint.',
+    description: 'Kadokawa art book collecting illustrations and character design art from Witch Hat Atelier. Hardcover, near-mint.',
     location_id: '2',
     barcode: '9784041083879',
-    status: 2,
-    cost_price: '30.00',
+    status: 1,
+    cost_price: '0.00',
     purchase_price: '28.00',
     purchase_price_currency: '2',
-    sell_price: '42.00',
+    sell_price: '40.00',
     // No types — displays as "Other" (see the comment above the `types`
     // array for why no real "Other" row is seeded).
     type_ids: [],
     // Two categories, to seed a real multi-select example.
-    category_ids: ['2', '6'],
+    category_ids: ['2'],
     main_image: '2',
     package_id: null,
   },
   {
     id: '3',
     name: 'Pokémon Center Exclusive Kimono Pikachu Plushie',
-    description: 'Pokémon Center exclusive plush wearing a kimono outfit, released for a seasonal event. Tag attached, unopened.',
-    location_id: '1',
+    description: 'Pokémon Center exclusive plush wearing a kimono outfit, released for a seasonal event. Tag attached.',
+    location_id: '3',
     barcode: '4521329123456',
     status: 1,
-    cost_price: '3600.00',
+    cost_price: '0.00',
     purchase_price: '3200.00',
     purchase_price_currency: '4',
-    sell_price: '6800.00',
+    sell_price: '70.00',
     type_ids: ['3'],
     category_ids: ['3'],
     main_image: '3',
@@ -168,11 +155,11 @@ const items = [
     description: 'Physical copy of Dragon Quest XI: Echoes of an Elusive Age. Case and manual included, disc in great condition.',
     location_id: '4',
     barcode: '4988601234567',
-    status: 2,
-    cost_price: '24.00',
+    status: 1,
+    cost_price: '0.00',
     purchase_price: '22.00',
     purchase_price_currency: '1',
-    sell_price: '39.99',
+    sell_price: '40.00',
     type_ids: ['4'],
     category_ids: ['4'],
     main_image: '4',
@@ -187,14 +174,11 @@ const itemCategories = items.flatMap((i) => i.category_ids.map((category_id) => 
 const itemTypes = items.flatMap((i) => i.type_ids.map((type_id) => ({ item_id: i.id, type_id })));
 
 const sales = [
-  { id: '1', name: 'Convention Meetup Sale', date: '2026-05-10' },
-  { id: '2', name: 'Online Marketplace Sale', date: '2026-07-20' },
+  { id: '1', name: 'Online Marketplace Sale', date: '2026-07-20' },
 ];
 
-// join table: sales <-> items — only the two Sold items (2, 4) are linked.
+// join table: sales <-> items
 const salesItems = [
-  { sales_id: '1', item_id: '2' },
-  { sales_id: '2', item_id: '4' },
 ];
 
 // join table: items <-> images (extra gallery images beyond main_image) —
@@ -213,9 +197,9 @@ const settings = [
     storefront_tagline: null,
     storefront_density: 'dense',
     show_contact: false,
-    contact_info: null,
+    contact_info: 'Insert your contact info here (email, social media, etc.)',
     show_location: false,
-    show_package_filter: false,
+    show_package_filter: true,
     show: false,
     show_sell_price: false,
     show_cost_price: false,
@@ -230,7 +214,7 @@ const settings = [
     show_message:
       'Itemlogs is a FREE inventory system for collectors, hobbyists, and small retail businesses. \n No gatekeeping of functionalities, no ads, no subscriptions, and no tracking. \n Try it out at itemlogs.com!',
     use_sell_price: true,
-    use_package_fees: false,
+    use_package_fees: true,
     use_barcode: false,
     name_category: 'Category',
     name_status: 'Status',
@@ -245,7 +229,6 @@ const settings = [
 ];
 
 export {
-  users,
   languages,
   settings,
   types,

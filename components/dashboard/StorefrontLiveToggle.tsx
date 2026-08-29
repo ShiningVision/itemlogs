@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { updateStorefrontSettingFieldAction } from '@/app/lib/actions/settings';
 import { Toggle } from '@/components/ui/Toggle';
+import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 
 // The "Show storefront" toggle used to live in the storefront settings form.
 // It's moved here so the on/off switch and the live-status readout it
@@ -57,6 +58,7 @@ export function StorefrontLiveToggle({ defaultChecked }: { defaultChecked: boole
       {isLive ? (
         <Link href="/" className="dashboard-live-status-link">
           {t('liveStatusViewButton')}
+          <ArrowTopRightOnSquareIcon aria-hidden="true" />
         </Link>
       ) : (
         <p className="dashboard-live-status-hint">{t('liveStatusHint')}</p>

@@ -1,5 +1,5 @@
 // app/dashboard/(protected)/items/[id]/edit/page.tsx
-import { getItemById, getFeaturedItemCount, FEATURED_ITEM_CAP } from '@/app/lib/services/items';
+import { getItemById } from '@/app/lib/services/items';
 import { getItemImages } from '@/app/lib/services/item-images';
 import { getCategories } from '@/app/lib/services/categories';
 import { getTypes } from '@/app/lib/services/types';
@@ -15,7 +15,7 @@ export default async function EditItemPage({
 }) {
   const { id } = await params;
 
-  const [item, galleryImages, categories, types, locations, locationItemCounts, currencies, settings, featuredCount] = await Promise.all([
+  const [item, galleryImages, categories, types, locations, locationItemCounts, currencies, settings] = await Promise.all([
     getItemById(Number(id)),
     getItemImages(Number(id)),
     getCategories(),
@@ -24,7 +24,6 @@ export default async function EditItemPage({
     getLocationItemCounts(),
     getCurrencies(),
     getSettings(),
-    getFeaturedItemCount(Number(id)),
   ]);
 
   return (
@@ -38,8 +37,6 @@ export default async function EditItemPage({
       locationItemCounts={locationItemCounts}
       currencies={currencies}
       settings={settings}
-      featuredCount={featuredCount}
-      featuredCap={FEATURED_ITEM_CAP}
     />
   );
 }

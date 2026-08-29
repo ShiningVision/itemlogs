@@ -481,7 +481,21 @@ export async function POST(request: Request) {
           -- rolled out to every tenant. Rename in place when one gets used
           -- (e.g. ALTER TABLE settings RENAME COLUMN spare_toggle_1 TO
           -- whatever_it_actually_is), and document what it became here.
+          --
+          -- spare_toggle_1: claimed — "Show featured items" (gates the
+          -- storefront's spotlight strip, see StorefrontSpotlight /
+          -- FeaturedItemsSection). Deliberately left named spare_toggle_1
+          -- rather than renamed: a rename would need an ALTER TABLE RENAME
+          -- COLUMN pushed out to every already-provisioned tenant database,
+          -- which is exactly the migration this column exists to avoid.
           spare_toggle_1 BOOLEAN NOT NULL DEFAULT false,
+          -- spare_toggle_2: claimed — "Show description" on the storefront
+          -- item detail page (see the Toggle in SettingsForm.tsx and
+          -- app/items/[id]/page.tsx). The column-level default stays false
+          -- like every other spare toggle (so already-provisioned tenants
+          -- get it off, same as show_location/show_sell_price/etc. default
+          -- off for them) — new tenants get it on instead via an explicit
+          -- true value in the INSERT below, not by changing this default.
           spare_toggle_2 BOOLEAN NOT NULL DEFAULT false,
           spare_toggle_3 BOOLEAN NOT NULL DEFAULT false,
           spare_toggle_4 BOOLEAN NOT NULL DEFAULT false,
@@ -506,7 +520,8 @@ export async function POST(request: Request) {
           storefront_name, storefront_tagline, storefront_density,
           show_contact, contact_info, show_location, show_package_filter,
           use_secret_notes, show_location_filter, name_location, app_url,
-          checklist_added_item, checklist_named_storefront, checklist_went_live
+          checklist_added_item, checklist_named_storefront, checklist_went_live,
+          spare_toggle_2
         )
         VALUES (
           1, false, ${needsSellPrice}, false, false,
@@ -519,7 +534,11 @@ export async function POST(request: Request) {
           NULL, NULL, 'dense',
           false, NULL, false, false,
           false, false, NULL, ${appUrl},
-          false, false, false
+          false, false, false,
+          -- "Show description" — on by default for a brand-new tenant (see
+          -- the spare_toggle_2 comment above); already-provisioned tenants
+          -- are unaffected since this only runs once, on first setup.
+          true
         )
         ON CONFLICT (id) DO NOTHING;
       `;

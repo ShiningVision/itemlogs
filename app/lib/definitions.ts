@@ -116,7 +116,15 @@ export type Settings = {
   // Unassigned, reserved for future features (see app/api/setup/route.ts's
   // comment on the same columns). Once one gets used, rename it here to
   // match instead of adding a new field.
+  //
+  // spare_toggle_1: claimed — "Show featured items" (see
+  // components/dashboard/FeaturedItemsSection.tsx). Left as spare_toggle_1
+  // rather than renamed — see the setup route's comment for why.
   spare_toggle_1: boolean;
+  // spare_toggle_2: claimed — "Show description" on the storefront item
+  // detail page. Defaults false at the column level (already-provisioned
+  // tenants get it off); new tenants get it on via an explicit value in the
+  // setup route's INSERT, not by changing the column default.
   spare_toggle_2: boolean;
   spare_toggle_3: boolean;
   spare_toggle_4: boolean;

@@ -129,7 +129,7 @@ export default async function HomePage({
       getPublicCategoryCounts(allowedStatuses),
       getPublicTypeCounts(allowedStatuses),
       settings.show_location_filter ? getPublicLocationCounts(allowedStatuses) : Promise.resolve({}),
-      getFeaturedPublicItems(allowedStatuses),
+      settings.spare_toggle_1 ? getFeaturedPublicItems(allowedStatuses) : Promise.resolve([]),
       settings.show_package_filter ? getPublicPackages() : Promise.resolve([]),
     ]);
 
@@ -175,9 +175,8 @@ export default async function HomePage({
         name={settings.storefront_name}
         tagline={settings.storefront_tagline}
         itemCount={collectionItemCount}
-        categoryCount={categories.length}
         fallbackName={t('defaultCollectionName')}
-        itemCountLabel={t('collectionStats', { itemCount: collectionItemCount, categoryCount: categories.length })}
+        itemCountLabel={t('collectionStats', { itemCount: collectionItemCount })}
       />
 
       <div style={{ display: 'flex', flex: 1 }}>

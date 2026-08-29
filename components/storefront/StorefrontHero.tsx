@@ -3,14 +3,12 @@ export function StorefrontHero({
   name,
   tagline,
   itemCount,
-  categoryCount,
   fallbackName,
   itemCountLabel,
 }: {
   name: string | null;
   tagline: string | null;
   itemCount: number;
-  categoryCount: number;
   fallbackName: string;
   itemCountLabel: string;
 }) {

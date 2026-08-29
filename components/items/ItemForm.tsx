@@ -12,6 +12,7 @@ import { BarcodeScannerModal } from './BarcodeScannerModal';
 import { TagManagerModal, type Tag } from '@/components/reference-data/TagManagerModal';
 import { Button } from '@/widgets/Button';
 import { Toggle } from '@/components/ui/Toggle';
+import { CharCountTextarea } from '@/components/ui/CharCountTextarea';
 import { Toast, type ToastType } from '@/components/ui/notification';
 import { Tooltip } from '@/components/ui/Tooltip';
 import type { Settings } from '@/app/lib/definitions';
@@ -43,13 +44,19 @@ type ItemFormData = {
   purchase_price: string;
   purchase_price_currency: number;
   sell_price: string;
-  is_featured: boolean;
   // Private, owner-only — only rendered/sent when settings.use_secret_notes
   // is on. Never present on blueprints (see applyBlueprint below).
   notes: string;
 };
 
 const STATUSES = [1, 2, 3, 4];
+
+// Matches the `description VARCHAR(255)` column (see app/api/setup/
+// route.ts) — capped client-side so a paste-heavy description gets an
+// immediate character count instead of failing at save time. `notes` has no
+// equivalent cap: it's a TEXT column with no length limit (see the same
+// setup route), so its counter (below) shows a running count with no max.
+const DESCRIPTION_MAX_LENGTH = 255;
 
 export function ItemForm({
   mode,
@@ -61,8 +68,6 @@ export function ItemForm({
   locationItemCounts,
   currencies,
   settings,
-  featuredCount = 0,
-  featuredCap = 5,
 }: {
   mode: 'create' | 'update';
   item?: any;
@@ -73,8 +78,6 @@ export function ItemForm({
   locationItemCounts: Record<number, number>;
   currencies: Currency[];
   settings: Settings;
-  featuredCount?: number;
-  featuredCap?: number;
 }) {
   const t = useTranslations('items');
   const router = useRouter();
@@ -92,7 +95,6 @@ export function ItemForm({
     purchase_price: item?.purchase_price?.toString() ?? '',
     purchase_price_currency: item?.purchase_price_currency ?? settings.default_purchase_price_currency,
     sell_price: item?.sell_price?.toString() ?? '',
-    is_featured: item?.is_featured ?? false,
     notes: item?.notes ?? '',
   });
 
@@ -137,7 +139,6 @@ export function ItemForm({
       purchase_price: bp.purchase_price?.toString() ?? '',
       purchase_price_currency: bp.purchase_price_currency,
       sell_price: bp.sell_price?.toString() ?? '',
-      is_featured: false,
       // Blueprints have no notes field (see app/api/setup/route.ts's items
       // table comment) — nothing to carry over.
       notes: '',
@@ -158,7 +159,6 @@ export function ItemForm({
       purchase_price: form.purchase_price ? Number(form.purchase_price) : 0,
       purchase_price_currency: form.purchase_price_currency,
       sell_price: settings.use_sell_price && form.sell_price ? Number(form.sell_price) : Number(form.sell_price || 0),
-      is_featured: form.is_featured,
       notes: settings.use_secret_notes ? form.notes || undefined : undefined,
     };
   }
@@ -185,11 +185,7 @@ export function ItemForm({
       const json = await res.json();
 
       if (!res.ok) {
-        setErrorMessage(
-          json?.error === 'featuredCapReached'
-            ? t('featuredCapReached', { cap: featuredCap })
-            : parseApiError(json, t('saveFailed'))
-        );
+        setErrorMessage(parseApiError(json, t('saveFailed')));
         return;
       }
 
@@ -483,11 +479,12 @@ export function ItemForm({
 
           <div className="sheet-section">
             <div className="sheet-section-title">{t('description')}</div>
-            <textarea
+            <CharCountTextarea
               className="sheet-input"
-              style={{ minHeight: '100px', resize: 'vertical' }}
+              minHeight="100px"
+              maxLength={DESCRIPTION_MAX_LENGTH}
               value={form.description}
-              onChange={(e) => update('description', e.target.value)}
+              onChange={(value) => update('description', value)}
             />
           </div>
 
@@ -499,11 +496,11 @@ export function ItemForm({
                   <InformationCircleIcon style={{ width: '16px', height: '16px', opacity: 0.6 }} />
                 </Tooltip>
               </div>
-              <textarea
+              <CharCountTextarea
                 className="sheet-input"
-                style={{ minHeight: '80px', resize: 'vertical' }}
+                minHeight="80px"
                 value={form.notes}
-                onChange={(e) => update('notes', e.target.value)}
+                onChange={(value) => update('notes', value)}
               />
             </div>
           )}
@@ -556,24 +553,6 @@ export function ItemForm({
                 </div>
               </div>
             )}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-sm)', padding: 'var(--spacing-sm)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-            <div>
-              <div>{t('featureThisItem')}</div>
-              {!form.is_featured && featuredCount >= featuredCap && (
-                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
-                  {t('featuredCapReached', { cap: featuredCap })}
-                </div>
-              )}
-            </div>
-            <Toggle
-              name="is_featured"
-              defaultChecked={form.is_featured}
-              disabled={!form.is_featured && featuredCount >= featuredCap}
-              label={t('featureThisItem')}
-              onChange={(e) => update('is_featured', e.target.checked)}
-            />
           </div>
 
           {mode === 'create' && (

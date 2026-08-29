@@ -348,19 +348,79 @@ body {
   background: var(--color-text-muted);
 }
 
-.dashboard-live-status-link,
 .dashboard-live-status-hint {
   display: block;
   margin-top: var(--spacing-sm);
   font-size: var(--font-size-sm);
-}
-
-.dashboard-live-status-link {
-  color: var(--color-primary);
-}
-
-.dashboard-live-status-hint {
   color: var(--color-text-muted);
+}
+
+/* Was plain small text in the primary color — easy to mistake for a caption
+   rather than the actual CTA to see the live storefront. Now reads as a
+   distinct, clickable pill: filled background (not just colored text),
+   bold label, and a trailing external-link icon that signals "this leaves
+   the dashboard" before the click. */
+.dashboard-live-status-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.dashboard-live-status-link:hover {
+  background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  text-decoration: underline;
+}
+
+.dashboard-live-status-link svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Pill-styled "clear filters" buttons on the storefront filter sidebar —
+   same visual treatment as .dashboard-live-status-link above (tinted
+   background, bold text, darkens + underlines on hover), reused here so a
+   "clear" control reads as an actual button rather than a plain text link,
+   consistent with the dashboard's "View storefront" pill. Written for
+   <button> rather than <a>, so border/cursor/font-family are reset
+   explicitly instead of inheriting an anchor's defaults. */
+.filter-clear-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  border: none;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.filter-clear-button:hover {
+  background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  text-decoration: underline;
+}
+
+/* Smaller variant for the per-section "clear" buttons next to each tag
+   pool's own header — the page-wide "Clear all" stays full-sized since it's
+   a standalone control, but one of these next to every section label would
+   be too heavy at the same size. */
+.filter-clear-button--small {
+  padding: 2px var(--spacing-xs);
+  font-size: var(--font-size-xs);
 }
 
 /* Toggle settings: single column on mobile, 2 columns on desktop to use
@@ -461,16 +521,19 @@ body {
 
 /* Transient "Saving…"/"Saved"/error text shown next to a row's control
    right after an auto-saved field changes. Absolutely positioned just to
-   the right of .settings-row-controls (rather than laid out inline before
+   the left of .settings-row-controls (rather than laid out inline before
    the control) so it never displaces the control — appearing/disappearing
    used to nudge the control sideways since it shared normal flex flow
-   with it. */
+   with it. Anchored left rather than right: right: 100% would overflow
+   past .settings-group's right edge (the control sits at the row's own
+   right edge), spilling the badge outside the card; left has the row's
+   label to make room instead. */
 .settings-row-status {
   position: absolute;
-  left: 100%;
+  right: 100%;
   top: 50%;
   transform: translateY(-50%);
-  margin-left: var(--spacing-sm);
+  margin-right: var(--spacing-sm);
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   white-space: nowrap;
@@ -507,7 +570,15 @@ body {
 }
 
 @media (max-width: 480px) {
-  .settings-row {
+  /* Only rows with a free-text input directly in the row (name overrides,
+     storefront name/tagline, contact info — a bare .settings-row-control
+     as the row's own child) stack to a column: those inputs need the full
+     row width, more than a shared line with the label can give them.
+     Toggle/select rows keep their control inside a .settings-row-controls
+     wrapper instead (see SettingsForm/GeneralSettingsForm), so this
+     selector leaves them in their normal row layout — label and toggle
+     stay side by side rather than the toggle dropping to its own line. */
+  .settings-row:has(> .settings-row-control) {
     flex-direction: column;
     align-items: stretch;
   }
@@ -516,24 +587,8 @@ body {
     max-width: none;
   }
 
-  .settings-row-controls {
-    justify-content: flex-end;
-  }
-
-  /* .settings-row-controls now spans the row's full width (the row itself
-     stacks to a column above), so left: 100% would push the badge off the
-     right edge of the screen. Drop back to a normal, in-flow position
-     alongside the control instead — there's no label competing for space
-     on this line anymore (it's on its own line above), so the control
-     shifting slightly when the badge appears is a non-issue here. */
-  .settings-row-status {
-    position: static;
-    top: auto;
-    left: auto;
-    transform: none;
-    margin-left: 0;
-    margin-right: var(--spacing-sm);
-  }
+  /* .settings-row-status itself now matches the desktop rule (left-anchored,
+     see above) — no mobile override needed. */
 }
 
 /* Vertical timeline (sales page): each row is a flex pair of a "rail"

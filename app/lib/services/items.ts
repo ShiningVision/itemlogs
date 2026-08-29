@@ -441,6 +441,39 @@ export async function getPublicLocationCounts(allowedStatuses: number[]): Promis
   return counts;
 }
 
+// Minimal select shared by the dashboard's Featured Items manager (the
+// currently-featured list) and its "Add items" picker (the not-yet-featured
+// pool it adds from) — same shape as UNASSIGNED_ITEM_SELECT, no join-table
+// category/type data needed for either view.
+const FEATURED_MANAGER_ITEM_SELECT: string = 'id, name, main_image_ref:main_image(url)';
+
+export async function getFeaturedItems() {
+  const { data, error } = await supabase
+    .from('items')
+    .select(FEATURED_MANAGER_ITEM_SELECT)
+    .eq('is_featured', true)
+    .order('name', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as any[];
+}
+
+// Only Available items are offered in the "Add items" picker — featuring
+// something that's already Sold/Unavailable/Lost would just spotlight a
+// visitor-page item nobody can actually get, so status 1 is the only
+// sensible pool to add from (see AddFeaturedItemsModal).
+export async function getUnfeaturedItems() {
+  const { data, error } = await supabase
+    .from('items')
+    .select(FEATURED_MANAGER_ITEM_SELECT)
+    .eq('is_featured', false)
+    .eq('status', 1)
+    .order('name', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as any[];
+}
+
 export async function getFeaturedPublicItems(allowedStatuses: number[]) {
   if (allowedStatuses.length === 0) return [];
 

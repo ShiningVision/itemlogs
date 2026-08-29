@@ -23,6 +23,12 @@ const STOREFRONT_AUTOSAVE_FIELDS = [
   'show_package_filter',
   'show_location_filter',
   'storefront_density',
+  // "Show featured items" — see the FeaturedItemsSection comment on why this
+  // is a spare toggle rather than a dedicated column.
+  'spare_toggle_1',
+  // "Show description" — see the comment on spare_toggle_2 in
+  // app/api/setup/route.ts.
+  'spare_toggle_2',
 ] as const;
 
 type StorefrontAutosaveField = (typeof STOREFRONT_AUTOSAVE_FIELDS)[number];

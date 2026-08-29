@@ -45,10 +45,20 @@ export default async function PublicItemPage({
   const categoryLabel = resolveLabel(settings.name_category, itemsT('category'));
   const typeLabel = resolveLabel(settings.name_type, itemsT('type'));
 
-  const hasStats =
-    (settings.show_sell_price && item.sell_price !== null) ||
-    (settings.show_purchase_price && item.purchase_price !== null) ||
-    (settings.show_cost_price && item.cost_price !== null);
+  // Each stat/section below now renders whenever its "show" setting is on,
+  // regardless of whether the item actually has a value for it — an item
+  // with no description, no location, or an unset price shows that field's
+  // row empty rather than the row silently disappearing. Previously these
+  // required a non-null value on top of the setting, which made a toggled-on
+  // field flicker in and out of existence between items instead of behaving
+  // like a fixed part of the page layout.
+  const hasStats = settings.show_sell_price || settings.show_purchase_price || settings.show_cost_price;
+
+  // "Show description" — see the comment on spare_toggle_2 in
+  // app/api/setup/route.ts. On by default only for tenants set up after
+  // this feature shipped; already-provisioned tenants default off, same as
+  // every other visibility toggle.
+  const showDescription = Boolean(settings.spare_toggle_2);
 
   return (
     <div className="item-sheet-container" style={{ padding: 'var(--spacing-lg)' }}>
@@ -79,25 +89,25 @@ export default async function PublicItemPage({
 
               {hasStats && (
                 <div className="stat-grid">
-                  {settings.show_sell_price && item.sell_price !== null && (
+                  {settings.show_sell_price && (
                     <StatBox
                       label={t('sellPrice')}
                       currency={settings.sell_currency?.currency_code ?? ''}
-                      value={item.sell_price.toFixed(2)}
+                      value={item.sell_price !== null ? item.sell_price.toFixed(2) : ''}
                     />
                   )}
-                  {settings.show_purchase_price && item.purchase_price !== null && (
+                  {settings.show_purchase_price && (
                     <StatBox
                       label={t('purchasePrice')}
                       currency={item.purchase_currency?.currency_code ?? ''}
-                      value={item.purchase_price.toFixed(2)}
+                      value={item.purchase_price !== null ? item.purchase_price.toFixed(2) : ''}
                     />
                   )}
-                  {settings.show_cost_price && item.cost_price !== null && (
+                  {settings.show_cost_price && (
                     <StatBox
                       label={t('costPrice')}
                       currency={settings.sell_currency?.currency_code ?? ''}
-                      value={item.cost_price.toFixed(2)}
+                      value={item.cost_price !== null ? item.cost_price.toFixed(2) : ''}
                     />
                   )}
                 </div>
@@ -111,17 +121,17 @@ export default async function PublicItemPage({
             </div>
           </div>
 
-          {item.description && (
+          {showDescription && (
             <div className="sheet-section">
               <div className="sheet-section-title">{itemsT('description')}</div>
-              <p>{item.description}</p>
+              <p>{item.description ?? ''}</p>
             </div>
           )}
 
-          {settings.show_location && item.location_ref?.name && (
+          {settings.show_location && (
             <div className="sheet-section">
               <div className="sheet-section-title">{resolveLabel(settings.name_location, itemsT('location'))}</div>
-              <p>{item.location_ref.name}</p>
+              <p>{item.location_ref?.name ?? ''}</p>
             </div>
           )}
         </div>

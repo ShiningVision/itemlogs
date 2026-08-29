@@ -1,5 +1,6 @@
 // app/dashboard/(protected)/page.tsx
 import { getSettings } from '@/app/lib/services/settings';
+import { getFeaturedItems, FEATURED_ITEM_CAP } from '@/app/lib/services/items';
 import { SettingsForm } from '@/components/dashboard/SettingsForm';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { DashboardStats } from '@/components/dashboard/DashboardStats';
@@ -22,7 +23,7 @@ function shuffle<T>(items: T[]): T[] {
 }
 
 export default async function DashboardPage() {
-  const settings = await getSettings();
+  const [settings, featuredItems] = await Promise.all([getSettings(), getFeaturedItems()]);
   const t = await getTranslations('dashboard');
 
   // Shuffled per request (see force-dynamic above) so the ticker's line-up
@@ -47,7 +48,7 @@ export default async function DashboardPage() {
         <div className="settings-storefront-group">
           <div className="settings-storefront-wrapper">
             <h2 className="settings-storefront-heading">{t('storefrontSettingsHeading')}</h2>
-            <SettingsForm settings={settings} />
+            <SettingsForm settings={settings} featuredItems={featuredItems} featuredItemCap={FEATURED_ITEM_CAP} />
           </div>
 
           <div className="theme-portal-wrap">
