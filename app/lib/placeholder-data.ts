@@ -177,9 +177,12 @@ const sales = [
   { id: '1', name: 'Online Marketplace Sale', date: '2026-07-20' },
 ];
 
-// join table: sales <-> items
-const salesItems = [
-];
+// join table: sales <-> items — left empty (no seeded sales-to-item links),
+// same reasoning as itemImages below. Explicitly typed for the same reason
+// itemImages is: an untyped empty array literal infers as `any[]`, which
+// only tsc's full type-check catches (esbuild strips types without
+// checking them, so this stayed latent until a real `next build`/tsc run).
+const salesItems: { sales_id: string; item_id: string }[] = [];
 
 // join table: items <-> images (extra gallery images beyond main_image) —
 // left empty since each seeded item only has the one dedicated photo (see
