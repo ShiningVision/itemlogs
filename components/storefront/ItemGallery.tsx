@@ -3,6 +3,7 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import { NoImagePlaceholder } from '@/components/ui/NoImagePlaceholder';
 import { ImageLightbox } from '@/components/ui/ImageLightbox';
 
@@ -45,6 +46,16 @@ export function ItemGallery({
   const visibleThumbs = hasOverflow ? images.slice(0, MAX_VISIBLE_THUMBS - 1) : images;
   const hiddenCount = hasOverflow ? total - (MAX_VISIBLE_THUMBS - 1) : 0;
 
+  function showPrev(e: React.MouseEvent) {
+    e.stopPropagation();
+    setActiveIndex((i) => (i - 1 + total) % total);
+  }
+
+  function showNext(e: React.MouseEvent) {
+    e.stopPropagation();
+    setActiveIndex((i) => (i + 1) % total);
+  }
+
   return (
     <>
       <div className="sheet-portrait-frame" style={{ position: 'relative' }}>
@@ -55,9 +66,27 @@ export function ItemGallery({
           style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', cursor: 'pointer' }}
         />
         {total > 1 && (
-          <div className="sheet-portrait-counter">
-            {activeIndex + 1} / {total}
-          </div>
+          <>
+            <button
+              type="button"
+              className="sheet-portrait-nav-btn sheet-portrait-nav-btn--prev"
+              aria-label={t('prevImage')}
+              onClick={showPrev}
+            >
+              <ChevronLeftIcon style={{ width: '18px', height: '18px' }} />
+            </button>
+            <button
+              type="button"
+              className="sheet-portrait-nav-btn sheet-portrait-nav-btn--next"
+              aria-label={t('nextImage')}
+              onClick={showNext}
+            >
+              <ChevronRightIcon style={{ width: '18px', height: '18px' }} />
+            </button>
+            <div className="sheet-portrait-counter">
+              {activeIndex + 1} / {total}
+            </div>
+          </>
         )}
       </div>
 

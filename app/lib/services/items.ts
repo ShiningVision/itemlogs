@@ -10,6 +10,11 @@ type ItemFilters = {
   statuses?: number[];
   locationIds?: number[]; // multi-select, used by both dashboard + storefront
   packageId?: number;  // single-select, used by storefront package filter
+  // Fuzzy, typo-tolerant name search (dashboard items page only, for now —
+  // see resolveSearchItemIds / the search_items_by_name Postgres function
+  // this calls). Takes over ordering and pagination entirely when set; see
+  // the branch in getItems below.
+  search?: string;
   sort?: ItemSort;
   limit?: number;
   offset?: number;
@@ -160,13 +165,20 @@ function applySort(query: any, sort: ItemSort = 'newest') {
   }
 }
 
-export async function getItems(filters: ItemFilters = {}): Promise<{ items: any[]; totalCount: number }> {
-  let query = supabase
-    .from('items')
-    .select(filters.public ? PUBLIC_ITEM_SELECT : ITEM_SELECT, { count: 'exact' });
-
-  query = applySort(query, filters.sort);
-
+// category/type/status/location filters are shared by both the normal path
+// and the fuzzy-search path in getItems below — factored out so the two
+// don't drift out of sync with each other.
+//
+// Returns `{ query }` — a plain wrapper object — rather than the query
+// builder itself. Supabase's PostgrestFilterBuilder is "thenable" (that's
+// what lets `await query` trigger execution), and returning a thenable
+// directly from an async function makes JS's promise machinery assimilate
+// it: it calls the builder's `.then()` as part of resolving this
+// function's own promise, which executes the query right then and there
+// and resolves `await applyCommonItemFilters(...)` to the *result*
+// (`{data, error, count}`) instead of the still-chainable builder. Wrapping
+// it in a plain object sidesteps that entirely.
+async function applyCommonItemFilters(query: any, filters: ItemFilters) {
   if (filters.categoryIds !== undefined) {
     const ids = await resolveJoinFilterItemIds('item_categories', 'category_id', filters.categoryIds);
     query = query.in('id', ids.length > 0 ? ids : [-1]);
@@ -178,6 +190,62 @@ export async function getItems(filters: ItemFilters = {}): Promise<{ items: any[
   if (filters.statuses !== undefined) query = query.in('status', filters.statuses);
   if (filters.locationIds !== undefined) query = applyNullableInFilter(query, 'location_id', filters.locationIds);
   if (filters.packageId !== undefined) query = query.eq('package_id', filters.packageId);
+  return { query };
+}
+
+// Fuzzy, typo-tolerant name search — calls the search_items_by_name()
+// Postgres function (pg_trgm word_similarity under the hood; see the
+// CREATE EXTENSION/CREATE INDEX/CREATE FUNCTION block in
+// app/api/setup/route.ts for what it actually runs). Already ordered
+// best-match-first and capped to a small result set server-side inside the
+// function, so the caller can safely fetch every match in one go rather
+// than needing its own pagination at this step.
+async function resolveSearchItemIds(term: string): Promise<number[]> {
+  const { data, error } = await supabase.rpc('search_items_by_name', { search_term: term });
+  if (error) throw error;
+  return ((data ?? []) as { id: number }[]).map((row) => row.id);
+}
+
+export async function getItems(filters: ItemFilters = {}): Promise<{ items: any[]; totalCount: number }> {
+  const searchTerm = filters.search?.trim();
+
+  // A fuzzy search takes over ordering and pagination entirely — relevance
+  // rank isn't something PostgREST's .order() can express server-side, so
+  // instead: fetch the (already-capped, already-ranked) candidate ids,
+  // apply the other filters on top via .in(), then reorder to match the
+  // rank order and paginate in JS. `sort` is deliberately ignored while
+  // searching — relevance is a more useful order than "newest"/"name" once
+  // you've typed something to search for.
+  if (searchTerm) {
+    const rankedIds = await resolveSearchItemIds(searchTerm);
+    if (rankedIds.length === 0) return { items: [], totalCount: 0 };
+
+    let query = supabase
+      .from('items')
+      .select(filters.public ? PUBLIC_ITEM_SELECT : ITEM_SELECT)
+      .in('id', rankedIds);
+    ({ query } = await applyCommonItemFilters(query, filters));
+
+    const { data, error } = await query;
+    if (error) throw error;
+    const rowsById = new Map(((data ?? []) as any[]).map((row) => [row.id, flattenItemJoins(row)]));
+    const ordered = rankedIds.map((id) => rowsById.get(id)).filter((row: any): row is any => row !== undefined);
+
+    const totalCount = ordered.length;
+    const page =
+      filters.limit !== undefined && filters.offset !== undefined
+        ? ordered.slice(filters.offset, filters.offset + filters.limit)
+        : ordered;
+
+    return { items: page, totalCount };
+  }
+
+  let query = supabase
+    .from('items')
+    .select(filters.public ? PUBLIC_ITEM_SELECT : ITEM_SELECT, { count: 'exact' });
+
+  query = applySort(query, filters.sort);
+  ({ query } = await applyCommonItemFilters(query, filters));
 
   if (filters.limit !== undefined && filters.offset !== undefined) {
     query = query.range(filters.offset, filters.offset + filters.limit - 1);

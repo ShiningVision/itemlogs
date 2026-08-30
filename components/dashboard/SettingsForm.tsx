@@ -14,6 +14,7 @@ import { resolveLabel } from '@/app/lib/labels';
 import { Squares2X2Icon, ViewColumnsIcon } from '@heroicons/react/24/outline';
 import { FeaturedItemsSection } from './FeaturedItemsSection';
 import type { FeaturedItem } from './AddFeaturedItemsModal';
+import { PackageVisibilitySection, type VisibilityPackage } from './PackageVisibilitySection';
 
 const SHOW_MESSAGE_MAX_LENGTH = 255;
 
@@ -45,10 +46,12 @@ export function SettingsForm({
   settings,
   featuredItems,
   featuredItemCap,
+  visibilityPackages,
 }: {
   settings: Settings;
   featuredItems: FeaturedItem[];
   featuredItemCap: number;
+  visibilityPackages: VisibilityPackage[];
 }) {
   const t = useTranslations('dashboard');
   const packageLabel = resolveLabel(settings.name_package, t('packageNameFallback'));
@@ -209,28 +212,8 @@ export function SettingsForm({
 
       <div className="settings-section">
         <div className="settings-section-title">{t('sectionVisibility')}</div>
-        {/* show_package_filter needs the tenant's custom package-name label
-            interpolated into its toggle text, so it can't be a plain
-            translation key in the static VISIBILITY_FIELDS list — it's added
-            as its own row here instead, inside the same .settings-group card
-            as the rest of the list (via toggleRows) rather than a second,
-            separately-bordered box. */}
         <div className="settings-group">
           {toggleRows(VISIBILITY_FIELDS)}
-          <div className="settings-row">
-            <Tooltip text={t('showPackageFilterHint', { packages: packageLabel })}>
-              <span>{t('showPackageFilter', { packages: packageLabel })}</span>
-            </Tooltip>
-            <div className="settings-row-controls">
-              {statusFor('show_package_filter')}
-              <Toggle
-                name="show_package_filter"
-                defaultChecked={Boolean(settings.show_package_filter)}
-                label={t('showPackageFilter', { packages: packageLabel })}
-                onChange={(e) => autoSave('show_package_filter', e.target.checked)}
-              />
-            </div>
-          </div>
           <div className="settings-row">
             <Tooltip text={t('showLocationFilterHint')}>
               <span>{t('showLocationFilter')}</span>
@@ -247,6 +230,18 @@ export function SettingsForm({
           </div>
         </div>
       </div>
+
+      {/* show_package_filter ("Filter by packages") lives here now instead
+          of the plain Visibility list above — it's the on/off switch for
+          the exact feature this section manages (which packages are
+          selectable in that filter), so it belongs next to the picker, not
+          separated from it. */}
+      <PackageVisibilitySection
+        packages={visibilityPackages}
+        packageLabel={packageLabel}
+        defaultShowPackageFilter={Boolean(settings.show_package_filter)}
+        defaultNamePackage={settings.name_package}
+      />
 
       <FeaturedItemsSection
         initialItems={featuredItems}

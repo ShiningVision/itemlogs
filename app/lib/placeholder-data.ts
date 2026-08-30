@@ -216,11 +216,18 @@ const settings = [
     use_sell_price: true,
     use_package_fees: true,
     use_barcode: false,
-    name_category: 'Category',
-    name_status: 'Status',
-    name_type: 'Type',
-    name_package: 'Packages',
-    name_item: 'Item',
+    // Left null rather than hardcoded English — every place that reads
+    // these (resolveLabel(settings.name_X, t('x'))) already falls back to
+    // the storefront's own chosen-language translation whenever the column
+    // is null (same as name_location below), so nulling them out here is
+    // what actually makes new tenants' default labels match whatever
+    // language they picked at setup, instead of always seeding literal
+    // English text regardless of that choice.
+    name_category: null,
+    name_status: null,
+    name_type: null,
+    name_package: null,
+    name_item: null,
     display_profit: false,
     display_sell_price: false,
     display_purchase_price: false,

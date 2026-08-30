@@ -1,7 +1,7 @@
 // components/items/ItemFiltersBar.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { FilterPill } from '@/components/ui/FilterPill';
 import { FilterPillRow } from '@/components/ui/FilterPillRow';
@@ -9,22 +9,14 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { useFilterParams } from '@/app/lib/hooks/useFilterParams';
 import { TagManagerModal } from '@/components/reference-data/TagManagerModal';
 import { FilterTagPickerModal } from './FilterTagPickerModal';
-import { Cog6ToothIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
+import { Cog6ToothIcon, ChevronDownIcon, ChevronUpIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 type FilterOption = { id: number; name: string | null };
 type ManagedResource = 'category' | 'type' | 'location';
 
 // The synthetic "Other" bucket (see OTHER_FILTER_ID in
-// app/lib/services/items.ts) has no real row and therefore no entry in
-// itemCounts — showing "(0)" next to it would be actively misleading
-// (there being items with no category/type is exactly why it exists), so
-// it's the one pill that never gets a count suffix.
+// app/lib/services/items.ts).
 const OTHER_ID = 0;
-
-function pillLabel(opt: FilterOption, itemCounts: Record<number, number>) {
-  if (opt.id === OTHER_ID) return opt.name ?? '';
-  return `${opt.name ?? ''} (${itemCounts[opt.id] ?? 0})`;
-}
 
 function ManageButton({ label, onClick }: { label: string; onClick: () => void }) {
   // Deliberately low-contrast — this used to be a solid secondary-colored
@@ -72,6 +64,7 @@ export function ItemFiltersBar({
   locationLabel,
   statusLabel,
   availableStatuses = [1, 2, 3, 4],
+  search = '',
 }: {
   categories: FilterOption[];
   types: FilterOption[];
@@ -89,9 +82,54 @@ export function ItemFiltersBar({
   locationLabel: string;
   statusLabel?: string;
   availableStatuses?: number[];
+  search?: string;
 }) {
   const t = useTranslations('items');
-  const { isPending, setParam, setParams, toggleInList } = useFilterParams();
+  const { isPending, setParam, setParams, toggleInList, getParam } = useFilterParams();
+
+  // Fuzzy name search — debounced so typing doesn't fire a navigation (and
+  // a full server re-render) on every keystroke. Local state mirrors the
+  // input immediately for a responsive feel; the URL param (and therefore
+  // the actual search) only updates once typing pauses.
+  //
+  // The `search` prop resyncs local state on genuine external changes
+  // (browser back/forward, a bookmarked URL) — but it also comes back down
+  // as an "echo" once *our own* debounced update's navigation completes.
+  // Typing slowly enough that each letter's debounce fires and completes
+  // before the next keystroke used to lose characters: type "P", its
+  // navigation completes and the prop echoes "P" back, the resync effect
+  // fires and calls setSearchInput("P") — landing right after you've
+  // already typed "o" locally (searchInput === "Po"), clobbering it back
+  // to "P". lastPushedRef tracks the last value *this component* pushed,
+  // so the effect can tell "echo of what we just sent" (skip — local state
+  // may already be ahead of it) apart from "someone else changed the URL"
+  // (do resync).
+  const [searchInput, setSearchInput] = useState(search);
+  const lastPushedSearchRef = useRef(search);
+  useEffect(() => {
+    if (search !== lastPushedSearchRef.current) {
+      setSearchInput(search);
+      lastPushedSearchRef.current = search;
+    }
+  }, [search]);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+  }, []);
+  function handleSearchChange(value: string) {
+    setSearchInput(value);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      lastPushedSearchRef.current = value;
+      setParam('search', value.trim() ? value : null);
+    }, 300);
+  }
+  function clearSearch() {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    setSearchInput('');
+    lastPushedSearchRef.current = '';
+    setParam('search', null);
+  }
   // Which "Manage X" modal (if any) is currently open — kept local to this
   // component rather than lifted to the page, since it's fed entirely by
   // props this component already has (categories/types/locations + their
@@ -148,7 +186,17 @@ export function ItemFiltersBar({
   // page.tsx). Without a distinct sentinel, unchecking the last pill would
   // silently snap back to the Available-only default instead of showing
   // everything. `all` can't collide with a real status id (those are 1-4).
-  function toggleStatus(current: number[], id: number) {
+  //
+  // Reads the raw pending param via getParam rather than trusting the
+  // `selectedStatuses` prop, for the same reason toggleInList reads off its
+  // own pending ref instead of a caller-supplied array: that prop is only
+  // as fresh as the last completed render, so two status pills clicked in
+  // quick succession — especially when one empties the list down to the
+  // `all` sentinel — would both compute their next value from the same
+  // stale snapshot and the second click would silently undo the first.
+  function toggleStatus(id: number) {
+    const raw = getParam('statuses');
+    const current = raw === null ? [1] : raw === 'all' ? [] : raw.split(',').filter(Boolean).map(Number);
     const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
     setParam('statuses', next.length ? next.join(',') : 'all');
   }
@@ -161,7 +209,6 @@ export function ItemFiltersBar({
     key: ManagedResource,
     label: string,
     options: FilterOption[],
-    itemCounts: Record<number, number>,
     selected: number[],
   ) {
     return (
@@ -171,7 +218,7 @@ export function ItemFiltersBar({
           <ManageButton label={t('manageLabel', { label })} onClick={() => setOpenManager(key)} />
         </div>
         <FilterPillRow
-          pills={options.map((opt) => ({ id: opt.id, label: pillLabel(opt, itemCounts) }))}
+          pills={options.map((opt) => ({ id: opt.id, label: opt.name ?? '' }))}
           selectedIds={selected}
           onToggle={(id) => toggleInList(paramKeyFor(key), selected, id)}
           moreLabel={t('more')}
@@ -187,14 +234,9 @@ export function ItemFiltersBar({
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
           <span>{t('filtersTitle')}</span>
           {activeCount > 0 && (
-            <span className="item-filters-status" style={{ textTransform: 'none', letterSpacing: 'normal' }}>
+            <span className="item-filters-status" style={{ textTransform: 'none', letterSpacing: 'normal', display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
               {t('filtersActive', { count: activeCount })}
-              {' · '}
-              <button
-                type="button"
-                onClick={clearAll}
-                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--color-primary)', font: 'inherit', textDecoration: 'underline' }}
-              >
+              <button type="button" className="filter-clear-button filter-clear-button--small" onClick={clearAll}>
                 {t('clearAllFilters')}
               </button>
             </span>
@@ -219,6 +261,52 @@ export function ItemFiltersBar({
         </div>
       </div>
 
+      <div style={{ position: 'relative', margin: '0 0 var(--spacing-sm)' }}>
+        <MagnifyingGlassIcon
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: 'var(--spacing-sm)',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: '16px',
+            height: '16px',
+            color: 'var(--color-text-muted)',
+            pointerEvents: 'none',
+          }}
+        />
+        <input
+          type="text"
+          className="sheet-input"
+          value={searchInput}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          placeholder={t('searchPlaceholder')}
+          aria-label={t('searchPlaceholder')}
+          style={{ paddingLeft: '36px', paddingRight: searchInput ? '36px' : undefined, width: '100%' }}
+        />
+        {searchInput && (
+          <button
+            type="button"
+            onClick={clearSearch}
+            aria-label={t('clearSearch')}
+            style={{
+              position: 'absolute',
+              right: 'var(--spacing-sm)',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              display: 'flex',
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              color: 'var(--color-text-muted)',
+              cursor: 'pointer',
+            }}
+          >
+            <XMarkIcon style={{ width: '16px', height: '16px' }} />
+          </button>
+        )}
+      </div>
+
       {expanded && (
         <>
           <div className="filter-section">
@@ -233,17 +321,17 @@ export function ItemFiltersBar({
                   variant="status"
                   selected={sellModeActive ? s === 1 : selectedStatuses.includes(s)}
                   disabled={sellModeActive}
-                  onClick={() => !sellModeActive && toggleStatus(selectedStatuses, s)}
+                  onClick={() => !sellModeActive && toggleStatus(s)}
                 />
               ))}
             </div>
           </div>
 
-          {renderPillFilterSection('category', categoryLabel, categories, categoryItemCounts, selectedCategoryIds)}
+          {renderPillFilterSection('category', categoryLabel, categories, selectedCategoryIds)}
 
-          {renderPillFilterSection('type', typeLabel, types, typeItemCounts, selectedTypeIds)}
+          {renderPillFilterSection('type', typeLabel, types, selectedTypeIds)}
 
-          {renderPillFilterSection('location', locationLabel, locations, locationItemCounts, selectedLocationIds)}
+          {renderPillFilterSection('location', locationLabel, locations, selectedLocationIds)}
         </>
       )}
 

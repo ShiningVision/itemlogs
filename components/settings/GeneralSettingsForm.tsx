@@ -29,7 +29,10 @@ const PREFERENCE_NAME_FIELDS: Array<{ key: keyof Settings; labelKey: string }> =
   { key: 'name_category', labelKey: 'nameCategory' },
   { key: 'name_type', labelKey: 'nameType' },
   { key: 'name_status', labelKey: 'nameStatus' },
-  { key: 'name_package', labelKey: 'namePackage' },
+  { key: 'name_location', labelKey: 'nameLocation' },
+  // name_package moved to the dashboard's Visitor Page Settings ->
+  // Package Visibility section (PackageVisibilitySection) — it only ever
+  // affects the visitor page, unlike the fields left here.
   // name_item is intentionally hidden — nothing in the app reads it, so
   // this field currently has zero visible effect. Left in the database,
   // validation schema, and the save action untouched; only hidden here.
@@ -186,21 +189,7 @@ export function GeneralSettingsForm({
         <form action={handleNamesSubmit} className="settings-group">
           {PREFERENCE_NAME_FIELDS.map(({ key, labelKey }) => (
             <div key={key} className="settings-row">
-              <span>
-                {t(labelKey)}
-                {key === 'name_package' && (
-                  <span
-                    style={{
-                      display: 'block',
-                      fontSize: 'var(--font-size-sm)',
-                      color: 'var(--color-text-muted)',
-                      fontWeight: 'normal',
-                    }}
-                  >
-                    {t('namePackageHint')}
-                  </span>
-                )}
-              </span>
+              <span>{t(labelKey)}</span>
               <input
                 type="text"
                 name={key}

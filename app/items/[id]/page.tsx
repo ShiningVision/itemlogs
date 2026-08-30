@@ -6,6 +6,7 @@ import { resolveLabel } from '@/app/lib/labels';
 import { getTranslations } from 'next-intl/server';
 import { notFound, redirect } from 'next/navigation';
 import { BackToStorefrontButton } from '@/components/storefront/BackToStorefrontButton';
+import { StorefrontHeader } from '@/components/storefront/StorefrontHeader';
 import { StatBox } from '@/components/ui/StatBox';
 import { Badge } from '@/components/ui/Badge';
 import { ContactModal } from '@/components/storefront/ContactModal';
@@ -61,83 +62,100 @@ export default async function PublicItemPage({
   const showDescription = Boolean(settings.spare_toggle_2);
 
   return (
-    <div className="item-sheet-container" style={{ padding: 'var(--spacing-lg)' }}>
-      <div className="sheet-frame">
-        <div className="sheet-body">
-          <div className="sheet-header">
-            <div className="sheet-portrait">
-              <ItemGallery
-                mainImage={
-                  item.main_image_ref?.url
-                    ? { id: item.main_image ?? -1, url: item.main_image_ref.url }
-                    : null
-                }
-                galleryImages={galleryImages.map((gi) => ({ id: gi.image_id, url: gi.images.url }))}
-                itemName={item.name ?? ''}
-                noImageLabel={t('noImage')}
-              />
-            </div>
+    <>
+      {/* No packageFilter, and hideMenuButton — this page has no filter
+          sidebar/drawer at all (there's nothing to filter on a single
+          item), so neither the package dropdown nor the mobile hamburger
+          trigger have anything to do here. logoLinksBack makes the logo act
+          as the same "back to the grid you came from" action as the
+          floating BackToStorefrontButton below. */}
+      <StorefrontHeader hideMenuButton logoLinksBack />
 
-            <div className="sheet-title-block">
-              <h1 className="sheet-name">{item.name}</h1>
-
-              <div className="sheet-badges">
-                <Badge tone="primary">{itemsT(`status${item.status}`)}</Badge>
-                <Badge>{categoryLabel}: {item.categories?.length ? item.categories.map((c: { name: string | null }) => c.name).join(', ') : itemsT('other')}</Badge>
-                <Badge>{typeLabel}: {item.types?.length ? item.types.map((t: { name: string | null }) => t.name).join(', ') : itemsT('other')}</Badge>
+      <div className="item-sheet-container" style={{ padding: 'var(--spacing-lg)' }}>
+        <div className="sheet-frame">
+          <div className="sheet-body">
+            <div className="sheet-header">
+              <div className="sheet-portrait">
+                <ItemGallery
+                  mainImage={
+                    item.main_image_ref?.url
+                      ? { id: item.main_image ?? -1, url: item.main_image_ref.url }
+                      : null
+                  }
+                  galleryImages={galleryImages.map((gi) => ({ id: gi.image_id, url: gi.images.url }))}
+                  itemName={item.name ?? ''}
+                  noImageLabel={t('noImage')}
+                />
               </div>
 
-              {hasStats && (
-                <div className="stat-grid">
-                  {settings.show_sell_price && (
-                    <StatBox
-                      label={t('sellPrice')}
-                      currency={settings.sell_currency?.currency_code ?? ''}
-                      value={item.sell_price !== null ? item.sell_price.toFixed(2) : ''}
-                    />
-                  )}
-                  {settings.show_purchase_price && (
-                    <StatBox
-                      label={t('purchasePrice')}
-                      currency={item.purchase_currency?.currency_code ?? ''}
-                      value={item.purchase_price !== null ? item.purchase_price.toFixed(2) : ''}
-                    />
-                  )}
-                  {settings.show_cost_price && (
-                    <StatBox
-                      label={t('costPrice')}
-                      currency={settings.sell_currency?.currency_code ?? ''}
-                      value={item.cost_price !== null ? item.cost_price.toFixed(2) : ''}
-                    />
-                  )}
-                </div>
-              )}
+              <div className="sheet-title-block">
+                <h1 className="sheet-name">{item.name}</h1>
 
-              {settings.show_contact && settings.contact_info && (
-                <div style={{ marginTop: 'var(--spacing-md)' }}>
-                  <ContactModal contactInfo={settings.contact_info} itemName={item.name ?? ''} />
+                <div className="sheet-badges">
+                  <Badge tone="primary">{itemsT(`status${item.status}`)}</Badge>
+                  <Badge>{categoryLabel}: {item.categories?.length ? item.categories.map((c: { name: string | null }) => c.name).join(', ') : itemsT('other')}</Badge>
+                  <Badge>{typeLabel}: {item.types?.length ? item.types.map((t: { name: string | null }) => t.name).join(', ') : itemsT('other')}</Badge>
                 </div>
-              )}
+
+                {hasStats && (
+                  <div className="stat-grid">
+                    {settings.show_sell_price && (
+                      <StatBox
+                        label={t('sellPrice')}
+                        currency={settings.sell_currency?.currency_code ?? ''}
+                        value={item.sell_price !== null ? item.sell_price.toFixed(2) : ''}
+                      />
+                    )}
+                    {settings.show_purchase_price && (
+                      <StatBox
+                        label={t('purchasePrice')}
+                        currency={item.purchase_currency?.currency_code ?? ''}
+                        value={item.purchase_price !== null ? item.purchase_price.toFixed(2) : ''}
+                      />
+                    )}
+                    {settings.show_cost_price && (
+                      <StatBox
+                        label={t('costPrice')}
+                        currency={settings.sell_currency?.currency_code ?? ''}
+                        value={item.cost_price !== null ? item.cost_price.toFixed(2) : ''}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {settings.show_contact && settings.contact_info && (
+                  <div style={{ marginTop: 'var(--spacing-md)' }}>
+                    <ContactModal contactInfo={settings.contact_info} itemName={item.name ?? ''} />
+                  </div>
+                )}
+
+                {/* Description/location used to render as full-width sections
+                    below the whole header instead of inside this column —
+                    that made the image and text columns end at mismatched
+                    heights, which was a big part of why the page felt empty
+                    on desktop. Living here now, they grow the right column
+                    to actually match the (now much wider) image instead of
+                    leaving it short. */}
+                {showDescription && (
+                  <div className="sheet-section" style={{ marginTop: 'var(--spacing-md)' }}>
+                    <div className="sheet-section-title">{itemsT('description')}</div>
+                    <p>{item.description ?? ''}</p>
+                  </div>
+                )}
+
+                {settings.show_location && (
+                  <div className="sheet-section" style={{ marginTop: 'var(--spacing-md)' }}>
+                    <div className="sheet-section-title">{resolveLabel(settings.name_location, itemsT('location'))}</div>
+                    <p>{item.location_ref?.name ?? ''}</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-
-          {showDescription && (
-            <div className="sheet-section">
-              <div className="sheet-section-title">{itemsT('description')}</div>
-              <p>{item.description ?? ''}</p>
-            </div>
-          )}
-
-          {settings.show_location && (
-            <div className="sheet-section">
-              <div className="sheet-section-title">{resolveLabel(settings.name_location, itemsT('location'))}</div>
-              <p>{item.location_ref?.name ?? ''}</p>
-            </div>
-          )}
         </div>
-      </div>
 
-      <BackToStorefrontButton label={t('backToStorefront')} />
-    </div>
+        <BackToStorefrontButton label={t('backToStorefront')} />
+      </div>
+    </>
   );
 }

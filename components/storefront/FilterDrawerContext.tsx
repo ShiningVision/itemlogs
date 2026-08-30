@@ -32,3 +32,15 @@ export function useFilterDrawer() {
   }
   return ctx;
 }
+
+// Non-throwing variant for components that render outside a
+// FilterDrawerProvider on some pages but not others (see StorefrontHeader's
+// hideMenuButton — the item detail page has no filter drawer to open at
+// all). Calling useContext directly here (rather than reusing
+// useFilterDrawer) keeps the hook call itself unconditional wherever it's
+// used, since the null-check is just a plain value check, not a hook rule
+// concern — callers just get `null` instead of a thrown error when there's
+// no provider.
+export function useFilterDrawerOptional() {
+  return useContext(FilterDrawerContext);
+}

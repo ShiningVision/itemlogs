@@ -2,37 +2,72 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { UserCircleIcon, Bars3Icon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
-import { useFilterDrawer } from './FilterDrawerContext';
+import { useFilterDrawerOptional } from './FilterDrawerContext';
 
 export function StorefrontHeader({
   packageFilter,
+  // Item detail page (app/items/[id]/page.tsx — the visitor-facing single
+  // item view, not the dashboard edit page): no filter sidebar/drawer
+  // exists there (nothing on a single item to filter), so the hamburger
+  // trigger has nowhere to open into — hide it rather than wire it up to a
+  // no-op. logoLinksBack turns the logo into the same "back to the grid
+  // page you came from" action as BackToStorefrontButton (router.back(),
+  // not a plain link to "/", so filters/scroll position on the grid are
+  // preserved) instead of sitting inert.
+  hideMenuButton = false,
+  logoLinksBack = false,
 }: {
   packageFilter?: React.ReactNode;
+  hideMenuButton?: boolean;
+  logoLinksBack?: boolean;
 }) {
   const t = useTranslations('storefront');
-  const { open } = useFilterDrawer();
+  const router = useRouter();
+  // Optional/non-throwing: the item detail page renders this header with
+  // hideMenuButton and no FilterDrawerProvider ancestor at all, so `drawer`
+  // is null there — the button below is hidden in that case anyway, but
+  // this keeps the hook call itself unconditional either way.
+  const drawer = useFilterDrawerOptional();
+
+  const logo = (
+    <img
+      src="/itemlogs-full-transparent.png"
+      alt="Itemlogs"
+      style={{ height: '32px', width: 'auto', flexShrink: 0 }}
+    />
+  );
 
   return (
     <header className="storefront-header">
       {/* Mobile-only: opens the filter drawer. Hidden on desktop, where the
           filter sidebar is already visible alongside the content. */}
-      <button
-        type="button"
-        className="storefront-header-menu-btn"
-        aria-label={t('filters')}
-        onClick={open}
-      >
-        <Bars3Icon style={{ width: '22px', height: '22px' }} />
-      </button>
+      {!hideMenuButton && (
+        <button
+          type="button"
+          className="storefront-header-menu-btn"
+          aria-label={t('filters')}
+          onClick={() => drawer?.open()}
+        >
+          <Bars3Icon style={{ width: '22px', height: '22px' }} />
+        </button>
+      )}
 
       <div className="storefront-header-logo-wrap">
-        <img
-          src="/itemlogs-full-transparent.png"
-          alt="Itemlogs"
-          style={{ height: '32px', width: 'auto', flexShrink: 0 }}
-        />
+        {logoLinksBack ? (
+          <button
+            type="button"
+            onClick={() => router.back()}
+            aria-label={t('backToStorefront')}
+            className="storefront-header-logo-btn"
+          >
+            {logo}
+          </button>
+        ) : (
+          logo
+        )}
       </div>
 
       {packageFilter && (

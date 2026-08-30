@@ -5,8 +5,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/widgets/Button';
-import { Toggle } from '@/components/ui/Toggle';
-import { Tooltip } from '@/components/ui/Tooltip';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AddItemsToPackageModal } from './AddItemsToPackageModal';
 import { ItemGrid } from '@/components/items/ItemGrid';
@@ -37,6 +35,12 @@ export function PackageForm({
 
     const [documents, setDocuments] = useState<DocumentRow[]>(packageDocuments);
 
+    // show_on_storefront (per-package "show on visitor page" toggle) used to
+    // live here, but that buried a visitor-page-wide decision inside each
+    // package's own edit form — same problem as the old per-item "featured"
+    // toggle. It's now managed from a single list in the dashboard's Visitor
+    // Page Settings (PackageVisibilitySection), next to the "Filter by
+    // packages" toggle it actually affects.
     const [form, setForm] = useState({
         name: pkg?.name ?? '',
         description: pkg?.description ?? '',
@@ -46,7 +50,6 @@ export function PackageForm({
         tariff_currency: pkg?.tariff_currency ?? settings.sell_price_currency,
         shipping_fee: pkg?.shipping_fee?.toString() ?? '',
         shipping_fee_currency: pkg?.shipping_fee_currency ?? settings.default_purchase_price_currency,
-        show_on_storefront: pkg?.show_on_storefront ?? false,
     });
 
     const [isSaving, setIsSaving] = useState(false);
@@ -77,7 +80,6 @@ export function PackageForm({
             tariff_currency: form.tariff_currency,
             shipping_fee: form.shipping_fee ? Number(form.shipping_fee) : null,
             shipping_fee_currency: form.shipping_fee_currency,
-            show_on_storefront: form.show_on_storefront,
         };
         try {
             const url = mode === 'create' ? '/api/v1/packages' : `/api/v1/packages/${pkg!.id}`;
@@ -201,18 +203,6 @@ export function PackageForm({
                             </div>
                         </div>
                     )}
-
-                    <div className="settings-row" style={{ marginTop: 'var(--spacing-sm)' }}>
-                        <Tooltip text={t('showOnStorefrontHint')}>
-                            <span>{t('showOnStorefront')}</span>
-                        </Tooltip>
-                        <Toggle
-                            name="show_on_storefront"
-                            defaultChecked={form.show_on_storefront}
-                            label={t('showOnStorefront')}
-                            onChange={(e) => update('show_on_storefront', e.target.checked)}
-                        />
-                    </div>
 
                     <div className="sheet-section">
                         <div className="sheet-section-title">{t('description')}</div>

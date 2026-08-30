@@ -38,6 +38,23 @@ export async function getPackages() {
   return data;
 }
 
+// Every package's id/name/current visibility, for the dashboard's
+// PackageVisibilitySection — a single list of toggles ("show on visitor
+// page") the owner manages centrally instead of per package. Lighter than
+// getPackages()'s `select('*')` since this list only needs to render name +
+// toggle, not pricing/date fields.
+export async function getPackagesForVisibility(): Promise<
+  { id: number; name: string; show_on_storefront: boolean }[]
+> {
+  const { data, error } = await supabase
+    .from('packages')
+    .select('id, name, show_on_storefront')
+    .order('name', { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 // Only the packages the owner has explicitly opted into showing publicly —
 // used to populate the storefront's single-select package filter dropdown.
 export async function getPublicPackages(): Promise<{ id: number; name: string }[]> {

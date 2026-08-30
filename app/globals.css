@@ -657,6 +657,24 @@ body {
   margin-inline: auto;
 }
 
+/* Scales up on genuinely wide viewports instead of staying pinned at 760px
+   — a fixed narrow card centered in a sea of background is a big part of
+   why this page reads as "empty" on desktop. Paired with .sheet-portrait
+   below (which grows to fill the extra width instead of staying a fixed
+   220px sidebar), so the added room actually goes somewhere rather than
+   just becoming more side-margin. */
+@media (min-width: 1024px) {
+  .item-sheet-container {
+    max-width: 880px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .item-sheet-container {
+    max-width: 1000px;
+  }
+}
+
 .sheet-frame {
   border: 1px solid var(--color-border);
   border-top: 6px solid var(--color-primary);
@@ -685,9 +703,16 @@ body {
     align-items: flex-start;
   }
 
+  /* Was a fixed 220px regardless of viewport — tiny relative to how much
+     room the title/stats column actually needs, which is what made the
+     image column look like an afterthought next to a lot of empty space.
+     A percentage basis lets it grow with the card instead of the extra
+     width from item-sheet-container's wider breakpoints above just turning
+     into more whitespace next to a still-small photo. Capped with
+     max-width so it doesn't run away on the very widest screens. */
   .sheet-portrait {
-    width: 220px;
-    flex-shrink: 0;
+    flex: 0 0 42%;
+    max-width: 380px;
   }
 }
 
@@ -696,6 +721,48 @@ body {
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
+}
+
+/* Hover left/right nav over the item detail page's main image (see
+   ItemGallery.tsx) — lets a visitor step through the gallery without
+   reaching for the thumbnail strip underneath. Hidden until the pointer is
+   over the image, or (for keyboard users) until a button itself receives
+   focus. .sheet-portrait-frame gets position:relative inline in
+   ItemGallery.tsx, which is what anchors these. */
+.sheet-portrait-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--motion-duration) var(--motion-easing), background-color var(--motion-duration) var(--motion-easing);
+  z-index: 2;
+}
+
+.sheet-portrait-frame:hover .sheet-portrait-nav-btn,
+.sheet-portrait-nav-btn:focus-visible {
+  opacity: 1;
+}
+
+.sheet-portrait-nav-btn:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.sheet-portrait-nav-btn--prev {
+  left: var(--spacing-sm);
+}
+
+.sheet-portrait-nav-btn--next {
+  right: var(--spacing-sm);
 }
 
 .sheet-portrait-counter {
@@ -1543,6 +1610,51 @@ body {
 /* ---------------------------------------------------------------------
    Storefront: density toggle bar, sits directly above the item grid.
 --------------------------------------------------------------------- */
+/* Booking.com-style row of removable chips for the currently active
+   category/type/location/status filters — sits between the visitor page
+   message and the item grid/spotlight (see SelectedFiltersRow.tsx),
+   visitor page only. overflow-x + flex-wrap: nowrap rather than letting
+   chips wrap onto more rows, so a long list of active filters scrolls
+   horizontally within a fixed-height row instead of pushing the grid
+   below it further down the page every time another filter is added. */
+.storefront-selected-filters-row {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: var(--spacing-xs);
+  margin-bottom: var(--spacing-lg);
+  scrollbar-width: thin;
+}
+
+.storefront-selected-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-full);
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--motion-duration) var(--motion-easing);
+}
+
+.storefront-selected-filter-chip:hover {
+  background: var(--color-primary-hover);
+}
+
+.storefront-selected-filter-chip svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
 .storefront-toolbar {
   display: flex;
   align-items: center;
@@ -1734,6 +1846,18 @@ body {
   justify-content: center;
 }
 
+/* Item detail page only (StorefrontHeader's logoLinksBack) — the logo
+   becomes a real <button>, so its browser-default appearance needs
+   resetting back to "just an image" to match the plain <img> everywhere
+   else the header renders. */
+.storefront-header-logo-btn {
+  display: flex;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
 .storefront-header-login {
   flex-shrink: 0;
 }
@@ -1747,7 +1871,11 @@ body {
 
 /* Site-nav-style package dropdown: a button that always shows the label
    (never the current selection) and a flyout menu below it on hover/click,
-   like a classic website nav menu — not a form control. */
+   like a classic website nav menu — not a form control. Styling modeled on
+   lealeamart.com's nav dropdown: a borderless, underline-on-hover trigger
+   (no button chrome) opening a flat, sharp-cornered, thin-bordered panel
+   with no shadow and plain full-width rows that underline on hover instead
+   of getting a filled background. */
 .storefront-package-nav {
   position: relative;
 }
@@ -1757,13 +1885,20 @@ body {
   align-items: center;
   gap: var(--spacing-xs);
   padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
+  border: none;
+  border-radius: 0;
+  background: transparent;
   color: var(--color-text);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium, 500);
   font-family: inherit;
   cursor: pointer;
+}
+
+.storefront-package-nav-trigger:hover,
+.storefront-package-nav-trigger:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .storefront-package-nav-chevron {
@@ -1774,33 +1909,33 @@ body {
 
 .storefront-package-nav-menu {
   position: absolute;
-  top: calc(100% + 4px);
+  top: 100%;
   left: 0;
   min-width: 200px;
   max-width: 280px;
   max-height: 320px;
   overflow-y: auto;
-  background: var(--color-surface);
+  background: var(--color-background);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  padding: var(--spacing-xs);
+  border-radius: 0;
+  box-shadow: none;
+  padding: var(--spacing-sm) 0;
   z-index: 20;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
 }
 
 .storefront-package-nav-item {
   display: block;
   width: 100%;
   text-align: left;
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: transparent;
   color: var(--color-text);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
@@ -1810,8 +1945,10 @@ body {
 
 .storefront-package-nav-item:hover,
 .storefront-package-nav-item:focus-visible {
-  background: var(--color-primary);
-  color: var(--color-primary-contrast, #fff);
+  background: transparent;
+  color: var(--color-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .storefront-package-nav-item--active {
@@ -1857,6 +1994,14 @@ body {
   flex-shrink: 0;
   padding: var(--spacing-lg);
   border-right: 1px solid var(--color-border);
+  /* Pin the sidebar in the viewport and let it scroll internally once its
+     own content (a long filter pool) is taller than the screen — otherwise
+     scrolling the page to reach later filters could run the grid content
+     on the right out of view while filters are still visible on the left. */
+  position: sticky;
+  top: var(--spacing-lg);
+  max-height: calc(100vh - 2 * var(--spacing-lg));
+  overflow-y: auto;
 }
 
 @media (max-width: 860px) {

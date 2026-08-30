@@ -23,6 +23,11 @@ const STOREFRONT_AUTOSAVE_FIELDS = [
   'show_package_filter',
   'show_location_filter',
   'storefront_density',
+  // Package label override — moved here from the batch-saved
+  // updateNameSettingsAction (see GeneralSettingsForm) since it only ever
+  // affects the visitor page, same reasoning as everything else in this
+  // list living in Visitor Page Settings instead of General Settings.
+  'name_package',
   // "Show featured items" — see the FeaturedItemsSection comment on why this
   // is a spare toggle rather than a dedicated column.
   'spare_toggle_1',
@@ -120,7 +125,7 @@ export async function updateNameSettingsAction(formData: FormData) {
     name_category: (formData.get('name_category') as string) || null,
     name_type: (formData.get('name_type') as string) || null,
     name_status: (formData.get('name_status') as string) || null,
-    name_package: (formData.get('name_package') as string) || null,
+    name_location: (formData.get('name_location') as string) || null,
     name_item: (formData.get('name_item') as string) || null,
   };
 

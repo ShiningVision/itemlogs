@@ -371,6 +371,29 @@ export async function POST(request: Request) {
         );
       `;
       await sql`ALTER TABLE items ENABLE ROW LEVEL SECURITY;`;
+
+      // Fuzzy, typo-tolerant item-name search (dashboard items page) —
+      // pg_trgm's word_similarity/<% operator, tuned for "does this search
+      // term approximately match some word-sequence within the name"
+      // rather than requiring the whole name to be similar, so a short,
+      // partial, or slightly-misspelled query still finds long item names.
+      // The GIN trigram index makes both this function and any plain
+      // ILIKE '%...%' query on name fast. Only runs on fresh installs, same
+      // as the rest of this route — see app/lib/services/items.ts's
+      // resolveSearchItemIds for the JS side that calls this function.
+      await sql`CREATE EXTENSION IF NOT EXISTS pg_trgm;`;
+      await sql`CREATE INDEX IF NOT EXISTS items_name_trgm_idx ON items USING gin (name gin_trgm_ops);`;
+      await sql`
+        CREATE OR REPLACE FUNCTION search_items_by_name(search_term text, match_limit integer DEFAULT 300)
+        RETURNS TABLE(id integer, rank real) AS $$
+          SELECT id, word_similarity(search_term, name) AS rank
+          FROM items
+          WHERE search_term <% name
+          ORDER BY rank DESC
+          LIMIT match_limit;
+        $$ LANGUAGE sql STABLE;
+      `;
+
       await Promise.all(
         items.map(
           (i) => sql`

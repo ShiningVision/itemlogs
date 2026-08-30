@@ -2,7 +2,6 @@
 'use client';
 
 import { forwardRef } from 'react';
-import { CheckIcon } from '@heroicons/react/24/outline';
 
 export const FilterPill = forwardRef<
   HTMLButtonElement,
@@ -25,9 +24,6 @@ export const FilterPill = forwardRef<
 >(function FilterPill({ label, selected, disabled, onClick, variant = 'default' }, ref) {
   const background = variant === 'more' ? 'var(--color-secondary)' : selected ? 'var(--color-primary)' : 'var(--color-surface)';
   const color = variant === 'more' || selected ? '#fff' : 'var(--color-text)';
-  // Selected state shouldn't rely on color/fill alone — a checkmark gives a
-  // second, non-color cue. Not shown on 'more', which isn't a toggle.
-  const showCheck = selected && variant !== 'more';
   return (
     <button
       ref={ref}
@@ -51,7 +47,6 @@ export const FilterPill = forwardRef<
         whiteSpace: 'nowrap',
       }}
     >
-      {showCheck && <CheckIcon style={{ width: '14px', height: '14px', flexShrink: 0 }} />}
       {label}
     </button>
   );

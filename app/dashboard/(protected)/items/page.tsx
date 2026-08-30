@@ -31,6 +31,7 @@ type SearchParams = {
   page?: string;
   density?: string;
   sort?: string;
+  search?: string;
 };
 
 const VALID_SORTS: ItemSort[] = ['newest', 'oldest', 'name_asc', 'name_desc', 'price_asc', 'price_desc'];
@@ -51,6 +52,7 @@ export default async function ItemsPage({
     page: pageParam,
     density: densityParam,
     sort: sortParam,
+    search: searchParam,
   } = rawSearchParams;
 
   const density: ItemDensity =
@@ -81,6 +83,7 @@ export default async function ItemsPage({
   const typeIds = typesParam ? typesParam.split(',').map(Number) : undefined;
   const locationIds = locationsParam ? locationsParam.split(',').map(Number) : undefined;
   const saleId = saleIdParam ? Number(saleIdParam) : undefined;
+  const search = searchParam?.trim() || undefined;
 
   const page = parsePage(pageParam);
   const offset = getOffset(page, ITEMS_PAGE_SIZE);
@@ -92,6 +95,7 @@ export default async function ItemsPage({
   if (statuses?.length) exportParams.set('statuses', statuses.join(','));
   if (typeIds?.length) exportParams.set('types', typeIds.join(','));
   if (locationIds?.length) exportParams.set('locations', locationIds.join(','));
+  if (search) exportParams.set('search', search);
   const exportHref = `/api/v1/items/export${exportParams.toString() ? `?${exportParams.toString()}` : ''}`;
 
   const [{ items, totalCount }, categories, types, locations, uncategorizedCounts, categoryItemCounts, typeItemCounts, locationItemCounts] = await Promise.all([
@@ -100,6 +104,7 @@ export default async function ItemsPage({
       statuses,
       typeIds,
       locationIds,
+      search,
       sort,
       limit: ITEMS_PAGE_SIZE,
       offset,
@@ -192,6 +197,7 @@ export default async function ItemsPage({
         typeLabel={typeLabel}
         locationLabel={locationLabel}
         statusLabel={statusLabel}
+        search={search ?? ''}
       />
 
       <div className="storefront-toolbar" style={{ marginTop: 'var(--spacing-lg)' }}>

@@ -3,8 +3,15 @@
 // out of the API route so the route stays a thin HTTP wrapper.
 //
 // Flow:
-//   1. Validate the workbook's shape (exact column layout matching the
-//      export) — abort immediately if wrong.
+//   1. Validate the workbook's shape — every mandatory column present by
+//      name (order-independent), no unrecognized extra columns. Optional
+//      columns gated by a use_* setting (barcode, sell_price, notes) don't
+//      have to be present at all: a tenant who had the toggle off (or
+//      turned it off after exporting) can still reimport that file. A
+//      missing optional column reads as null for every row — same
+//      treatment as a blank cell — which then leaves existing data alone
+//      on update or defaults to null/DB-default on create (see the
+//      payload construction in the mutation pass below).
 //   2. Parse every data row and run a full validation scan (status must be
 //      1-4, purchase/cost/sell price must be numeric, purchase_price_currency
 //      must exist, ids — if given — must reference an existing item). Nothing
@@ -34,7 +41,9 @@ import { getCurrencies } from '@/app/lib/services/currencies';
 import { getImageByUrl, createImage } from '@/app/lib/services/images';
 import { uploadImageBuffer } from '@/app/lib/storage/images';
 
-const EXPECTED_HEADERS = [
+// Always present regardless of the tenant's use_* settings — these have no
+// toggle that can hide them from an export.
+const MANDATORY_HEADERS = [
   'id',
   'name',
   'status',
@@ -42,13 +51,22 @@ const EXPECTED_HEADERS = [
   'category',
   'location',
   'description',
-  'barcode',
   'main_image',
   'purchase_price',
   'purchase_price_currency',
   'cost_price',
-  'sell_price',
 ];
+
+// Only present in an export when the matching use_* setting was on at the
+// time (see getItemExportColumns in exportItems.ts, which is what actually
+// decides column presence). A tenant who had the setting off — or turned it
+// off after exporting — shouldn't have their import rejected just because
+// one of these columns is missing; each is looked up by name below rather
+// than assumed to exist, and its absence is handled per-column (see
+// resolveOptionalNumber/row construction).
+const OPTIONAL_HEADERS = ['barcode', 'sell_price', 'notes'];
+
+const ALL_KNOWN_HEADERS = new Set([...MANDATORY_HEADERS, ...OPTIONAL_HEADERS]);
 
 export type ImportResult =
   | {
@@ -78,7 +96,14 @@ type ParsedRow = {
   purchase_price: number;
   purchase_price_currency: string;
   cost_price: number;
-  sell_price: number;
+  // null specifically means "the sell_price column wasn't in this file at
+  // all" (use_sell_price was off at export time) — distinct from a present
+  // column with a blank cell, which still means 0 like it always has. Only
+  // the former should leave existing data alone on update / default to null
+  // on create instead of writing a hard 0 — see the payload construction
+  // below.
+  sell_price: number | null;
+  notes: string | null;
 };
 
 function cellToString(value: ExcelJS.CellValue): string | null {
@@ -109,24 +134,34 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
     return { success: false, error: 'The workbook has no sheets.' };
   }
 
-  // ---- 1. Shape check — exact column layout, same order, no extras ----
+  // ---- 1. Shape check — every mandatory column present by name, no
+  // unrecognized extras. Order-independent and doesn't require optional
+  // (use_*-gated) columns to be present at all, unlike the old fixed
+  // positional layout this replaced — that meant an export taken with a
+  // toggle off (so a narrower column set) could never be reimported.
   const headerRow = sheet.getRow(1);
-  for (let i = 0; i < EXPECTED_HEADERS.length; i++) {
-    const actual = (cellToString(headerRow.getCell(i + 1).value) ?? '').toLowerCase();
-    if (actual !== EXPECTED_HEADERS[i]) {
-      return {
-        success: false,
-        error: `This file doesn't match the expected column layout. Expected column ${i + 1} to be "${EXPECTED_HEADERS[i]}" but found "${actual || '(empty)'}". Please use a file exported from Itemlogs.`,
-      };
-    }
+  const headerIndex = new Map<string, number>();
+  for (let col = 1; ; col++) {
+    const raw = cellToString(headerRow.getCell(col).value);
+    if (raw === null) break;
+    headerIndex.set(raw.toLowerCase(), col);
   }
-  const extraHeader = cellToString(headerRow.getCell(EXPECTED_HEADERS.length + 1).value);
-  if (extraHeader) {
+
+  const missingHeaders = MANDATORY_HEADERS.filter((h) => !headerIndex.has(h));
+  if (missingHeaders.length > 0) {
     return {
       success: false,
-      error: `This file has an unexpected extra column ("${extraHeader}"). Please use a file exported from Itemlogs.`,
+      error: `This file is missing required column(s): ${missingHeaders.join(', ')}. Please use a file exported from Itemlogs.`,
     };
   }
+  const unknownHeaders = [...headerIndex.keys()].filter((h) => !ALL_KNOWN_HEADERS.has(h));
+  if (unknownHeaders.length > 0) {
+    return {
+      success: false,
+      error: `This file has unexpected column(s): ${unknownHeaders.join(', ')}. Please use a file exported from Itemlogs.`,
+    };
+  }
+  const hasSellPriceColumn = headerIndex.has('sell_price');
 
   // ---- 2. Parse rows + full validation scan (nothing written yet) ----
   const currencies = await getCurrencies();
@@ -142,25 +177,32 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
   sheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return; // header row
 
-    const get = (col: number) => cellToString(row.getCell(col).value);
-    const idStr = get(1);
-    const name = get(2);
-    const statusStr = get(3);
-    const type = get(4);
-    const category = get(5);
-    const location = get(6);
-    const description = get(7);
-    const barcode = get(8);
-    const main_image = get(9);
-    const purchasePriceStr = get(10);
-    const purchase_price_currency = get(11);
-    const costPriceStr = get(12);
-    const sellPriceStr = get(13);
+    // Reads by header name rather than fixed position — a column absent
+    // from this file entirely (optional and not included in this export)
+    // just reads as null, same as a present-but-blank cell would.
+    const get = (header: string) => {
+      const col = headerIndex.get(header);
+      return col === undefined ? null : cellToString(row.getCell(col).value);
+    };
+    const idStr = get('id');
+    const name = get('name');
+    const statusStr = get('status');
+    const type = get('type');
+    const category = get('category');
+    const location = get('location');
+    const description = get('description');
+    const barcode = get('barcode');
+    const main_image = get('main_image');
+    const purchasePriceStr = get('purchase_price');
+    const purchase_price_currency = get('purchase_price_currency');
+    const costPriceStr = get('cost_price');
+    const sellPriceStr = get('sell_price');
+    const notes = get('notes');
 
     const allBlank = [
       idStr, name, statusStr, type, category, location, description, barcode,
       main_image, purchasePriceStr, purchase_price_currency, costPriceStr,
-      sellPriceStr,
+      sellPriceStr, notes,
     ].every((v) => v === null);
     if (allBlank) return;
 
@@ -199,7 +241,10 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
     }
     const purchase_price = parsePrice('purchase_price', purchasePriceStr);
     const cost_price = parsePrice('cost_price', costPriceStr);
-    const sell_price = parsePrice('sell_price', sellPriceStr);
+    // Column missing entirely (use_sell_price was off at export time) stays
+    // null all the way through to the payload, rather than being parsed as
+    // a blank cell would be — see the ParsedRow.sell_price comment.
+    const sell_price = hasSellPriceColumn ? parsePrice('sell_price', sellPriceStr) : null;
 
     if (purchase_price_currency === null || !currencyCodes.has(purchase_price_currency)) {
       currencyErrors.push(`Row ${rowNumber}: unsupported currency "${purchase_price_currency ?? '(empty)'}" in purchase_price_currency.`);
@@ -220,6 +265,7 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
       purchase_price_currency: purchase_price_currency ?? '',
       cost_price,
       sell_price,
+      notes,
     });
   });
 
@@ -440,7 +486,7 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
 
       const payload = {
         name: row.name,
-        // Blank description/barcode leave the existing value alone on
+        // Blank description/barcode/notes leave the existing value alone on
         // update (they're omitted, not nulled) — main_image, category_ids,
         // type_ids, and location_id support explicit clearing instead,
         // since those are the nullable/lookup fields in the schema (an
@@ -448,6 +494,7 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
         // same as importing a row with "Other" in that cell).
         description: row.description ?? undefined,
         barcode: row.barcode ?? undefined,
+        notes: row.notes ?? undefined,
         status: row.status,
         category_ids: categoryIds,
         type_ids: typeIds,
@@ -457,8 +504,13 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
         purchase_price: row.purchase_price,
         purchase_price_currency: currencyCodeToId.get(row.purchase_price_currency)!,
         // sell_price is always in the shop-wide settings.sell_price_currency —
-        // no per-item currency to resolve/write here anymore.
-        sell_price: row.sell_price,
+        // no per-item currency to resolve/write here anymore. `null` means
+        // the sell_price column wasn't in this file at all (use_sell_price
+        // was off at export time) — omitted here rather than sent as 0, so
+        // create falls back to the column's own default/null and update
+        // leaves the item's existing sell_price untouched instead of
+        // zeroing it out.
+        sell_price: row.sell_price === null ? undefined : row.sell_price,
       };
 
       if (row.id !== null) {

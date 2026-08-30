@@ -20,6 +20,7 @@ import { FilterDrawerProvider } from '@/components/storefront/FilterDrawerContex
 import { StorefrontHero } from '@/components/storefront/StorefrontHero';
 import { StorefrontSpotlight } from '@/components/storefront/StorefrontSpotlight';
 import { FilterSidebar } from '@/components/storefront/FilterSidebar';
+import { SelectedFiltersRow, type SelectedFilterChip } from '@/components/storefront/SelectedFiltersRow';
 import { PackageFilterDropdown } from '@/components/storefront/PackageFilterDropdown';
 import { PublicItemGrid } from '@/components/storefront/PublicItemGrid';
 import { DensityToggle } from '@/components/storefront/DensityToggle';
@@ -158,6 +159,37 @@ export default async function HomePage({
     selectedStatuses.length === 0 &&
     selectedPackageId === null;
 
+  // Feeds SelectedFiltersRow — one chip per currently active category/type/
+  // location/status selection, built from the same *label lookup lists
+  // (sortedCategories/etc.) and selected*Ids arrays FilterSidebar already
+  // uses, so a chip's text always matches what the sidebar shows for it.
+  // Locations only included when the location filter is actually on,
+  // mirroring FilterSidebar's own locationFilter gating.
+  const selectedFilterChips: SelectedFilterChip[] = [
+    ...selectedCategoryIds.map((id) => ({
+      dimension: 'categories' as const,
+      id,
+      label: sortedCategories.find((c) => c.id === id)?.name ?? '',
+    })),
+    ...selectedTypeIds.map((id) => ({
+      dimension: 'types' as const,
+      id,
+      label: sortedTypes.find((t2) => t2.id === id)?.name ?? '',
+    })),
+    ...(settings.show_location_filter
+      ? selectedLocationIds.map((id) => ({
+          dimension: 'locations' as const,
+          id,
+          label: sortedLocations.find((l) => l.id === id)?.name ?? '',
+        }))
+      : []),
+    ...selectedStatuses.map((id) => ({
+      dimension: 'statuses' as const,
+      id,
+      label: statusOptionLabels[id] ?? '',
+    })),
+  ];
+
   const packageFilterDropdown = settings.show_package_filter ? (
     <PackageFilterDropdown
       packages={publicPackages}
@@ -217,6 +249,8 @@ export default async function HomePage({
               {settings.show_message}
             </div>
           )}
+
+          <SelectedFiltersRow chips={selectedFilterChips} />
 
           {noFiltersActive && page === 1 && (
             <StorefrontSpotlight

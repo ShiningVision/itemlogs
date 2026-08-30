@@ -59,18 +59,8 @@ export function FilterSidebar({
   locationFilter?: boolean;
 }) {
   const t = useTranslations('storefront');
-  const { toggleInList, setParams } = useFilterParams();
+  const { toggleInList } = useFilterParams();
   const { isOpen: drawerOpen, close: closeDrawer } = useFilterDrawer();
-
-  const activeCount =
-    selectedCategoryIds.length +
-    selectedTypeIds.length +
-    (locationFilter ? (selectedLocationIds ?? []).length : 0) +
-    selectedStatuses.length;
-
-  function clearAll() {
-    setParams({ categories: null, types: null, locations: null, statuses: null });
-  }
 
   // Category and type lists can get long, so their sections collapse —
   // status stays a small fixed set of pills and doesn't need this. Open by
@@ -81,14 +71,10 @@ export function FilterSidebar({
 
   // onToggle omitted (status filter) → plain static label, always expanded;
   // category/type pass a real toggle and get the collapsible chevron header.
-  // onClear is separate from onToggle and rendered as a sibling, not nested
-  // inside the toggle button — the toggle is itself a <button> (for the
-  // chevron), and a clear button nested inside it would both be invalid
-  // HTML (button-in-button) and fire both handlers on one click.
-  const sectionHeader = (title: string, open: boolean, onToggle?: () => void, onClear?: () => void) => {
-    const label = !onToggle ? (
-      <div className="storefront-filter-section-label">{title}</div>
-    ) : (
+  const sectionHeader = (title: string, open: boolean, onToggle?: () => void) => {
+    if (!onToggle) return <div className="storefront-filter-section-label">{title}</div>;
+
+    return (
       <button
         type="button"
         className="storefront-filter-section-label storefront-filter-section-toggle"
@@ -107,17 +93,6 @@ export function FilterSidebar({
         />
       </button>
     );
-
-    if (!onClear) return label;
-
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-sm)' }}>
-        {label}
-        <button type="button" className="filter-clear-button filter-clear-button--small" onClick={onClear}>
-          {t('clearFilter')}
-        </button>
-      </div>
-    );
   };
 
   const pillSection = (
@@ -126,11 +101,10 @@ export function FilterSidebar({
     selected: number[],
     key: string,
     open: boolean = true,
-    onToggle?: () => void,
-    onClear?: () => void
+    onToggle?: () => void
   ) => (
     <div className="storefront-filter-section">
-      {sectionHeader(title, open, onToggle, selected.length > 0 ? onClear : undefined)}
+      {sectionHeader(title, open, onToggle)}
       {open && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-xs)' }}>
           {options.map((opt) => (
@@ -153,11 +127,10 @@ export function FilterSidebar({
     key: string,
     counts: Record<number, number>,
     open: boolean,
-    onToggle: () => void,
-    onClear?: () => void
+    onToggle: () => void
   ) => (
     <div className="storefront-filter-section">
-      {sectionHeader(title, open, onToggle, selected.length > 0 ? onClear : undefined)}
+      {sectionHeader(title, open, onToggle)}
       {open && (
         <div className="storefront-filter-checkbox-list">
           {options.map((opt) => (
@@ -184,14 +157,6 @@ export function FilterSidebar({
 
   const content = (
     <>
-      {activeCount > 0 && (
-        <div className="storefront-filter-section" style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button type="button" className="filter-clear-button" onClick={clearAll}>
-            {t('clearAllFilters')}
-          </button>
-        </div>
-      )}
-
       {packageFilter && (
         <div className="storefront-package-filter-drawer-only storefront-filter-section">
           {packageFilter}
@@ -199,17 +164,17 @@ export function FilterSidebar({
       )}
 
       {categoryOptions.length > ADAPTIVE_THRESHOLD
-        ? checkboxSection(categoryLabel, categoryOptions, selectedCategoryIds, 'categories', categoryCounts, categoriesOpen, () => setCategoriesOpen((v) => !v), () => setParams({ categories: null }))
-        : pillSection(categoryLabel, categoryOptions, selectedCategoryIds, 'categories', categoriesOpen, () => setCategoriesOpen((v) => !v), () => setParams({ categories: null }))}
+        ? checkboxSection(categoryLabel, categoryOptions, selectedCategoryIds, 'categories', categoryCounts, categoriesOpen, () => setCategoriesOpen((v) => !v))
+        : pillSection(categoryLabel, categoryOptions, selectedCategoryIds, 'categories', categoriesOpen, () => setCategoriesOpen((v) => !v))}
 
       {typeOptions.length > ADAPTIVE_THRESHOLD
-        ? checkboxSection(typeLabel, typeOptions, selectedTypeIds, 'types', typeCounts, typesOpen, () => setTypesOpen((v) => !v), () => setParams({ types: null }))
-        : pillSection(typeLabel, typeOptions, selectedTypeIds, 'types', typesOpen, () => setTypesOpen((v) => !v), () => setParams({ types: null }))}
+        ? checkboxSection(typeLabel, typeOptions, selectedTypeIds, 'types', typeCounts, typesOpen, () => setTypesOpen((v) => !v))
+        : pillSection(typeLabel, typeOptions, selectedTypeIds, 'types', typesOpen, () => setTypesOpen((v) => !v))}
 
       {locationFilter && locationOptions.length > 0 &&
         (locationOptions.length > ADAPTIVE_THRESHOLD
-          ? checkboxSection(locationLabel ?? '', locationOptions, selectedLocationIds ?? [], 'locations', locationCounts, locationsOpen, () => setLocationsOpen((v) => !v), () => setParams({ locations: null }))
-          : pillSection(locationLabel ?? '', locationOptions, selectedLocationIds ?? [], 'locations', locationsOpen, () => setLocationsOpen((v) => !v), () => setParams({ locations: null })))}
+          ? checkboxSection(locationLabel ?? '', locationOptions, selectedLocationIds ?? [], 'locations', locationCounts, locationsOpen, () => setLocationsOpen((v) => !v))
+          : pillSection(locationLabel ?? '', locationOptions, selectedLocationIds ?? [], 'locations', locationsOpen, () => setLocationsOpen((v) => !v)))}
 
       {/* Status filter is omitted entirely when there's only one (or zero) selectable status — ticking a single option is meaningless */}
       {availableStatuses.length > 1 &&

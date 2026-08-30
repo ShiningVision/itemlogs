@@ -2,7 +2,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useTransition } from 'react';
+import { useEffect, useRef, useTransition } from 'react';
 import { buildUrl } from '@/app/lib/url';
 
 /**
@@ -21,21 +21,34 @@ export function useFilterParams() {
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  // Any filter change invalidates the current page of results, so unless the
-  // caller is explicitly setting `page` itself (i.e. Pagination links),
-  // reset back to page 1 whenever a filter changes.
+  // Mirrors the URL params, but is updated synchronously by every
+  // setParam/setParams call instead of waiting for the next render.
+  // Without this, two clicks fired in quick succession (e.g. tapping two
+  // filter pills before the first navigation's re-render lands) both build
+  // their URL from the same pre-navigation `searchParams` snapshot — the
+  // second router.push then overwrites the first's change entirely, since
+  // it never saw it. Basing every update on this ref instead means each
+  // click composes on top of whatever the previous click just set, not on
+  // stale render-time state.
+  const pendingParamsRef = useRef(searchParams);
+
+  // Once real navigation catches up and nothing else is in flight, resync
+  // the ref to the confirmed URL (picks up back/forward nav, links, etc.
+  // that didn't go through this hook).
+  useEffect(() => {
+    if (!isPending) {
+      pendingParamsRef.current = searchParams;
+    }
+  }, [searchParams, isPending]);
+
   function setParam(key: string, value: string | null) {
-    const updates: Record<string, string | null> = { [key]: value };
-    if (key !== 'page') updates.page = null;
-    const url = buildUrl(pathname, searchParams, updates);
-    startTransition(() => {
-      router.push(url);
-    });
+    setParams({ [key]: value });
   }
 
   function setParams(updates: Record<string, string | null>) {
     const finalUpdates = 'page' in updates ? updates : { ...updates, page: null };
-    const url = buildUrl(pathname, searchParams, finalUpdates);
+    const url = buildUrl(pathname, pendingParamsRef.current, finalUpdates);
+    pendingParamsRef.current = new URLSearchParams(url.slice(url.indexOf('?') + 1));
     startTransition(() => {
       router.push(url);
     });
@@ -43,9 +56,31 @@ export function useFilterParams() {
 
   /** Toggle `id` in/out of a comma-joined multi-select param (e.g. categories=1,3,5). */
   function toggleInList(key: string, current: number[], id: number) {
-    const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
+    // Always read the live value for this key off the pending ref, never
+    // the caller's `current` array — `current` comes from props derived at
+    // the last completed render, which is exactly the stale snapshot this
+    // hook works around above. Since the ref is seeded from the real URL on
+    // mount and kept in sync by every setParams call, it's authoritative
+    // even when `.get(key)` is null — that unambiguously means "empty",
+    // not "not yet known". (A version of this that fell back to `current`
+    // when the ref's value was null broke specifically on a deselect that
+    // emptied the list — the key is removed from the URL entirely at that
+    // point, so the very next click would misread that as "unknown" and
+    // resurrect the stale, pre-deselect prop value instead.)
+    const pendingRaw = pendingParamsRef.current.get(key);
+    const base = pendingRaw ? pendingRaw.split(',').filter(Boolean).map(Number) : [];
+    const next = base.includes(id) ? base.filter((x) => x !== id) : [...base, id];
     setParam(key, next.length ? next.join(',') : null);
   }
 
-  return { searchParams, pathname, isPending, setParam, setParams, toggleInList };
+  // Read the pending-aware raw value of a param, for callers with custom
+  // toggle logic that can't just use toggleInList (e.g. a param with a
+  // sentinel value alongside its normal comma-list values — see
+  // ItemFiltersBar's toggleStatus). Reading off the same ref toggleInList
+  // uses gives them the same race-free behavior without duplicating it.
+  function getParam(key: string): string | null {
+    return pendingParamsRef.current.get(key);
+  }
+
+  return { searchParams, pathname, isPending, setParam, setParams, toggleInList, getParam };
 }

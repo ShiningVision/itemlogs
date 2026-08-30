@@ -145,7 +145,7 @@ export function FilterTagPickerModal({
           {sortedItems.map((item) => (
             <FilterPill
               key={item.id}
-              label={`${item.name ?? ''} (${itemCounts[item.id] ?? 0})`}
+              label={item.name ?? ''}
               selected={selection.includes(item.id)}
               onClick={() => toggle(item.id)}
             />
