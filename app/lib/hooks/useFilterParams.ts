@@ -30,14 +30,21 @@ export function useFilterParams() {
   // it never saw it. Basing every update on this ref instead means each
   // click composes on top of whatever the previous click just set, not on
   // stale render-time state.
-  const pendingParamsRef = useRef(searchParams);
+  // Explicitly typed as plain URLSearchParams (a copy, via .toString()) —
+  // Next's searchParams is a ReadonlyURLSearchParams, a distinct type whose
+  // mutating methods (append/set/delete/sort — unused here, but part of the
+  // type) are typed as taking no arguments specifically to make them
+  // unusable. Assigning it straight into a URLSearchParams-typed ref (or
+  // vice versa) doesn't type-check because of that signature mismatch, so
+  // this always stores its own independent copy instead.
+  const pendingParamsRef = useRef<URLSearchParams>(new URLSearchParams(searchParams.toString()));
 
   // Once real navigation catches up and nothing else is in flight, resync
   // the ref to the confirmed URL (picks up back/forward nav, links, etc.
   // that didn't go through this hook).
   useEffect(() => {
     if (!isPending) {
-      pendingParamsRef.current = searchParams;
+      pendingParamsRef.current = new URLSearchParams(searchParams.toString());
     }
   }, [searchParams, isPending]);
 
