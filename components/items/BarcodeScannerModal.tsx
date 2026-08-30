@@ -62,13 +62,23 @@ export function BarcodeScannerModal({
       cancelled = true;
       const scanner = scannerRef.current;
       if (scanner) {
-        scanner
-          .stop()
-          .then(() => scanner.clear())
-          .catch(() => {
-            // Already stopped/never started (e.g. permission was denied
-            // before start() resolved) — nothing left to clean up.
-          });
+        // html5-qrcode's stop() throws *synchronously* (not a rejected
+        // promise) when the scanner was never actually running — e.g. the
+        // user denied camera permission before start() resolved, or start()
+        // is still in flight when this cleanup runs. The .catch() below only
+        // handles the async case; without this try/catch the sync throw
+        // escapes uncaught (surfaced as "Cannot stop, scanner is not
+        // running or paused").
+        try {
+          scanner
+            .stop()
+            .then(() => scanner.clear())
+            .catch(() => {
+              // Already stopped/never started — nothing left to clean up.
+            });
+        } catch {
+          // Same "never started" case, thrown synchronously instead.
+        }
       }
     };
     // Mount-once: the scanner owns its own lifecycle via start()/stop().

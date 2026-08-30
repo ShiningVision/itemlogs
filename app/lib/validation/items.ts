@@ -1,11 +1,16 @@
 // lib/validation/items.ts
 import { z } from 'zod';
 
+// .max(255) mirrors the items table's VARCHAR(255) columns (see
+// app/api/setup/route.ts). Without it, a too-long value passed validation
+// here and hit the database's own length constraint instead — the API
+// route's generic catch-all then reported a vague "Failed to create item"
+// instead of a message that actually says what's wrong.
 export const createItemSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  description: z.string().optional(),
+  name: z.string().min(1, 'Name is required').max(255, 'Name must be 255 characters or fewer.'),
+  description: z.string().max(255, 'Description must be 255 characters or fewer.').optional(),
   location_id: z.number().int().nullable().optional(),
-  barcode: z.string().max(255).optional(),
+  barcode: z.string().max(255, 'Barcode must be 255 characters or fewer.').optional(),
   status: z.number().int(),
   cost_price: z.number().optional(),
   purchase_price: z.number().optional(),

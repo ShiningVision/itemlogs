@@ -22,6 +22,7 @@ import { StorefrontSpotlight } from '@/components/storefront/StorefrontSpotlight
 import { FilterSidebar } from '@/components/storefront/FilterSidebar';
 import { SelectedFiltersRow, type SelectedFilterChip } from '@/components/storefront/SelectedFiltersRow';
 import { PackageFilterDropdown } from '@/components/storefront/PackageFilterDropdown';
+import { StorefrontSearchBar } from '@/components/storefront/StorefrontSearchBar';
 import { PublicItemGrid } from '@/components/storefront/PublicItemGrid';
 import { DensityToggle } from '@/components/storefront/DensityToggle';
 import { SortSelect } from '@/components/ui/SortSelect';
@@ -29,6 +30,8 @@ import { Pagination } from '@/components/ui/Pagination';
 import { parsePage, getOffset, getTotalPages, buildPageHref } from '@/app/lib/pagination';
 import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
+import { isUnprovisionedTenantError } from '@/app/lib/errors/isUnprovisionedTenantError';
+import { ServiceUnavailable } from '@/components/ui/ServiceUnavailable';
 
 const PUBLIC_ITEMS_PAGE_SIZE = 24;
 
@@ -41,6 +44,7 @@ type SearchParams = {
   page?: string;
   density?: string;
   sort?: string;
+  search?: string;
 };
 
 const VALID_SORTS: ItemSort[] = ['newest', 'oldest', 'name_asc', 'name_desc', 'price_asc', 'price_desc'];
@@ -51,7 +55,7 @@ export default async function HomePage({
   searchParams: Promise<SearchParams>;
 }) {
   const rawSearchParams = await searchParams;
-  const { categories: categoriesParam, types: typesParam, locations: locationsParam, statuses: statusesParam, package: packageParam, page: pageParam, density: densityParam, sort: sortParam } = rawSearchParams;
+  const { categories: categoriesParam, types: typesParam, locations: locationsParam, statuses: statusesParam, package: packageParam, page: pageParam, density: densityParam, sort: sortParam, search: searchParam } = rawSearchParams;
 
   // On a freshly provisioned tenant, the database has no tables yet — the
   // Supabase Marketplace resource creates an empty Postgres instance, and
@@ -61,11 +65,27 @@ export default async function HomePage({
   // Route them to /setup instead, which creates the schema, seeds starter
   // data, and collects the handful of choices (password, language, default
   // currency, etc.) that used to live in the placeholder settings row.
+  //
+  // But getSettings() also throws for reasons that have nothing to do with
+  // "hasn't run setup yet" — e.g. the Supabase project itself got
+  // paused/banned after a tenant had already been running for a while
+  // (seen in the wild: Supabase flagging a project created via a
+  // disposable email used during the Vercel integration). Blindly
+  // redirecting to /setup in that case is actively misleading — it looks
+  // like the normal first-run wizard, gives no indication anything is
+  // actually wrong, and resubmitting it just fails again against the same
+  // broken backend. isUnprovisionedTenantError narrows this down to only
+  // the "table genuinely doesn't exist" case; anything else gets its own
+  // explanation instead.
   let settings: Awaited<ReturnType<typeof getSettings>>;
   try {
     settings = await getSettings();
-  } catch {
-    redirect('/setup');
+  } catch (error) {
+    if (isUnprovisionedTenantError(error)) {
+      redirect('/setup');
+    }
+    const t = await getTranslations('serviceUnavailable');
+    return <ServiceUnavailable title={t('title')} message={t('message')} />;
   }
 
   if (!settings.show) {
@@ -95,6 +115,11 @@ export default async function HomePage({
   const selectedLocationIds = locationsParam ? locationsParam.split(',').map(Number) : [];
   const selectedStatuses = statusesParam ? statusesParam.split(',').map(Number) : [];
   const selectedPackageId = packageParam ? Number(packageParam) : null;
+  // Trimmed here for the same "empty means no search" reason as the
+  // dashboard items page; the actual length cap against abuse lives
+  // server-side in resolveSearchItemIds (see app/lib/services/items.ts) so
+  // it applies no matter how the param got here.
+  const search = searchParam?.trim() || undefined;
 
   const density: 'dense' | 'showcase' =
     densityParam === 'showcase' || densityParam === 'dense'
@@ -117,6 +142,7 @@ export default async function HomePage({
           locationIds: selectedLocationIds.length ? selectedLocationIds : undefined,
           statuses: selectedStatuses.length ? selectedStatuses : undefined,
           packageId: selectedPackageId ?? undefined,
+          search,
           sort,
           limit: PUBLIC_ITEMS_PAGE_SIZE,
           offset,
@@ -157,7 +183,8 @@ export default async function HomePage({
     selectedTypeIds.length === 0 &&
     selectedLocationIds.length === 0 &&
     selectedStatuses.length === 0 &&
-    selectedPackageId === null;
+    selectedPackageId === null &&
+    !search;
 
   // Feeds SelectedFiltersRow — one chip per currently active category/type/
   // location/status selection, built from the same *label lookup lists
@@ -250,6 +277,8 @@ export default async function HomePage({
             </div>
           )}
 
+          <StorefrontSearchBar search={search ?? ''} />
+
           <SelectedFiltersRow chips={selectedFilterChips} />
 
           {noFiltersActive && page === 1 && (
@@ -280,7 +309,7 @@ export default async function HomePage({
             </div>
           </div>
 
-          <PublicItemGrid items={items} settings={settings} noItemsMessage={t('noItems')} noImageLabel={t('noImage')} density={density} />
+          <PublicItemGrid items={items} settings={settings} noItemsMessage={search ? t('noSearchResults') : t('noItems')} noImageLabel={t('noImage')} density={density} />
 
           <Pagination page={page} totalPages={totalPages} buildHref={(p) => buildPageHref('/', rawSearchParams, p)} />
         </main>

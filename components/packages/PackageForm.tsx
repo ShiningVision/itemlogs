@@ -1,7 +1,7 @@
 // components/packages/PackageForm.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/widgets/Button';
@@ -9,11 +9,21 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AddItemsToPackageModal } from './AddItemsToPackageModal';
 import { ItemGrid } from '@/components/items/ItemGrid';
 import { DocumentListEditor, type DocumentRow } from './DocumentListEditor';
-import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, ArrowsRightLeftIcon, PaperAirplaneIcon, FlagIcon } from '@heroicons/react/24/outline';
 import type { Package, Settings } from '@/app/lib/definitions';
 import { parseApiError } from '@/app/lib/errors/parseApiError';
 
 type Currency = { id: number; currency_code: string };
+
+// Outlined instead of the default filled/blue style — this action rewrites
+// every item's cost price in the package, so it should read as distinct
+// from routine actions like "Add items" (filled) sitting right next to it,
+// without going as far as the red "danger" styling used for deletes.
+const distributeFeesButtonStyle: CSSProperties = {
+    background: 'transparent',
+    color: 'var(--color-primary)',
+    border: '1px solid var(--color-primary)',
+};
 
 export function PackageForm({
     mode,
@@ -155,12 +165,18 @@ export function PackageForm({
 
                     <div className="sheet-route">
                         <div className="sheet-field">
-                            <span className="sheet-label">{t('departureDate')}</span>
+                            <span className="sheet-label sheet-label-icon">
+                                <PaperAirplaneIcon style={{ width: '14px', height: '14px', transform: 'rotate(-45deg)' }} aria-hidden="true" />
+                                {t('departureDate')}
+                            </span>
                             <input type="date" className="sheet-input" value={form.departure_date} onChange={(e) => update('departure_date', e.target.value)} />
                         </div>
                         <div className="sheet-route-arrow" aria-hidden="true">&rarr;</div>
                         <div className="sheet-field">
-                            <span className="sheet-label">{t('arrivalDate')}</span>
+                            <span className="sheet-label sheet-label-icon">
+                                <FlagIcon style={{ width: '14px', height: '14px' }} aria-hidden="true" />
+                                {t('arrivalDate')}
+                            </span>
                             <input type="date" className="sheet-input" value={form.arrival_date} onChange={(e) => update('arrival_date', e.target.value)} />
                         </div>
                     </div>
@@ -239,16 +255,17 @@ export function PackageForm({
                                 <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
                                     <Button onClick={() => setAddItemsModalOpen(true)}>{t('addItemsToPackage')}</Button>
                                     {settings.use_package_fees && (
-                                        <Button onClick={() => setDistributeConfirmOpen(true)}>{t('distributeFees')}</Button>
+                                        <Button
+                                            onClick={() => setDistributeConfirmOpen(true)}
+                                            style={distributeFeesButtonStyle}
+                                            title={t('distributeFeesWarning')}
+                                        >
+                                            <ArrowsRightLeftIcon style={{ width: '16px', height: '16px' }} />
+                                            {t('distributeFees')}
+                                        </Button>
                                     )}
                                 </div>
                             </div>
-
-                            {settings.use_package_fees && (
-                                <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-md)' }}>
-                                    {t('distributeFeesWarning')}
-                                </p>
-                            )}
 
                             <ItemGrid
                                 items={packageItems}

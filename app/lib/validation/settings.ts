@@ -12,18 +12,24 @@ export const updateSettingsSchema = z.object({
   show_status_2: z.boolean().optional(),
   show_status_3: z.boolean().optional(),
   show_status_4: z.boolean().optional(),
-  show_message: z.string().max(255).nullable().optional(),
+  show_message: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
   sell_price_currency: z.number().int().optional(),
   default_purchase_price_currency: z.number().int().optional(),
   use_sell_price: z.boolean().optional(),
   use_package_fees: z.boolean().optional(),
   use_barcode: z.boolean().optional(),
   language: z.number().int().optional(),
-  name_category: z.string().nullable().optional(),
-  name_status: z.string().nullable().optional(),
-  name_type: z.string().nullable().optional(),
-  name_package: z.string().nullable().optional(),
-  name_item: z.string().nullable().optional(),
+  // .max(255) matches the settings table's VARCHAR(255) columns (see
+  // app/api/setup/route.ts) — without it, a too-long value sailed straight
+  // past validation and hit the database's own length constraint instead,
+  // which threw uncaught from the autosave actions below (no try/catch
+  // there at the time) instead of coming back as a normal validation
+  // error. Same story for name_location further down.
+  name_category: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
+  name_status: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
+  name_type: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
+  name_package: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
+  name_item: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
   display_profit: z.boolean().optional(),
   display_sell_price: z.boolean().optional(),
   display_purchase_price: z.boolean().optional(),
@@ -32,16 +38,16 @@ export const updateSettingsSchema = z.object({
   owned_themes: z.array(z.string()).optional(),
   tried_themes: z.array(z.string()).optional(),
   theme_trial_expires_at: z.string().nullable().optional(),
-  storefront_name: z.string().max(255).nullable().optional(),
-  storefront_tagline: z.string().max(255).nullable().optional(),
+  storefront_name: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
+  storefront_tagline: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
   storefront_density: z.enum(['showcase', 'dense']).optional(),
   show_contact: z.boolean().optional(),
-  contact_info: z.string().max(255).nullable().optional(),
+  contact_info: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
   show_location: z.boolean().optional(),
   show_package_filter: z.boolean().optional(),
   use_secret_notes: z.boolean().optional(),
   show_location_filter: z.boolean().optional(),
-  name_location: z.string().nullable().optional(),
+  name_location: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
   // Reserved for future features — see app/api/setup/route.ts. Kept valid
   // to PATCH here ahead of time so a future feature only needs to start
   // reading/writing one, not also wire up validation for it.

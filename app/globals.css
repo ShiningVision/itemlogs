@@ -509,6 +509,14 @@ body {
   max-width: 260px;
 }
 
+/* Right-aligned value display (e.g. the storefront URL) — right-aligned
+   next to its label on desktop, but when the row stacks to two lines on
+   mobile (see the @media block below) a right-aligned second line reads
+   oddly, so it switches to left there instead. */
+.settings-row-value {
+  text-align: right;
+}
+
 /* Wraps a row's control (Toggle, <select>, ...) together with its status
    badge — position:relative anchors the badge (see .settings-row-status)
    without affecting the control's own size. */
@@ -585,6 +593,10 @@ body {
 
   .settings-row-control {
     max-width: none;
+  }
+
+  .settings-row-value {
+    text-align: left;
   }
 
   /* .settings-row-status itself now matches the desktop rule (left-anchored,
@@ -991,6 +1003,15 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-muted);
+}
+
+/* Departure/arrival date labels in .sheet-route pair an icon with the
+   caption text — plain .sheet-label is just a block of text, so this adds
+   the inline layout on top without affecting other .sheet-label usages. */
+.sheet-label-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
 }
 
 .sheet-input {

@@ -10,10 +10,11 @@ type ItemFilters = {
   statuses?: number[];
   locationIds?: number[]; // multi-select, used by both dashboard + storefront
   packageId?: number;  // single-select, used by storefront package filter
-  // Fuzzy, typo-tolerant name search (dashboard items page only, for now —
-  // see resolveSearchItemIds / the search_items_by_name Postgres function
-  // this calls). Takes over ordering and pagination entirely when set; see
-  // the branch in getItems below.
+  // Fuzzy, typo-tolerant name search — used by both the dashboard items page
+  // and the public storefront (see getPublicItems). See resolveSearchItemIds
+  // / the search_items_by_name Postgres function this calls. Takes over
+  // ordering and pagination entirely when set; see the branch in getItems
+  // below.
   search?: string;
   sort?: ItemSort;
   limit?: number;
@@ -200,8 +201,24 @@ async function applyCommonItemFilters(query: any, filters: ItemFilters) {
 // best-match-first and capped to a small result set server-side inside the
 // function, so the caller can safely fetch every match in one go rather
 // than needing its own pagination at this step.
+//
+// SQL injection isn't possible here regardless of what's in `term`:
+// supabase.rpc() calls this as a typed Postgres function argument
+// (search_term text) over PostgREST, sent as a bound parameter alongside
+// the query — never spliced into a SQL string — and the function body
+// itself is a plain parameterized `LANGUAGE sql` statement with no dynamic
+// SQL (no EXECUTE/format()) that could reinterpret the value as anything
+// other than a text literal. That said, this now also runs unauthenticated
+// (the public storefront search, not just the dashboard), so
+// SEARCH_TERM_MAX_LENGTH below is a defense-in-depth cap against a
+// pathologically long term burning CPU on trigram similarity for no
+// benefit — trimmed rather than rejected, since silently truncating a
+// too-long search is harmless and friendlier than erroring on it.
+const SEARCH_TERM_MAX_LENGTH = 100;
+
 async function resolveSearchItemIds(term: string): Promise<number[]> {
-  const { data, error } = await supabase.rpc('search_items_by_name', { search_term: term });
+  const searchTerm = term.slice(0, SEARCH_TERM_MAX_LENGTH);
+  const { data, error } = await supabase.rpc('search_items_by_name', { search_term: searchTerm });
   if (error) throw error;
   return ((data ?? []) as { id: number }[]).map((row) => row.id);
 }
@@ -631,6 +648,7 @@ export async function getPublicItems(
     typeIds?: number[];
     locationIds?: number[];
     packageId?: number;
+    search?: string;
     sort?: ItemSort;
     limit?: number;
     offset?: number;

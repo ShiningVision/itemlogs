@@ -100,7 +100,9 @@ export function PackageVisibilitySection({
       <div className="settings-section-title">{t('sectionPackageVisibility', { packages: packageLabel })}</div>
       <div className="settings-group">
         <div className="settings-row">
-          <span>{t('namePackage')}</span>
+          <Tooltip text={t('namePackageHint')}>
+            <span>{t('namePackage')}</span>
+          </Tooltip>
           <div className="settings-row-controls">
             {nameStatus && (
               <span className="settings-row-status" style={nameStatus === 'error' ? { color: 'var(--color-danger)' } : undefined}>

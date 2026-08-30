@@ -428,7 +428,9 @@ export function ItemForm({
                 </select>
               </div>
               <div className="stat-box">
-                <span className="stat-box-label">{t('purchasePrice')}</span>
+                <Tooltip text={t('purchasePriceHint')}>
+                  <span className="stat-box-label">{t('purchasePrice')}</span>
+                </Tooltip>
                 <input
                   className="stat-box-input"
                   type="number"
@@ -447,7 +449,9 @@ export function ItemForm({
                 <span className="stat-box-currency">{shopSellCurrency?.currency_code ?? ''}</span>
               </div>
               <div className="stat-box">
-                <span className="stat-box-label">{t('costPrice')}</span>
+                <Tooltip text={t('costPriceHint')}>
+                  <span className="stat-box-label">{t('costPrice')}</span>
+                </Tooltip>
                 <input
                   className="stat-box-input"
                   type="number"

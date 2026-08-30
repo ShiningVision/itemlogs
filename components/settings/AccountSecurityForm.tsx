@@ -119,7 +119,7 @@ export function AccountSecurityForm({
       <div className="settings-group">
         <div className="settings-row" style={{ borderBottom: isOwner ? undefined : 'none' }}>
           <span>{t('yourUrl')}</span>
-          <span className="settings-row-control" style={{ textAlign: 'right', color: 'var(--color-text-muted)' }}>
+          <span className="settings-row-control settings-row-value" style={{ color: 'var(--color-text-muted)' }}>
             {url || t('urlUnavailable')}
           </span>
         </div>

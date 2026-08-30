@@ -51,7 +51,21 @@ export async function updateStorefrontSettingFieldAction(
     return { error: 'invalid' };
   }
 
-  await updateSettings(parsed.data);
+  // Validation catches the length/type problems Zod knows to check for, but
+  // updateSettings() can still fail for reasons it can't (a DB constraint
+  // Zod doesn't mirror, a dropped connection, ...). Without this try/catch
+  // that threw straight out of the server action — every call site's
+  // autosave handler awaits this function expecting it to always resolve
+  // to a plain { success } / { error } object, not reject, so an uncaught
+  // throw here meant the field's "Saving…" indicator never resolved into
+  // "Saved."/"Failed to save." at all, with nothing telling the user
+  // anything went wrong.
+  try {
+    await updateSettings(parsed.data);
+  } catch (error) {
+    console.error('Failed to update storefront setting:', error);
+    return { error: 'saveFailed' };
+  }
   revalidatePath('/dashboard');
   revalidatePath('/');
   return { success: true };
@@ -72,7 +86,12 @@ export async function updateStorefrontTextSettingsAction(formData: FormData) {
     return { error: parsed.error.flatten() };
   }
 
-  await updateSettings(parsed.data);
+  try {
+    await updateSettings(parsed.data);
+  } catch (error) {
+    console.error('Failed to update storefront text settings:', error);
+    return { error: 'saveFailed' };
+  }
   revalidatePath('/dashboard');
   revalidatePath('/');
   return { success: true };
@@ -80,8 +99,15 @@ export async function updateStorefrontTextSettingsAction(formData: FormData) {
 
 
 // Fields on the general settings page that auto-save the instant they
-// change (currency/language pickers, functionality + preference toggles) —
-// everything except the free-text label overrides below.
+// change (currency/language pickers, functionality + preference toggles),
+// plus the free-text label overrides — those used to be batch-saved via a
+// separate action + explicit Save button (updateNameSettingsAction, now
+// removed), but save-on-blur here instead, same as every other field in
+// this list. name_item is deliberately absent — see the comment on
+// PREFERENCE_NAME_FIELDS in GeneralSettingsForm.tsx for why it's not
+// exposed in the UI; add it here too whenever that changes. name_package
+// isn't here at all — it moved to STOREFRONT_AUTOSAVE_FIELDS above, since
+// it only affects the visitor page (see PackageVisibilitySection).
 const GENERAL_SETTINGS_AUTOSAVE_FIELDS = [
   'sell_price_currency',
   'default_purchase_price_currency',
@@ -94,6 +120,10 @@ const GENERAL_SETTINGS_AUTOSAVE_FIELDS = [
   'display_sell_price',
   'display_purchase_price',
   'display_cost_price',
+  'name_category',
+  'name_type',
+  'name_status',
+  'name_location',
 ] as const;
 
 type GeneralSettingsAutosaveField = (typeof GENERAL_SETTINGS_AUTOSAVE_FIELDS)[number];
@@ -111,31 +141,15 @@ export async function updateGeneralSettingFieldAction(
     return { error: 'invalid' };
   }
 
-  await updateSettings(parsed.data);
+  try {
+    await updateSettings(parsed.data);
+  } catch (error) {
+    console.error('Failed to update general setting:', error);
+    return { error: 'saveFailed' };
+  }
   revalidatePath('/dashboard/settings');
   revalidatePath('/dashboard/items'); // display_* flags affect the item cards there
   revalidatePath('/'); // sell_price_currency is shown on every storefront price
   return { success: true };
 }
 
-// The label-override fields are batch-saved together via an explicit Save
-// button rather than firing per keystroke.
-export async function updateNameSettingsAction(formData: FormData) {
-  const raw = {
-    name_category: (formData.get('name_category') as string) || null,
-    name_type: (formData.get('name_type') as string) || null,
-    name_status: (formData.get('name_status') as string) || null,
-    name_location: (formData.get('name_location') as string) || null,
-    name_item: (formData.get('name_item') as string) || null,
-  };
-
-  const parsed = updateSettingsSchema.safeParse(raw);
-  if (!parsed.success) {
-    return { error: parsed.error.flatten() };
-  }
-
-  await updateSettings(parsed.data);
-  revalidatePath('/dashboard/settings');
-  revalidatePath('/dashboard/items');
-  return { success: true };
-}
