@@ -85,7 +85,11 @@ export type Settings = {
   storefront_tagline: string | null;
   storefront_density: string;
   show_contact: boolean;
+  // Legacy free-text contact field — no longer editable in the UI, kept
+  // only so already-provisioned tenants don't lose data they'd already
+  // entered. See contact_whatsapp below, which replaced it.
   contact_info: string | null;
+  contact_whatsapp: string | null;
   show_location: boolean;
   show_package_filter: boolean;
   // Gates the private items.notes field. Toggle copy/labels call this
@@ -113,18 +117,17 @@ export type Settings = {
   checklist_added_item: boolean;
   checklist_named_storefront: boolean;
   checklist_went_live: boolean;
+  // "Show featured items" (see components/dashboard/FeaturedItemsSection.tsx).
+  // Used to live on a reused spare_toggle_1 column; renamed to a dedicated
+  // column now that all pre-rename tenants are on the legacy code path.
+  show_featured_items: boolean;
+  // "Show description" on the storefront item detail page. Was
+  // spare_toggle_2 — same story as show_featured_items above.
+  show_description: boolean;
   // Unassigned, reserved for future features (see app/api/setup/route.ts's
   // comment on the same columns). Once one gets used, rename it here to
   // match instead of adding a new field.
-  //
-  // spare_toggle_1: claimed — "Show featured items" (see
-  // components/dashboard/FeaturedItemsSection.tsx). Left as spare_toggle_1
-  // rather than renamed — see the setup route's comment for why.
   spare_toggle_1: boolean;
-  // spare_toggle_2: claimed — "Show description" on the storefront item
-  // detail page. Defaults false at the column level (already-provisioned
-  // tenants get it off); new tenants get it on via an explicit value in the
-  // setup route's INSERT, not by changing the column default.
   spare_toggle_2: boolean;
   spare_toggle_3: boolean;
   spare_toggle_4: boolean;
@@ -132,8 +135,18 @@ export type Settings = {
   spare_toggle_6: boolean;
   spare_toggle_7: boolean;
   spare_toggle_8: boolean;
-  spare_toggle_9: boolean;
-  spare_toggle_10: boolean;
+  // Unassigned, reserved for future free-text fields — same reasoning as the
+  // spare toggles above.
+  spare_text_1: string | null;
+  spare_text_2: string | null;
+  spare_text_3: string | null;
+  spare_text_4: string | null;
+  spare_text_5: string | null;
+  spare_text_6: string | null;
+  spare_text_7: string | null;
+  spare_text_8: string | null;
+  spare_text_9: string | null;
+  spare_text_10: string | null;
   // Resolved join (see getSettings) — every item's sell_price/cost_price is
   // denominated in this single shop-wide currency.
   sell_currency?: { currency_code: string; currency_symbol: string } | null;

@@ -322,13 +322,24 @@ export function GalleryGrid({
         </div>
         <div style={{ marginTop: 'var(--spacing-xs)', display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-md)', fontSize: 'var(--font-size-xs)', color: overLimit ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
           <span>{t('storageUsed', { used: formatBytes(totalUsed), limit: formatBytes(limitBytes) })}</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-primary)' }} />
-            {t('storageImages', { used: formatBytes(usedImagesBytes) })}
+          {/* "Images"/"Documents" as text wrapped onto its own mobile row
+              once paired with a byte count (see the tab buttons above,
+              which already use these same two icons) — the icon alone
+              reads just as clearly here and keeps this legend on one line.
+              Full wording kept as aria-label for screen readers. */}
+          <span
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            aria-label={t('storageImages', { used: formatBytes(usedImagesBytes) })}
+          >
+            <PhotoIcon aria-hidden="true" style={{ width: '12px', height: '12px', color: 'var(--color-primary)' }} />
+            {formatBytes(usedImagesBytes)}
           </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-secondary)' }} />
-            {t('storageDocuments', { used: formatBytes(usedDocumentsBytes) })}
+          <span
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            aria-label={t('storageDocuments', { used: formatBytes(usedDocumentsBytes) })}
+          >
+            <DocumentIcon aria-hidden="true" style={{ width: '12px', height: '12px', color: 'var(--color-secondary)' }} />
+            {formatBytes(usedDocumentsBytes)}
           </span>
         </div>
       </div>

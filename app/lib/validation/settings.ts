@@ -42,12 +42,32 @@ export const updateSettingsSchema = z.object({
   storefront_tagline: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
   storefront_density: z.enum(['showcase', 'dense']).optional(),
   show_contact: z.boolean().optional(),
+  // Not fully validated as a real phone number (that needs a proper phone
+  // number library, overkill here) — just loose enough to reject obvious
+  // non-numbers while allowing the punctuation people naturally type
+  // (spaces, dashes, parens, a leading +). Sanitized down to digits-only at
+  // wa.me link-build time (see app/lib/whatsapp.ts), never at rest, so this
+  // stays readable for the tenant to edit later.
+  contact_whatsapp: z
+    .string()
+    .max(50, 'Must be 50 characters or fewer.')
+    .refine((v) => v === '' || /^\+?[\d\s().-]{6,}$/.test(v), {
+      message: 'Enter a phone number with country code, e.g. +1 555 123 4567.',
+    })
+    .nullable()
+    .optional(),
+  // Legacy free-text field, replaced by contact_whatsapp above — kept
+  // valid to PATCH only so existing rows with a value already in it don't
+  // fail if something still round-trips the full settings object; nothing
+  // in the UI writes to it anymore.
   contact_info: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
   show_location: z.boolean().optional(),
   show_package_filter: z.boolean().optional(),
   use_secret_notes: z.boolean().optional(),
   show_location_filter: z.boolean().optional(),
   name_location: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
+  show_featured_items: z.boolean().optional(),
+  show_description: z.boolean().optional(),
   // Reserved for future features — see app/api/setup/route.ts. Kept valid
   // to PATCH here ahead of time so a future feature only needs to start
   // reading/writing one, not also wire up validation for it.
@@ -59,8 +79,18 @@ export const updateSettingsSchema = z.object({
   spare_toggle_6: z.boolean().optional(),
   spare_toggle_7: z.boolean().optional(),
   spare_toggle_8: z.boolean().optional(),
-  spare_toggle_9: z.boolean().optional(),
-  spare_toggle_10: z.boolean().optional(),
+  // Reserved for future free-text fields — same reasoning as the spare
+  // toggles above, capped to match the VARCHAR(255) columns.
+  spare_text_1: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
+  spare_text_2: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
+  spare_text_3: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
+  spare_text_4: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
+  spare_text_5: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
+  spare_text_6: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
+  spare_text_7: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
+  spare_text_8: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
+  spare_text_9: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
+  spare_text_10: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
 });
 
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;

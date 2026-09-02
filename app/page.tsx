@@ -23,6 +23,7 @@ import { FilterSidebar } from '@/components/storefront/FilterSidebar';
 import { SelectedFiltersRow, type SelectedFilterChip } from '@/components/storefront/SelectedFiltersRow';
 import { PackageFilterDropdown } from '@/components/storefront/PackageFilterDropdown';
 import { StorefrontSearchBar } from '@/components/storefront/StorefrontSearchBar';
+import { WhatsAppInquireButton } from '@/components/storefront/WhatsAppInquireButton';
 import { PublicItemGrid } from '@/components/storefront/PublicItemGrid';
 import { DensityToggle } from '@/components/storefront/DensityToggle';
 import { SortSelect } from '@/components/ui/SortSelect';
@@ -156,7 +157,7 @@ export default async function HomePage({
       getPublicCategoryCounts(allowedStatuses),
       getPublicTypeCounts(allowedStatuses),
       settings.show_location_filter ? getPublicLocationCounts(allowedStatuses) : Promise.resolve({}),
-      settings.spare_toggle_1 ? getFeaturedPublicItems(allowedStatuses) : Promise.resolve([]),
+      settings.show_featured_items ? getFeaturedPublicItems(allowedStatuses) : Promise.resolve([]),
       settings.show_package_filter ? getPublicPackages() : Promise.resolve([]),
     ]);
 
@@ -277,7 +278,9 @@ export default async function HomePage({
             </div>
           )}
 
-          <StorefrontSearchBar search={search ?? ''} />
+          <div style={{ marginBottom: 'var(--spacing-md)' }}>
+            <StorefrontSearchBar search={search ?? ''} />
+          </div>
 
           <SelectedFiltersRow chips={selectedFilterChips} />
 
@@ -315,9 +318,14 @@ export default async function HomePage({
         </main>
       </div>
 
-      {settings.show_contact && settings.contact_info && (
+      {settings.show_contact && settings.contact_whatsapp && (
         <footer className="storefront-footer">
-          {t('footerContact', { contact: settings.contact_info })}
+          <span>{t('footerContactLead')}</span>
+          <WhatsAppInquireButton
+            phone={settings.contact_whatsapp}
+            label={t('inquireWhatsapp')}
+            message={t('footerContactMessage', { collection: settings.storefront_name ?? t('defaultCollectionName') })}
+          />
         </footer>
       )}
       </div>

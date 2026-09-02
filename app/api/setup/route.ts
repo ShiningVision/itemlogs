@@ -56,8 +56,11 @@ export async function POST(request: Request) {
 
   const { password, confirmPassword, language, currency, needsSellPrice, needsBarcode, needsPackageFees } = body;
 
-  if (typeof password !== 'string' || password.length < 6) {
-    return Response.json({ error: 'Password must be at least 6 characters.' }, { status: 400 });
+  // No minimum length beyond "not empty" — this password is only ever
+  // bcrypt-hashed and compared (see auth.ts), never used as encryption key
+  // material, so a length rule here was never a real security requirement.
+  if (typeof password !== 'string' || password.length < 1) {
+    return Response.json({ error: 'Password is required.' }, { status: 400 });
   }
   if (password !== confirmPassword) {
     return Response.json({ error: 'Passwords do not match.' }, { status: 400 });
@@ -284,7 +287,7 @@ export async function POST(request: Request) {
         CREATE TABLE IF NOT EXISTS packages (
           id SERIAL PRIMARY KEY,
           name VARCHAR(255) NOT NULL,
-          description VARCHAR(255),
+          description TEXT,
           departure_date DATE,
           arrival_date DATE,
           tariff NUMERIC(18,2),
@@ -347,7 +350,7 @@ export async function POST(request: Request) {
         CREATE TABLE IF NOT EXISTS items (
           id SERIAL PRIMARY KEY,
           name VARCHAR(255),
-          description VARCHAR(255),
+          description TEXT,
           location_id INTEGER REFERENCES locations(id) ON DELETE SET NULL,
           barcode VARCHAR(255),
           status INTEGER NOT NULL,
@@ -417,7 +420,7 @@ export async function POST(request: Request) {
         CREATE TABLE IF NOT EXISTS blueprints (
           id SERIAL PRIMARY KEY,
           name VARCHAR(255),
-          description VARCHAR(255),
+          description TEXT,
           location_id INTEGER REFERENCES locations(id) ON DELETE SET NULL,
           barcode VARCHAR(255),
           status INTEGER NOT NULL,
@@ -469,7 +472,17 @@ export async function POST(request: Request) {
           storefront_tagline VARCHAR(255),
           storefront_density VARCHAR(20) NOT NULL DEFAULT 'dense',
           show_contact BOOLEAN NOT NULL DEFAULT false,
+          -- contact_info (free-text — email, Discord handle, whatever the
+          -- tenant typed) is kept only so already-provisioned tenants who
+          -- filled it in before contact_whatsapp existed don't lose that
+          -- data — nothing in the UI reads or writes it anymore. New
+          -- tenants only ever get contact_whatsapp populated.
           contact_info VARCHAR(255),
+          -- WhatsApp click-to-chat number (see app/lib/whatsapp.ts) — kept
+          -- as entered (may include spaces/dashes/a leading +) since that's
+          -- more readable for the tenant to edit; sanitized down to digits
+          -- only at link-build time, never at rest.
+          contact_whatsapp VARCHAR(50),
           show_location BOOLEAN NOT NULL DEFAULT false,
           show_package_filter BOOLEAN NOT NULL DEFAULT false,
           -- Gates the private items.notes field (see items table above) —
@@ -495,6 +508,17 @@ export async function POST(request: Request) {
           checklist_added_item BOOLEAN NOT NULL DEFAULT false,
           checklist_named_storefront BOOLEAN NOT NULL DEFAULT false,
           checklist_went_live BOOLEAN NOT NULL DEFAULT false,
+          -- "Show featured items" — gates the storefront's spotlight strip
+          -- (see StorefrontSpotlight / FeaturedItemsSection). Used to live on
+          -- a reused spare_toggle_1 column to avoid an ALTER TABLE on every
+          -- already-provisioned tenant database; all tenants provisioned
+          -- before this rename are now on the legacy code path and won't
+          -- pick up this schema, so the rename is safe going forward.
+          show_featured_items BOOLEAN NOT NULL DEFAULT false,
+          -- "Show description" on the storefront item detail page (see the
+          -- Toggle in SettingsForm.tsx and app/items/[id]/page.tsx). Same
+          -- history as show_featured_items above — was spare_toggle_2.
+          show_description BOOLEAN NOT NULL DEFAULT false,
           -- Unassigned, reserved for future features. Once a tenant's
           -- database is provisioned there's no way to bulk-ALTER it later
           -- (see scripts/add-spare-toggles.sql for the one-time migration
@@ -504,21 +528,7 @@ export async function POST(request: Request) {
           -- rolled out to every tenant. Rename in place when one gets used
           -- (e.g. ALTER TABLE settings RENAME COLUMN spare_toggle_1 TO
           -- whatever_it_actually_is), and document what it became here.
-          --
-          -- spare_toggle_1: claimed — "Show featured items" (gates the
-          -- storefront's spotlight strip, see StorefrontSpotlight /
-          -- FeaturedItemsSection). Deliberately left named spare_toggle_1
-          -- rather than renamed: a rename would need an ALTER TABLE RENAME
-          -- COLUMN pushed out to every already-provisioned tenant database,
-          -- which is exactly the migration this column exists to avoid.
           spare_toggle_1 BOOLEAN NOT NULL DEFAULT false,
-          -- spare_toggle_2: claimed — "Show description" on the storefront
-          -- item detail page (see the Toggle in SettingsForm.tsx and
-          -- app/items/[id]/page.tsx). The column-level default stays false
-          -- like every other spare toggle (so already-provisioned tenants
-          -- get it off, same as show_location/show_sell_price/etc. default
-          -- off for them) — new tenants get it on instead via an explicit
-          -- true value in the INSERT below, not by changing this default.
           spare_toggle_2 BOOLEAN NOT NULL DEFAULT false,
           spare_toggle_3 BOOLEAN NOT NULL DEFAULT false,
           spare_toggle_4 BOOLEAN NOT NULL DEFAULT false,
@@ -526,8 +536,20 @@ export async function POST(request: Request) {
           spare_toggle_6 BOOLEAN NOT NULL DEFAULT false,
           spare_toggle_7 BOOLEAN NOT NULL DEFAULT false,
           spare_toggle_8 BOOLEAN NOT NULL DEFAULT false,
-          spare_toggle_9 BOOLEAN NOT NULL DEFAULT false,
-          spare_toggle_10 BOOLEAN NOT NULL DEFAULT false
+          -- Unassigned, reserved for future free-text fields (contact
+          -- methods, integration IDs, etc.) — same reasoning as the spare
+          -- toggles above, sized to match every other free-text settings
+          -- column (see name_category etc. and validation/settings.ts).
+          spare_text_1 VARCHAR(255),
+          spare_text_2 VARCHAR(255),
+          spare_text_3 VARCHAR(255),
+          spare_text_4 VARCHAR(255),
+          spare_text_5 VARCHAR(255),
+          spare_text_6 VARCHAR(255),
+          spare_text_7 VARCHAR(255),
+          spare_text_8 VARCHAR(255),
+          spare_text_9 VARCHAR(255),
+          spare_text_10 VARCHAR(255)
         );
       `;
       await sql`ALTER TABLE settings ENABLE ROW LEVEL SECURITY;`;
@@ -541,10 +563,10 @@ export async function POST(request: Request) {
           display_profit, display_sell_price, display_purchase_price, display_cost_price, theme,
           owned_themes, tried_themes, theme_trial_expires_at,
           storefront_name, storefront_tagline, storefront_density,
-          show_contact, contact_info, show_location, show_package_filter,
+          show_contact, contact_info, contact_whatsapp, show_location, show_package_filter,
           use_secret_notes, show_location_filter, name_location, app_url,
           checklist_added_item, checklist_named_storefront, checklist_went_live,
-          spare_toggle_2
+          show_description
         )
         VALUES (
           1, false, ${needsSellPrice}, false, false,
@@ -555,12 +577,12 @@ export async function POST(request: Request) {
           false, false, false, false, 'default',
           ARRAY['default'], ARRAY[]::TEXT[], NULL,
           NULL, NULL, 'dense',
-          false, NULL, false, false,
+          false, NULL, NULL, false, false,
           false, false, NULL, ${appUrl},
           false, false, false,
-          -- "Show description" — on by default for a brand-new tenant (see
-          -- the spare_toggle_2 comment above); already-provisioned tenants
-          -- are unaffected since this only runs once, on first setup.
+          -- "Show description" — on by default for a brand-new tenant;
+          -- already-provisioned tenants are unaffected since this only runs
+          -- once, on first setup.
           true
         )
         ON CONFLICT (id) DO NOTHING;

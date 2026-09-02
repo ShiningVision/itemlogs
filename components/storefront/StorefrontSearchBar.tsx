@@ -15,6 +15,12 @@ import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 // also owns the category/type/location filter bar and its manage modals,
 // none of which apply here.
 //
+// Unlike the dashboard's version, this starts collapsed to just the
+// magnifying-glass icon rather than a full-width input — a permanently
+// open search field was too prominent for a page a visitor is mostly just
+// browsing. Clicking it opens a compact input; it collapses back once
+// blurred empty, or after clearing.
+//
 // On SQL injection: this box's input never reaches the database as
 // anything other than a bound function parameter (see the comment on
 // resolveSearchItemIds in app/lib/services/items.ts) — that's true
@@ -27,12 +33,20 @@ export function StorefrontSearchBar({ search = '' }: { search?: string }) {
   const t = useTranslations('storefront');
   const { setParam } = useFilterParams();
 
+  // Starts open if a search is already active (e.g. a bookmarked/shared
+  // URL with ?search=...) so the visitor can see and edit what's already
+  // filtering the grid, rather than it being invisibly applied behind a
+  // collapsed icon.
+  const [expanded, setExpanded] = useState(Boolean(search));
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const [searchInput, setSearchInput] = useState(search);
   const lastPushedSearchRef = useRef(search);
   useEffect(() => {
     if (search !== lastPushedSearchRef.current) {
       setSearchInput(search);
       lastPushedSearchRef.current = search;
+      if (search) setExpanded(true);
     }
   }, [search]);
 
@@ -43,6 +57,10 @@ export function StorefrontSearchBar({ search = '' }: { search?: string }) {
     },
     []
   );
+
+  useEffect(() => {
+    if (expanded) inputRef.current?.focus();
+  }, [expanded]);
 
   function handleSearchChange(value: string) {
     setSearchInput(value);
@@ -58,10 +76,32 @@ export function StorefrontSearchBar({ search = '' }: { search?: string }) {
     setSearchInput('');
     lastPushedSearchRef.current = '';
     setParam('search', null);
+    setExpanded(false);
+  }
+
+  // Collapses back to just the icon once the field loses focus with
+  // nothing typed in it — an empty, opened-then-abandoned search box
+  // shouldn't linger and take up space. A search that's actually been
+  // typed stays open (its own X clears + collapses it instead).
+  function handleBlur() {
+    if (!searchInput.trim()) setExpanded(false);
+  }
+
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        className="storefront-search-toggle"
+        onClick={() => setExpanded(true)}
+        aria-label={t('searchPlaceholder')}
+      >
+        <MagnifyingGlassIcon style={{ width: '18px', height: '18px' }} />
+      </button>
+    );
   }
 
   return (
-    <div style={{ position: 'relative', marginBottom: 'var(--spacing-md)' }}>
+    <div style={{ position: 'relative', maxWidth: '280px' }}>
       <MagnifyingGlassIcon
         aria-hidden="true"
         style={{
@@ -76,35 +116,40 @@ export function StorefrontSearchBar({ search = '' }: { search?: string }) {
         }}
       />
       <input
+        ref={inputRef}
         type="text"
         className="sheet-input"
         value={searchInput}
         onChange={(e) => handleSearchChange(e.target.value)}
+        onBlur={handleBlur}
         maxLength={SEARCH_INPUT_MAX_LENGTH}
         placeholder={t('searchPlaceholder')}
         aria-label={t('searchPlaceholder')}
-        style={{ paddingLeft: '36px', paddingRight: searchInput ? '36px' : undefined, width: '100%' }}
+        style={{ paddingLeft: '36px', paddingRight: '36px', width: '100%' }}
       />
-      {searchInput && (
-        <button
-          type="button"
-          onClick={clearSearch}
-          aria-label={t('clearSearch')}
-          style={{
-            position: 'absolute',
-            right: 'var(--spacing-sm)',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            display: 'flex',
-            background: 'none',
-            border: 'none',
-            color: 'var(--color-text-muted)',
-            cursor: 'pointer',
-          }}
-        >
-          <XMarkIcon style={{ width: '16px', height: '16px' }} />
-        </button>
-      )}
+      <button
+        type="button"
+        // Clicking this shouldn't blur the input first (that would collapse
+        // an empty box out from under the click before onClick even fires)
+        // — preventDefault on mousedown keeps focus put until the click
+        // itself runs clearSearch.
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={clearSearch}
+        aria-label={t('clearSearch')}
+        style={{
+          position: 'absolute',
+          right: 'var(--spacing-sm)',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          display: 'flex',
+          background: 'none',
+          border: 'none',
+          color: 'var(--color-text-muted)',
+          cursor: 'pointer',
+        }}
+      >
+        <XMarkIcon style={{ width: '16px', height: '16px' }} />
+      </button>
     </div>
   );
 }

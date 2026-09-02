@@ -9,7 +9,7 @@ import { BackToStorefrontButton } from '@/components/storefront/BackToStorefront
 import { StorefrontHeader } from '@/components/storefront/StorefrontHeader';
 import { StatBox } from '@/components/ui/StatBox';
 import { Badge } from '@/components/ui/Badge';
-import { ContactModal } from '@/components/storefront/ContactModal';
+import { WhatsAppInquireButton } from '@/components/storefront/WhatsAppInquireButton';
 import { ItemGallery } from '@/components/storefront/ItemGallery';
 
 export default async function PublicItemPage({
@@ -55,11 +55,10 @@ export default async function PublicItemPage({
   // like a fixed part of the page layout.
   const hasStats = settings.show_sell_price || settings.show_purchase_price || settings.show_cost_price;
 
-  // "Show description" — see the comment on spare_toggle_2 in
-  // app/api/setup/route.ts. On by default only for tenants set up after
-  // this feature shipped; already-provisioned tenants default off, same as
-  // every other visibility toggle.
-  const showDescription = Boolean(settings.spare_toggle_2);
+  // On by default only for tenants set up after this feature shipped;
+  // already-provisioned tenants default off, same as every other visibility
+  // toggle.
+  const showDescription = Boolean(settings.show_description);
 
   return (
     <>
@@ -123,9 +122,16 @@ export default async function PublicItemPage({
                   </div>
                 )}
 
-                {settings.show_contact && settings.contact_info && (
+                {settings.show_contact && settings.contact_whatsapp && (
                   <div style={{ marginTop: 'var(--spacing-md)' }}>
-                    <ContactModal contactInfo={settings.contact_info} itemName={item.name ?? ''} />
+                    <WhatsAppInquireButton
+                      phone={settings.contact_whatsapp}
+                      label={t('inquireWhatsapp')}
+                      message={t('inquireWhatsappMessage', {
+                        item: item.name ?? '',
+                        url: `${settings.app_url ?? ''}/items/${id}`,
+                      })}
+                    />
                   </div>
                 )}
 

@@ -63,8 +63,13 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
   providers: [
     Credentials({
       async authorize(credentials) {
+        // min(1) only — no 6-character minimum. That was never a real
+        // security requirement (the password is only ever bcrypt-hashed
+        // and compared, never used as encryption key material), and a
+        // shorter password set elsewhere still has to be able to log in
+        // here.
         const parsedCredentials = z
-          .object({ password: z.string().min(6) })
+          .object({ password: z.string().min(1) })
           .safeParse(credentials);
 
         if (!parsedCredentials.success) {

@@ -28,12 +28,13 @@ const STOREFRONT_AUTOSAVE_FIELDS = [
   // affects the visitor page, same reasoning as everything else in this
   // list living in Visitor Page Settings instead of General Settings.
   'name_package',
-  // "Show featured items" — see the FeaturedItemsSection comment on why this
-  // is a spare toggle rather than a dedicated column.
-  'spare_toggle_1',
-  // "Show description" — see the comment on spare_toggle_2 in
-  // app/api/setup/route.ts.
-  'spare_toggle_2',
+  // WhatsApp contact number — save-on-blur like every other free-text
+  // field added since (name overrides, name_package above), rather than
+  // batch-saved through updateStorefrontTextSettingsAction below like the
+  // older storefront_name/tagline/contact_info trio.
+  'contact_whatsapp',
+  'show_featured_items',
+  'show_description',
 ] as const;
 
 type StorefrontAutosaveField = (typeof STOREFRONT_AUTOSAVE_FIELDS)[number];
@@ -77,7 +78,6 @@ export async function updateStorefrontTextSettingsAction(formData: FormData) {
   const raw = {
     storefront_name: (formData.get('storefront_name') as string) || null,
     storefront_tagline: (formData.get('storefront_tagline') as string) || null,
-    contact_info: (formData.get('contact_info') as string) || null,
     show_message: (formData.get('show_message') as string) || null,
   };
 

@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { UserCircleIcon, Bars3Icon } from '@heroicons/react/24/outline';
+import { UserCircleIcon, FunnelIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 import { useFilterDrawerOptional } from './FilterDrawerContext';
 
@@ -51,7 +51,7 @@ export function StorefrontHeader({
           aria-label={t('filters')}
           onClick={() => drawer?.open()}
         >
-          <Bars3Icon style={{ width: '22px', height: '22px' }} />
+          <FunnelIcon style={{ width: '22px', height: '22px' }} />
         </button>
       )}
 

@@ -1704,6 +1704,27 @@ body {
   width: auto;
 }
 
+/* Collapsed state of StorefrontSearchBar — a plain bordered icon button,
+   same visual weight as .density-toggle-button next to it in the toolbar,
+   until clicked open into the actual search input. */
+.storefront-search-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.storefront-search-toggle:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
 .density-toggle-group {
   display: inline-flex;
   border: 1px solid var(--color-border);
@@ -2091,6 +2112,28 @@ body {
   background: var(--color-primary-hover);
 }
 
+/* WhatsApp's own brand green rather than the theme's --color-primary —
+   this button's whole point is to be recognizable at a glance as "opens
+   WhatsApp," the same way a real WhatsApp badge always is regardless of
+   the host site's own color scheme. */
+.storefront-whatsapp-button {
+  background: #25D366;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  text-decoration: none;
+}
+
+.storefront-whatsapp-button:hover {
+  background: #1ebe5a;
+}
+
 /* Item detail page: "back to storefront" button. Fixed to the bottom-right
    corner instead of sitting up at the top of the page — on mobile that's
    a thumb-reachable spot rather than one you have to stretch up for. */
@@ -2383,6 +2426,10 @@ body {
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
   border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
 }
 
 /* ---------------------------------------------------------------------

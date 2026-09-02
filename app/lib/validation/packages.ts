@@ -6,7 +6,7 @@ import { z } from 'zod';
 // app/lib/validation/items.ts for why this matters.
 export const createPackageSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255, 'Name must be 255 characters or fewer.'),
-  description: z.string().max(255, 'Description must be 255 characters or fewer.').nullable().optional(),
+  description: z.string().nullable().optional(),
   departure_date: z.string().date().nullable().optional(),
   arrival_date: z.string().date().nullable().optional(),
   tariff: z.number().nullable().optional(),

@@ -8,7 +8,7 @@ import { z } from 'zod';
 // instead of a message that actually says what's wrong.
 export const createItemSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255, 'Name must be 255 characters or fewer.'),
-  description: z.string().max(255, 'Description must be 255 characters or fewer.').optional(),
+  description: z.string().optional(),
   location_id: z.number().int().nullable().optional(),
   barcode: z.string().max(255, 'Barcode must be 255 characters or fewer.').optional(),
   status: z.number().int(),

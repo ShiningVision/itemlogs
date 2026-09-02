@@ -125,7 +125,7 @@ export function SetupForm() {
   }
 
   function handlePasswordContinue() {
-    if (password.length < 6) {
+    if (password.length < 1) {
       setPasswordError(messages.passwordTooShort);
       return;
     }
@@ -237,7 +237,6 @@ export function SetupForm() {
                 <input
                   type="password"
                   autoFocus
-                  minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="setup-wizard-input"
@@ -247,7 +246,6 @@ export function SetupForm() {
                 <span>{messages.confirmPassword}</span>
                 <input
                   type="password"
-                  minLength={6}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   onKeyDown={(e) => {

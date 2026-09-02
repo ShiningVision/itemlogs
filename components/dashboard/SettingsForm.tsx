@@ -32,12 +32,9 @@ const ITEM_DETAIL_FIELDS: Array<{ key: keyof Settings; labelKey: string; hintKey
   { key: 'show_purchase_price', labelKey: 'showPurchasePrice', hintKey: 'showPurchasePriceHint' },
   { key: 'show_cost_price', labelKey: 'showCostPrice', hintKey: 'showCostPriceHint' },
   { key: 'show_location', labelKey: 'showLocation', hintKey: 'showLocationHint' },
-  // "Show description" — claims spare_toggle_2 (see the comment on that
-  // column in app/api/setup/route.ts) instead of a dedicated column, same
-  // as spare_toggle_1 for Featured Items. Not inverted: on for new tenants
-  // via the setup route's INSERT, off by default for already-provisioned
-  // ones, same as every other field in this list.
-  { key: 'spare_toggle_2', labelKey: 'showDescription', hintKey: 'showDescriptionHint' },
+  // Not inverted: on for new tenants via the setup route's INSERT, off by
+  // default for already-provisioned ones, same as every other field here.
+  { key: 'show_description', labelKey: 'showDescription', hintKey: 'showDescriptionHint' },
 ];
 
 type FieldStatus = 'saving' | 'saved' | 'error';
@@ -58,6 +55,10 @@ export function SettingsForm({
   const [, startAutosaveTransition] = useTransition();
   const [fieldStatus, setFieldStatus] = useState<Record<string, FieldStatus>>({});
   const [storefrontDensity, setStorefrontDensity] = useState(settings.storefront_density ?? 'dense');
+  // Local value for the WhatsApp number — same save-on-blur pattern as
+  // name_package below (onBlur is what actually persists a change; this is
+  // just what the input needs to be a controlled field).
+  const [contactWhatsapp, setContactWhatsapp] = useState(settings.contact_whatsapp ?? '');
 
   const [isTextPending, startTextTransition] = useTransition();
   const [textMessage, setTextMessage] = useState<string | null>(null);
@@ -150,37 +151,6 @@ export function SettingsForm({
         </div>
 
         <div className="settings-section">
-          <div className="settings-section-title">{t('sectionContactInfo')}</div>
-          <div className="settings-group">
-            <div className="settings-row">
-              <span>{t('contactInfo')}</span>
-              <input
-                type="text"
-                name="contact_info"
-                defaultValue={settings.contact_info ?? ''}
-                maxLength={255}
-                placeholder={t('contactInfoPlaceholder')}
-                className="sheet-input settings-row-control"
-              />
-            </div>
-            <div className="settings-row">
-              <Tooltip text={t('showContactHint')}>
-                <span>{t('showContact')}</span>
-              </Tooltip>
-              <div className="settings-row-controls">
-                {statusFor('show_contact')}
-                <Toggle
-                  name="show_contact"
-                  defaultChecked={Boolean(settings.show_contact)}
-                  label={t('showContact')}
-                  onChange={(e) => autoSave('show_contact', e.target.checked)}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="settings-section">
           <div className="settings-section-title">{t('sectionAnnouncement')}</div>
           <div className="settings-group" style={{ display: 'block', padding: 'var(--spacing-sm)' }}>
             <span>{t('showMessage')}</span>
@@ -209,6 +179,51 @@ export function SettingsForm({
           )}
         </div>
       </form>
+
+      {/* Contact Info lives outside the identity <form> above — both its
+          fields autosave on their own (blur for the number, instant for
+          the toggle), so it doesn't belong to that form's Save button, the
+          same reasoning as PackageVisibilitySection/FeaturedItemsSection
+          below living outside it too. */}
+      <div className="settings-section">
+        <div className="settings-section-title">{t('sectionContactInfo')}</div>
+        <div className="settings-group">
+          <div className="settings-row">
+            <Tooltip text={t('contactWhatsappHint')}>
+              <span>{t('contactWhatsapp')}</span>
+            </Tooltip>
+            <div className="settings-row-controls">
+              {statusFor('contact_whatsapp')}
+              <input
+                type="text"
+                name="contact_whatsapp"
+                value={contactWhatsapp}
+                onChange={(e) => setContactWhatsapp(e.target.value)}
+                onBlur={(e) => {
+                  if (e.target.value === (settings.contact_whatsapp ?? '')) return;
+                  autoSave('contact_whatsapp', e.target.value);
+                }}
+                placeholder={t('contactWhatsappPlaceholder')}
+                className="sheet-input settings-row-control"
+              />
+            </div>
+          </div>
+          <div className="settings-row">
+            <Tooltip text={t('showContactHint')}>
+              <span>{t('showContact')}</span>
+            </Tooltip>
+            <div className="settings-row-controls">
+              {statusFor('show_contact')}
+              <Toggle
+                name="show_contact"
+                defaultChecked={Boolean(settings.show_contact)}
+                label={t('showContact')}
+                onChange={(e) => autoSave('show_contact', e.target.checked)}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="settings-section">
         <div className="settings-section-title">{t('sectionVisibility')}</div>
@@ -246,7 +261,7 @@ export function SettingsForm({
       <FeaturedItemsSection
         initialItems={featuredItems}
         cap={featuredItemCap}
-        defaultShowFeatured={Boolean(settings.spare_toggle_1)}
+        defaultShowFeatured={Boolean(settings.show_featured_items)}
       />
 
       <div className="settings-section">

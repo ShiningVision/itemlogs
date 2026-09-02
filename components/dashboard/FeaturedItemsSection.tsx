@@ -18,10 +18,6 @@ import { AddFeaturedItemsModal, type FeaturedItem } from './AddFeaturedItemsModa
 // see every currently-featured item, add or remove them, and turn the
 // spotlight strip on/off, all from the Visitor Page Settings card.
 //
-// "Show featured items" is bound to spare_toggle_1 rather than a new
-// dedicated column — see the comment on spare_toggle_1 in
-// app/api/setup/route.ts. Reusing a spare toggle means this ships without
-// an ALTER TABLE on every already-provisioned tenant database.
 export function FeaturedItemsSection({
   initialItems,
   cap,
@@ -45,7 +41,7 @@ export function FeaturedItemsSection({
     setShowFeatured(checked);
     setToggleStatus('saving');
     startTransition(async () => {
-      const result = await updateStorefrontSettingFieldAction('spare_toggle_1', checked);
+      const result = await updateStorefrontSettingFieldAction('show_featured_items', checked);
       setToggleStatus(result && 'error' in result ? 'error' : 'saved');
       setTimeout(() => setToggleStatus(null), 1500);
     });
@@ -95,7 +91,7 @@ export function FeaturedItemsSection({
               </span>
             )}
             <Toggle
-              name="spare_toggle_1"
+              name="show_featured_items"
               defaultChecked={showFeatured}
               label={t('showFeaturedItems')}
               onChange={handleToggleChange}

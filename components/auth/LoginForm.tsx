@@ -39,7 +39,6 @@ export function LoginForm() {
             name="password"
             type="password"
             required
-            minLength={6}
             style={{
               padding: 'var(--spacing-sm)',
               borderRadius: 'var(--radius-sm)',
