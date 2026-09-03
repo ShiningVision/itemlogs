@@ -446,6 +446,72 @@ export async function hasRealItem(): Promise<boolean> {
   return (count ?? 0) > 0;
 }
 
+// Onboarding checklist "organized" step — every fresh tenant is seeded with
+// placeholder categories/types/locations too (see app/lib/placeholder-data.ts),
+// same reasoning as PLACEHOLDER_ITEM_IDS above. Checked as three parallel
+// head:true counts rather than one query since categories/types/locations
+// are separate tables with no shared key to join on.
+const PLACEHOLDER_CATEGORY_IDS = [1, 2, 3, 4, 5];
+const PLACEHOLDER_TYPE_IDS = [1, 2, 3, 4];
+const PLACEHOLDER_LOCATION_IDS = [1, 2, 3, 4];
+
+export async function hasCustomizedTaxonomy(): Promise<boolean> {
+  const [categories, types, locations] = await Promise.all([
+    supabase.from('categories').select('id', { count: 'exact', head: true }).not('id', 'in', `(${PLACEHOLDER_CATEGORY_IDS.join(',')})`),
+    supabase.from('types').select('id', { count: 'exact', head: true }).not('id', 'in', `(${PLACEHOLDER_TYPE_IDS.join(',')})`),
+    supabase.from('locations').select('id', { count: 'exact', head: true }).not('id', 'in', `(${PLACEHOLDER_LOCATION_IDS.join(',')})`),
+  ]);
+
+  if (categories.error) throw categories.error;
+  if (types.error) throw types.error;
+  if (locations.error) throw locations.error;
+
+  return (categories.count ?? 0) > 0 || (types.count ?? 0) > 0 || (locations.count ?? 0) > 0;
+}
+
+// Dashboard's Earnings vs Expenses chart (see EarningsExpensesChart.tsx).
+// cost_price and sell_price are both always denominated in the single
+// shop-wide settings.sell_price_currency (see settings.ts's SETTINGS_SELECT
+// comment) — unlike purchase_price, neither needs per-item currency
+// conversion, so this is a safe direct sum. Summed client-side rather than
+// via a PostgREST aggregate (`sum()` in `.select()`) since aggregate
+// functions aren't guaranteed enabled on every Supabase project; fetching
+// just these two numeric columns for sold items is cheap regardless of
+// inventory size for the scale this app targets.
+export async function getSoldTotals(): Promise<{ totalCost: number; totalSell: number; soldCount: number }> {
+  const SOLD_STATUS = 2;
+  const { data, error } = await supabase
+    .from('items')
+    .select('cost_price, sell_price')
+    .eq('status', SOLD_STATUS);
+
+  if (error) throw error;
+
+  const rows = data ?? [];
+  return {
+    totalCost: rows.reduce((sum, r) => sum + (r.cost_price ?? 0), 0),
+    totalSell: rows.reduce((sum, r) => sum + (r.sell_price ?? 0), 0),
+    soldCount: rows.length,
+  };
+}
+
+// Dashboard's Recent Activity widget. Items have no created_at/updated_at
+// column, so "recent" is approximated by id — SERIAL, so higher always
+// means newer — rather than a true timestamp. That also means this can only
+// show recently *added* items, not recently *sold* ones (no column records
+// when a status change happened), which is why the widget is framed that
+// way rather than promising a sold-activity feed it can't actually provide.
+export async function getRecentItems(limit = 5): Promise<{ id: number; name: string | null; status: number }[]> {
+  const { data, error } = await supabase
+    .from('items')
+    .select('id, name, status')
+    .order('id', { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function getPublicItemsCount(allowedStatuses: number[]): Promise<number> {
   if (allowedStatuses.length === 0) return 0;
   const { count, error } = await supabase

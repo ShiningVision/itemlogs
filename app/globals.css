@@ -276,40 +276,100 @@ body {
   color: var(--color-primary);
 }
 
+/* A step stays clickable once done (it's still a useful link back to where
+   that setting lives), just visually settled rather than screaming for
+   attention — muted text, no strikethrough (this isn't a to-do list of
+   throwaway tasks, it's a shop's actual configuration). */
+.dashboard-checklist-link--done {
+  color: var(--color-text-muted);
+}
+
 .dashboard-checklist-box {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 2px solid var(--color-border);
   border-radius: var(--radius-sm);
 }
 
-.dashboard-widgets-row {
-  display: grid;
-  grid-template-columns: 1fr;
+.dashboard-checklist-box--done {
+  background: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.dashboard-checklist-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.dashboard-checklist-progress-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.dashboard-checklist-progress-track {
+  margin-top: var(--spacing-sm);
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.dashboard-checklist-progress-fill {
+  height: 100%;
+  background: var(--color-success);
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
+
+/* -----------------------------------------------------------------------
+   Dashboard control-panel shell (app/dashboard/(protected)/page.tsx) — a
+   wide grid instead of the ~680px form-width column every other
+   settings-style page uses (.settings-page-container), since this page's
+   whole point is to give an at-a-glance overview, not fill out a form. Only
+   the settings form further down the page (.settings-storefront-group)
+   stays intentionally narrower internally.
+------------------------------------------------------------------------ */
+.dashboard-shell {
+  max-width: 1400px;
+  width: 100%;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
   gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-lg);
 }
 
-@media (min-width: 720px) {
-  .dashboard-widgets-row {
-    grid-template-columns: 2fr 1fr;
-  }
-}
-
+/* KPI strip — a single wide card with internal dividers between stats
+   (rather than each stat floating with no boundary) so it reads as one
+   "at a glance" instrument rather than loose numbers scattered on the
+   page. */
 .dashboard-stats-strip {
   display: flex;
   gap: var(--spacing-lg);
-  align-items: center;
-  justify-content: space-around;
-  height: 100%;
+  align-items: stretch;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
 }
 
 .dashboard-stat {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--spacing-xs);
+  padding: 0 var(--spacing-md);
+}
+
+.dashboard-stat:not(:last-child) {
+  border-right: 1px solid var(--color-border);
 }
 
 .dashboard-stat-value {
@@ -321,6 +381,38 @@ body {
 .dashboard-stat-label {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
+}
+
+/* Two-column control-panel body: a wide main column for the chart +
+   activity feed, and a narrower rail for status/actions/storage — the
+   classic admin-panel split. Single column below the point it'd get
+   cramped. */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-lg);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .dashboard-grid {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+.dashboard-grid-main,
+.dashboard-grid-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+/* Every card in the grid already gets margin-bottom from .dashboard-card,
+   which would double up with the grid's own gap — the grid columns handle
+   spacing between cards now. */
+.dashboard-grid-main > .dashboard-card,
+.dashboard-grid-rail > .dashboard-card {
+  margin-bottom: 0;
 }
 
 .dashboard-live-status-header {
@@ -383,6 +475,281 @@ body {
 .dashboard-live-status-link svg {
   width: 14px;
   height: 14px;
+  flex-shrink: 0;
+}
+
+/* -----------------------------------------------------------------------
+   Earnings vs Expenses chart (EarningsExpensesChart.tsx) — a headline
+   profit figure plus two bars, hand-rolled SVG rather than a charting
+   library (see the component's own header comment).
+------------------------------------------------------------------------ */
+.dashboard-chart-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.dashboard-chart-empty {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.dashboard-chart-headline {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  margin: var(--spacing-xs) 0;
+}
+
+.dashboard-chart-headline--positive {
+  color: var(--color-success);
+}
+
+.dashboard-chart-headline--negative {
+  color: var(--color-danger);
+}
+
+.dashboard-chart-headline-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-normal, 400);
+  color: var(--color-text-muted);
+}
+
+.dashboard-bar-row {
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.dashboard-bar-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.dashboard-bar-svg {
+  width: 100%;
+  height: 10px;
+  display: block;
+}
+
+.dashboard-bar-track {
+  fill: var(--color-border);
+}
+
+.dashboard-bar-fill {
+  transition: width 0.3s ease;
+}
+
+.dashboard-bar-fill--sell {
+  fill: var(--color-success);
+}
+
+.dashboard-bar-fill--cost {
+  fill: var(--color-danger);
+}
+
+.dashboard-bar-value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+  text-align: right;
+}
+
+.dashboard-chart-footnote {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-muted);
+  margin-top: var(--spacing-xs);
+}
+
+/* -----------------------------------------------------------------------
+   Blob storage donut (StorageDonutWidget.tsx) — off by default (see
+   show_dashboard_storage_widget), a plain header row + toggle when
+   disabled, the actual donut once a tenant opts in.
+------------------------------------------------------------------------ */
+.dashboard-card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.dashboard-donut-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  margin-top: var(--spacing-sm);
+}
+
+.dashboard-donut-track {
+  stroke: var(--color-border);
+}
+
+.dashboard-donut-segment {
+  transition: stroke-dasharray 0.3s ease;
+}
+
+.dashboard-donut-segment--images {
+  stroke: var(--color-primary);
+}
+
+.dashboard-donut-segment--documents {
+  stroke: var(--color-secondary, var(--color-primary));
+}
+
+.dashboard-donut-segment--other {
+  stroke: var(--color-text-muted);
+}
+
+.dashboard-donut-center-text {
+  font-size: 18px;
+  font-weight: var(--font-weight-bold);
+  fill: var(--color-text);
+}
+
+.dashboard-donut-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.dashboard-donut-legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.dashboard-donut-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.dashboard-donut-swatch--images {
+  background: var(--color-primary);
+}
+
+.dashboard-donut-swatch--documents {
+  background: var(--color-secondary, var(--color-primary));
+}
+
+.dashboard-donut-swatch--free {
+  background: var(--color-border);
+}
+
+/* -----------------------------------------------------------------------
+   Recent Activity (RecentActivity.tsx) — recently added items only, see
+   the component's own header comment for why not a broader "activity"
+   feed.
+------------------------------------------------------------------------ */
+.dashboard-recent-list {
+  list-style: none;
+  margin: var(--spacing-sm) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.dashboard-recent-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) 0;
+  color: var(--color-text);
+  text-decoration: none;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dashboard-recent-list li:last-child .dashboard-recent-link {
+  border-bottom: none;
+}
+
+.dashboard-recent-link:hover .dashboard-recent-name {
+  color: var(--color-primary);
+}
+
+.dashboard-recent-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-recent-status {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-bold);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+/* status1 Available, status2 Sold, status3 Unavailable, status4 Lost — see
+   messages/en.json's items namespace. */
+.dashboard-recent-status--1 {
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
+}
+
+.dashboard-recent-status--2 {
+  background: color-mix(in srgb, var(--color-success) 15%, transparent);
+  color: var(--color-success);
+}
+
+.dashboard-recent-status--3 {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.dashboard-recent-status--4 {
+  background: color-mix(in srgb, var(--color-danger) 15%, transparent);
+  color: var(--color-danger);
+}
+
+/* -----------------------------------------------------------------------
+   Quick Actions (QuickActions.tsx) — Add item / Add package / View
+   storefront / Copy link, as real buttons rather than links buried in the
+   checklist.
+------------------------------------------------------------------------ */
+.dashboard-quick-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+}
+
+.dashboard-quick-action-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md, var(--radius-lg));
+  border: 1px solid var(--color-border);
+  background: var(--color-background);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.dashboard-quick-action-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.dashboard-quick-action-btn svg {
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
 }
 

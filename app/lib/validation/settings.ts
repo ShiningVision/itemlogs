@@ -68,13 +68,10 @@ export const updateSettingsSchema = z.object({
   name_location: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
   show_featured_items: z.boolean().optional(),
   show_description: z.boolean().optional(),
+  show_dashboard_storage_widget: z.boolean().optional(),
   // Reserved for future features — see app/api/setup/route.ts. Kept valid
   // to PATCH here ahead of time so a future feature only needs to start
   // reading/writing one, not also wire up validation for it.
-  spare_toggle_1: z.boolean().optional(),
-  spare_toggle_2: z.boolean().optional(),
-  spare_toggle_3: z.boolean().optional(),
-  spare_toggle_4: z.boolean().optional(),
   spare_toggle_5: z.boolean().optional(),
   spare_toggle_6: z.boolean().optional(),
   spare_toggle_7: z.boolean().optional(),

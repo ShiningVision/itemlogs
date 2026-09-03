@@ -136,3 +136,34 @@ export async function updateGeneralSettingFieldAction(
   return { success: true };
 }
 
+// A single toggle, not part of either settings form above — it lives
+// directly on the dashboard page next to StorageDonutWidget (see
+// components/dashboard/StorageDonutWidget.tsx). Doesn't affect the
+// storefront or general settings pages, so it only revalidates /dashboard
+// itself.
+const DASHBOARD_WIDGET_AUTOSAVE_FIELDS = ['show_dashboard_storage_widget'] as const;
+type DashboardWidgetAutosaveField = (typeof DASHBOARD_WIDGET_AUTOSAVE_FIELDS)[number];
+
+export async function updateDashboardWidgetFieldAction(
+  field: DashboardWidgetAutosaveField,
+  value: string | number | boolean,
+) {
+  if (!DASHBOARD_WIDGET_AUTOSAVE_FIELDS.includes(field)) {
+    return { error: 'invalidField' };
+  }
+
+  const parsed = updateSettingsSchema.safeParse({ [field]: value });
+  if (!parsed.success) {
+    return { error: 'invalid' };
+  }
+
+  try {
+    await updateSettings(parsed.data);
+  } catch (error) {
+    console.error('Failed to update dashboard widget setting:', error);
+    return { error: 'saveFailed' };
+  }
+  revalidatePath('/dashboard');
+  return { success: true };
+}
+

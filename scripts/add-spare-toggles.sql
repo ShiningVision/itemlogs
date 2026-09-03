@@ -13,6 +13,13 @@
 -- keep running their original spare_toggle_1/spare_toggle_2 columns as-is —
 -- do not run this against one unless you also intend to update its code.
 --
+-- As of the dashboard-redesign checklist/storage-widget columns below,
+-- spare_toggle_1-4 are ALSO claimed now (checklist_added_contact/
+-- checklist_organized/checklist_picked_theme/show_dashboard_storage_widget
+-- — see app/api/setup/route.ts). Same rule applies: only relevant when
+-- deliberately upgrading a legacy tenant that's already past the
+-- show_featured_items/show_description rename above.
+--
 -- Run via the Supabase dashboard's SQL Editor, or:
 --   psql "$POSTGRES_URL" -f scripts/add-spare-toggles.sql
 -- (grab POSTGRES_URL from that tenant's Vercel project env vars)
@@ -20,10 +27,10 @@
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS show_featured_items BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS show_description BOOLEAN NOT NULL DEFAULT false;
 
-ALTER TABLE settings ADD COLUMN IF NOT EXISTS spare_toggle_1 BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE settings ADD COLUMN IF NOT EXISTS spare_toggle_2 BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE settings ADD COLUMN IF NOT EXISTS spare_toggle_3 BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE settings ADD COLUMN IF NOT EXISTS spare_toggle_4 BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS checklist_added_contact BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS checklist_organized BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS checklist_picked_theme BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS show_dashboard_storage_widget BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS spare_toggle_5 BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS spare_toggle_6 BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS spare_toggle_7 BOOLEAN NOT NULL DEFAULT false;

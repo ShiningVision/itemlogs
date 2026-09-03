@@ -1,7 +1,7 @@
 // lib/services/settings.ts
 import { supabase } from '../../lib/db/client';
 import type { UpdateSettingsInput } from '../../lib/validation/settings';
-import { hasRealItem } from './items';
+import { hasRealItem, hasCustomizedTaxonomy } from './items';
 
 // Every item's sell_price/cost_price is denominated in this single
 // shop-wide currency (items no longer carry their own sell_price_currency),
@@ -51,16 +51,44 @@ export async function syncOnboardingChecklist(settings: {
   checklist_added_item: boolean;
   checklist_named_storefront: boolean;
   checklist_went_live: boolean;
+  checklist_added_contact: boolean;
+  checklist_organized: boolean;
+  checklist_picked_theme: boolean;
   storefront_name: string | null;
   show: boolean;
+  contact_whatsapp: string | null;
+  contact_telegram: string | null;
+  contact_email: string | null;
+  contact_instagram: string | null;
+  theme: string | null;
 }) {
   const updates: Record<string, boolean> = {};
 
   if (!settings.checklist_added_item && (await hasRealItem())) {
     updates.checklist_added_item = true;
   }
+  if (
+    !settings.checklist_added_contact &&
+    Boolean(
+      settings.contact_whatsapp?.trim() ||
+        settings.contact_telegram?.trim() ||
+        settings.contact_email?.trim() ||
+        settings.contact_instagram?.trim()
+    )
+  ) {
+    updates.checklist_added_contact = true;
+  }
   if (!settings.checklist_named_storefront && Boolean(settings.storefront_name?.trim())) {
     updates.checklist_named_storefront = true;
+  }
+  // hasCustomizedTaxonomy() costs three extra head:true queries — only run
+  // it while this step is still unticked, same reasoning as hasRealItem()
+  // above (see the comment on checklist_added_item's DDL).
+  if (!settings.checklist_organized && (await hasCustomizedTaxonomy())) {
+    updates.checklist_organized = true;
+  }
+  if (!settings.checklist_picked_theme && Boolean(settings.theme && settings.theme !== 'default')) {
+    updates.checklist_picked_theme = true;
   }
   if (!settings.checklist_went_live && settings.show) {
     updates.checklist_went_live = true;
