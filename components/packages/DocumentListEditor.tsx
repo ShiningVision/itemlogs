@@ -9,7 +9,10 @@ import { parseApiError } from '@/app/lib/errors/parseApiError';
 
 export type DocumentRow = {
   id: number;
-  package_id: number;
+  // Nullable since documents can be uploaded package-less (see
+  // app/lib/services/documents.ts) — this type must match that DocumentRow
+  // shape exactly, since edit/page.tsx passes documents straight through.
+  package_id: number | null;
   url: string;
   filename: string;
   content_type: string | null;
