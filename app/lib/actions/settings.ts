@@ -5,10 +5,11 @@ import { updateSettings } from '@/app/lib/services/settings';
 import { updateSettingsSchema } from '@/app/lib/validation/settings';
 import { revalidatePath } from 'next/cache';
 
-// Boolean/select fields on the dashboard's storefront settings that
-// auto-save the instant they change (visibility toggles, pricing toggles,
-// item-detail toggles, layout) — everything except the free-text fields
-// below (collection name/tagline, contact info, announcement message).
+// Every field on the dashboard's storefront settings auto-saves the
+// instant it changes (toggles) or on blur (free text) — visibility
+// toggles, pricing toggles, item-detail toggles, layout, contact channels,
+// and now identity/announcement too (collection name/tagline, message).
+// Nothing here is batch-saved through an explicit Save button anymore.
 const STOREFRONT_AUTOSAVE_FIELDS = [
   'show',
   'show_status_1',
@@ -28,11 +29,19 @@ const STOREFRONT_AUTOSAVE_FIELDS = [
   // affects the visitor page, same reasoning as everything else in this
   // list living in Visitor Page Settings instead of General Settings.
   'name_package',
+  // Collection identity + announcement — save-on-blur, same as every other
+  // free-text field in this list. Used to be batch-saved together through
+  // a separate updateStorefrontTextSettingsAction + explicit Save button
+  // (now removed), same history as updateNameSettingsAction above.
+  'storefront_name',
+  'storefront_tagline',
+  'show_message',
   // WhatsApp contact number — save-on-blur like every other free-text
-  // field added since (name overrides, name_package above), rather than
-  // batch-saved through updateStorefrontTextSettingsAction below like the
-  // older storefront_name/tagline/contact_info trio.
+  // field in this list.
   'contact_whatsapp',
+  'contact_telegram',
+  'contact_email',
+  'contact_instagram',
   'show_featured_items',
   'show_description',
 ] as const;
@@ -71,32 +80,6 @@ export async function updateStorefrontSettingFieldAction(
   revalidatePath('/');
   return { success: true };
 }
-
-// Free-text storefront fields are batch-saved together via an explicit
-// Save button rather than firing per keystroke.
-export async function updateStorefrontTextSettingsAction(formData: FormData) {
-  const raw = {
-    storefront_name: (formData.get('storefront_name') as string) || null,
-    storefront_tagline: (formData.get('storefront_tagline') as string) || null,
-    show_message: (formData.get('show_message') as string) || null,
-  };
-
-  const parsed = updateSettingsSchema.safeParse(raw);
-  if (!parsed.success) {
-    return { error: parsed.error.flatten() };
-  }
-
-  try {
-    await updateSettings(parsed.data);
-  } catch (error) {
-    console.error('Failed to update storefront text settings:', error);
-    return { error: 'saveFailed' };
-  }
-  revalidatePath('/dashboard');
-  revalidatePath('/');
-  return { success: true };
-}
-
 
 // Fields on the general settings page that auto-save the instant they
 // change (currency/language pickers, functionality + preference toggles),

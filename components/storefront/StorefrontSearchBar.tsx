@@ -15,11 +15,13 @@ import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 // also owns the category/type/location filter bar and its manage modals,
 // none of which apply here.
 //
-// Unlike the dashboard's version, this starts collapsed to just the
-// magnifying-glass icon rather than a full-width input — a permanently
-// open search field was too prominent for a page a visitor is mostly just
-// browsing. Clicking it opens a compact input; it collapses back once
-// blurred empty, or after clearing.
+// On mobile (rendered in the header next to the filter icon) this starts
+// collapsed to just the magnifying-glass icon — a permanently open search
+// field was too prominent for a page a visitor is mostly just browsing.
+// Clicking it opens a compact input; it collapses back once blurred empty,
+// or after clearing. On desktop (rendered as its own row above the filter
+// sidebar, via the alwaysExpanded prop) there's room for the field itself,
+// so it skips the icon-only state entirely.
 //
 // On SQL injection: this box's input never reaches the database as
 // anything other than a bound function parameter (see the comment on
@@ -29,7 +31,13 @@ import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 // submitted, not a security measure.
 const SEARCH_INPUT_MAX_LENGTH = 100;
 
-export function StorefrontSearchBar({ search = '' }: { search?: string }) {
+export function StorefrontSearchBar({
+  search = '',
+  alwaysExpanded = false,
+}: {
+  search?: string;
+  alwaysExpanded?: boolean;
+}) {
   const t = useTranslations('storefront');
   const { setParam } = useFilterParams();
 
@@ -37,7 +45,7 @@ export function StorefrontSearchBar({ search = '' }: { search?: string }) {
   // URL with ?search=...) so the visitor can see and edit what's already
   // filtering the grid, rather than it being invisibly applied behind a
   // collapsed icon.
-  const [expanded, setExpanded] = useState(Boolean(search));
+  const [expanded, setExpanded] = useState(alwaysExpanded || Boolean(search));
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [searchInput, setSearchInput] = useState(search);
@@ -84,10 +92,10 @@ export function StorefrontSearchBar({ search = '' }: { search?: string }) {
   // shouldn't linger and take up space. A search that's actually been
   // typed stays open (its own X clears + collapses it instead).
   function handleBlur() {
-    if (!searchInput.trim()) setExpanded(false);
+    if (!alwaysExpanded && !searchInput.trim()) setExpanded(false);
   }
 
-  if (!expanded) {
+  if (!alwaysExpanded && !expanded) {
     return (
       <button
         type="button"
@@ -95,13 +103,13 @@ export function StorefrontSearchBar({ search = '' }: { search?: string }) {
         onClick={() => setExpanded(true)}
         aria-label={t('searchPlaceholder')}
       >
-        <MagnifyingGlassIcon style={{ width: '18px', height: '18px' }} />
+        <MagnifyingGlassIcon style={{ width: '22px', height: '22px' }} />
       </button>
     );
   }
 
   return (
-    <div style={{ position: 'relative', maxWidth: '280px' }}>
+    <div style={{ position: 'relative', width: alwaysExpanded ? '100%' : undefined, maxWidth: alwaysExpanded ? undefined : '280px' }}>
       <MagnifyingGlassIcon
         aria-hidden="true"
         style={{

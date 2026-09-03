@@ -14,7 +14,7 @@ import { GalleryDocumentCard } from './GalleryDocumentCard';
 import { Tooltip } from '@/components/ui/Tooltip';
 
 type ImageRow = { id: number; url: string };
-type DocumentRow = { id: number; package_id: number; url: string; filename: string; content_type: string | null };
+type DocumentRow = { id: number; package_id: number | null; url: string; filename: string; content_type: string | null };
 type SortMode = 'newest' | 'largest';
 type ViewMode = 'images' | 'documents';
 
@@ -110,6 +110,30 @@ export function GalleryGrid({
       const json = await res.json();
       if (res.ok) {
         setImages((prev) => [json.data, ...prev]);
+        router.refresh();
+      }
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  }
+
+  async function handleUploadDocument(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    const formData = new FormData();
+    try {
+      // Unlike images, documents aren't compressed client-side first — a
+      // PDF receipt shouldn't be recompressed as if it were a photo (same
+      // reasoning as the package-scoped upload in DocumentListEditor). No
+      // package_id is sent, so the API route stores it as a standalone
+      // document (package_id: null) — see POST /api/v1/documents.
+      formData.append('file', file);
+      const res = await fetch('/api/v1/documents', { method: 'POST', body: formData });
+      const json = await res.json();
+      if (res.ok) {
+        setDocuments((prev) => [json.data, ...prev]);
         router.refresh();
       }
     } finally {
@@ -262,6 +286,18 @@ export function GalleryGrid({
                     <input type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} disabled={isUploading} />
                   </label>
                 </>
+              )}
+              {viewMode === 'documents' && (
+                // Package-scoped document upload already exists on each
+                // package's own edit page (DocumentListEditor) — this is
+                // the standalone counterpart, for documents unrelated to
+                // any package. Same button styling as the image upload
+                // above, just posting to /api/v1/documents instead.
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', background: 'var(--color-secondary)', color: '#fff', padding: 'var(--spacing-xs) var(--spacing-md)', borderRadius: 'var(--radius-md)', cursor: isUploading ? 'not-allowed' : 'pointer', fontWeight: 'var(--font-weight-bold)', opacity: isUploading ? 0.6 : 1, fontSize: 'var(--font-size-sm)' }}>
+                  <PlusIcon style={{ width: '16px', height: '16px' }} />
+                  {isUploading ? t('uploading') : t('uploadDocument')}
+                  <input type="file" onChange={handleUploadDocument} style={{ display: 'none' }} disabled={isUploading} />
+                </label>
               )}
             </>
           )}

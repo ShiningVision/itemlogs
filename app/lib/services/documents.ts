@@ -4,7 +4,7 @@ import { deleteDocumentFile } from '../../lib/storage/documents';
 
 export type DocumentRow = {
   id: number;
-  package_id: number;
+  package_id: number | null;
   url: string;
   filename: string;
   content_type: string | null;
@@ -46,7 +46,7 @@ export async function getDocumentById(id: number): Promise<DocumentRow> {
 }
 
 export async function createDocument(input: {
-  package_id: number;
+  package_id: number | null;
   url: string;
   filename: string;
   content_type: string | null;
@@ -91,11 +91,13 @@ export async function deleteDocuments(ids: number[]): Promise<void> {
 }
 
 // Deletes every document (blob + row) belonging to a package — call this
-// before deletePackage(). Unlike images, documents aren't shared/reusable
-// across owners (each belongs to exactly one package), so ON DELETE CASCADE
-// on the `documents.package_id` FK is enough to clean up the DB rows, but it
-// can't reach into Vercel Blob — this explicit pass deletes those files
-// first so a package delete doesn't leave orphaned blobs behind.
+// before deletePackage(). Unlike images, package-scoped documents aren't
+// shared/reusable across owners (each belongs to at most one package —
+// standalone documents just keep package_id NULL and are untouched by
+// this), so ON DELETE CASCADE on the `documents.package_id` FK is enough
+// to clean up the DB rows, but it can't reach into Vercel Blob — this
+// explicit pass deletes those files first so a package delete doesn't
+// leave orphaned blobs behind.
 export async function deletePackageDocuments(packageId: number): Promise<void> {
   const docs = await getDocumentsByPackageId(packageId);
   if (docs.length === 0) return;

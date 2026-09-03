@@ -107,12 +107,16 @@ export function FlavourTicker({ texts }: { texts: string[] }) {
 
   if (texts.length === 0) return null;
 
-  // Trailing separator too, not just between items — the strip is rendered
-  // twice back-to-back for the seamless loop, so without it the last entry
-  // of the first copy runs straight into the first entry of the second
-  // copy with no dot between them at that seam.
-  const SEPARATOR = ' • ';
-  const strip = texts.join(SEPARATOR) + SEPARATOR;
+  // A long dash run instead of a short bullet — at PIXELS_PER_SECOND this
+  // takes noticeably longer to scroll past, reading as a pause between
+  // messages rather than a single-glyph blip. Leading AND trailing, not
+  // just between items: trailing for the same back-to-back-copies seam
+  // reasoning as before, leading so the strip doesn't start with the first
+  // message already sitting in place at position 0 — instead the viewport
+  // starts on the separator and the first message scrolls/slides in from
+  // the right like every message after it, the same as it would mid-loop.
+  const SEPARATOR = ' -------------------------------- ';
+  const strip = SEPARATOR + texts.join(SEPARATOR) + SEPARATOR;
 
   return (
     <div

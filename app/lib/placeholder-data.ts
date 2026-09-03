@@ -84,8 +84,8 @@ const packages = [
     arrival_date: '2026-04-02',
     tariff: '22.00',
     tariff_currency: '2',
-    shipping_fee: '48.00',
-    shipping_fee_currency: '2',
+    shipping_fee: '4500',
+    shipping_fee_currency: '4',
     show_on_storefront: true,
   },
 ];

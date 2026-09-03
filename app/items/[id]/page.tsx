@@ -9,7 +9,15 @@ import { BackToStorefrontButton } from '@/components/storefront/BackToStorefront
 import { StorefrontHeader } from '@/components/storefront/StorefrontHeader';
 import { StatBox } from '@/components/ui/StatBox';
 import { Badge } from '@/components/ui/Badge';
-import { WhatsAppInquireButton } from '@/components/storefront/WhatsAppInquireButton';
+import { ContactInquireButton } from '@/components/storefront/ContactInquireButton';
+import { WhatsAppIcon } from '@/components/storefront/WhatsAppIcon';
+import { TelegramIcon } from '@/components/storefront/TelegramIcon';
+import { InstagramIcon } from '@/components/storefront/InstagramIcon';
+import { EmailIcon } from '@/components/storefront/EmailIcon';
+import { buildWhatsAppLink } from '@/app/lib/whatsapp';
+import { buildTelegramLink } from '@/app/lib/telegram';
+import { buildInstagramLink } from '@/app/lib/instagram';
+import { buildEmailLink } from '@/app/lib/email';
 import { ItemGallery } from '@/components/storefront/ItemGallery';
 
 export default async function PublicItemPage({
@@ -59,6 +67,16 @@ export default async function PublicItemPage({
   // already-provisioned tenants default off, same as every other visibility
   // toggle.
   const showDescription = Boolean(settings.show_description);
+
+  // Shared prefilled text for every channel that supports one (WhatsApp,
+  // Telegram, and the email body — Instagram's DM link has no prefill
+  // parameter at all, see app/lib/instagram.ts). Brand-agnostic wording on
+  // purpose, so the same string works regardless of which button it ends
+  // up behind.
+  const inquiryMessage = t('inquiryMessage', {
+    item: item.name ?? '',
+    url: `${settings.app_url ?? ''}/items/${id}`,
+  });
 
   return (
     <>
@@ -122,18 +140,43 @@ export default async function PublicItemPage({
                   </div>
                 )}
 
-                {settings.show_contact && settings.contact_whatsapp && (
-                  <div style={{ marginTop: 'var(--spacing-md)' }}>
-                    <WhatsAppInquireButton
-                      phone={settings.contact_whatsapp}
-                      label={t('inquireWhatsapp')}
-                      message={t('inquireWhatsappMessage', {
-                        item: item.name ?? '',
-                        url: `${settings.app_url ?? ''}/items/${id}`,
-                      })}
-                    />
-                  </div>
-                )}
+                {settings.show_contact &&
+                  (settings.contact_whatsapp || settings.contact_telegram || settings.contact_instagram || settings.contact_email) && (
+                    <div className="storefront-contact-buttons" style={{ marginTop: 'var(--spacing-md)' }}>
+                      {/* Fixed order regardless of which channels a tenant
+                          fills in, so the row doesn't visually reshuffle
+                          from tenant to tenant. Each builder already
+                          returns null for an empty field, and
+                          ContactInquireButton renders nothing for a null
+                          href — no per-channel presence check needed here
+                          beyond the one above that decides whether to show
+                          this block at all. */}
+                      <ContactInquireButton
+                        href={buildWhatsAppLink(settings.contact_whatsapp, inquiryMessage)}
+                        icon={<WhatsAppIcon size={18} />}
+                        label={t('inquireWhatsapp')}
+                        brandColor="#25D366"
+                      />
+                      <ContactInquireButton
+                        href={buildTelegramLink(settings.contact_telegram, inquiryMessage)}
+                        icon={<TelegramIcon size={18} />}
+                        label={t('inquireTelegram')}
+                        brandColor="#26A5E4"
+                      />
+                      <ContactInquireButton
+                        href={buildInstagramLink(settings.contact_instagram)}
+                        icon={<InstagramIcon size={18} />}
+                        label={t('inquireInstagram')}
+                        brandColor="#D6249F"
+                      />
+                      <ContactInquireButton
+                        href={buildEmailLink(settings.contact_email, t('inquireEmailSubject', { item: item.name ?? '' }), inquiryMessage)}
+                        icon={<EmailIcon size={18} />}
+                        label={t('inquireEmail')}
+                        brandColor="#475569"
+                      />
+                    </div>
+                  )}
 
                 {/* Description/location used to render as full-width sections
                     below the whole header instead of inside this column —

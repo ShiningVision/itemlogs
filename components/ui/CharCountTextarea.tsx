@@ -19,6 +19,7 @@ export function CharCountTextarea({
   value,
   defaultValue = '',
   onChange,
+  onBlur,
   maxLength,
   rows = 4,
   placeholder,
@@ -29,6 +30,9 @@ export function CharCountTextarea({
   value?: string;
   defaultValue?: string;
   onChange?: (value: string) => void;
+  // Save-on-blur mode (SettingsForm's visitor page message) — optional
+  // since the uncontrolled/ItemForm usages above don't need it.
+  onBlur?: () => void;
   maxLength?: number;
   rows?: number;
   placeholder?: string;
@@ -55,6 +59,7 @@ export function CharCountTextarea({
         name={name}
         value={currentValue}
         onChange={handleChange}
+        onBlur={onBlur}
         maxLength={maxLength}
         rows={className ? undefined : rows}
         placeholder={placeholder}

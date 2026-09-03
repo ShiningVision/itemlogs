@@ -104,7 +104,7 @@ export function FeaturedItemsSection({
             <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
               {t('featuredItemsCount', { count: items.length, cap })}
             </span>
-            <Tooltip text={atCap ? t('featuredCapReached', { cap }) : ''}>
+            <Tooltip text={atCap ? t('featuredCapReached', { cap }) : t('addFeaturedItemsButtonHint')}>
               <Button type="button" onClick={() => setAddModalOpen(true)} disabled={atCap}>
                 {t('addFeaturedItemsButton')}
               </Button>

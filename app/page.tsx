@@ -23,7 +23,6 @@ import { FilterSidebar } from '@/components/storefront/FilterSidebar';
 import { SelectedFiltersRow, type SelectedFilterChip } from '@/components/storefront/SelectedFiltersRow';
 import { PackageFilterDropdown } from '@/components/storefront/PackageFilterDropdown';
 import { StorefrontSearchBar } from '@/components/storefront/StorefrontSearchBar';
-import { WhatsAppInquireButton } from '@/components/storefront/WhatsAppInquireButton';
 import { PublicItemGrid } from '@/components/storefront/PublicItemGrid';
 import { DensityToggle } from '@/components/storefront/DensityToggle';
 import { SortSelect } from '@/components/ui/SortSelect';
@@ -226,10 +225,22 @@ export default async function HomePage({
     />
   ) : null;
 
+  // Two separate mount points, each with props suited to its own context —
+  // same "rendered twice, CSS picks which is visible" pattern already used
+  // for packageFilterDropdown above, just with different props per mount
+  // instead of the identical element in both places: mobile (header, next
+  // to the filter icon) stays collapsed to an icon until tapped, while
+  // desktop (inside the filter sidebar itself, see FilterSidebar's
+  // searchBar prop — not a separate row, so it reads as part of that same
+  // bordered column instead of floating above it) always shows the full
+  // field.
+  const mobileSearchBar = <StorefrontSearchBar search={search ?? ''} />;
+  const desktopSearchBar = <StorefrontSearchBar search={search ?? ''} alwaysExpanded />;
+
   return (
     <FilterDrawerProvider>
       <div style={{ minHeight: '100vh', background: 'var(--color-background)', display: 'flex', flexDirection: 'column' }}>
-      <StorefrontHeader packageFilter={packageFilterDropdown} />
+      <StorefrontHeader packageFilter={packageFilterDropdown} searchBar={mobileSearchBar} />
 
       <StorefrontHero
         name={settings.storefront_name}
@@ -241,6 +252,7 @@ export default async function HomePage({
 
       <div style={{ display: 'flex', flex: 1 }}>
         <FilterSidebar
+          searchBar={desktopSearchBar}
           categories={sortedCategories}
           types={sortedTypes}
           locations={sortedLocations}
@@ -278,10 +290,6 @@ export default async function HomePage({
             </div>
           )}
 
-          <div style={{ marginBottom: 'var(--spacing-md)' }}>
-            <StorefrontSearchBar search={search ?? ''} />
-          </div>
-
           <SelectedFiltersRow chips={selectedFilterChips} />
 
           {noFiltersActive && page === 1 && (
@@ -317,17 +325,6 @@ export default async function HomePage({
           <Pagination page={page} totalPages={totalPages} buildHref={(p) => buildPageHref('/', rawSearchParams, p)} />
         </main>
       </div>
-
-      {settings.show_contact && settings.contact_whatsapp && (
-        <footer className="storefront-footer">
-          <span>{t('footerContactLead')}</span>
-          <WhatsAppInquireButton
-            phone={settings.contact_whatsapp}
-            label={t('inquireWhatsapp')}
-            message={t('footerContactMessage', { collection: settings.storefront_name ?? t('defaultCollectionName') })}
-          />
-        </footer>
-      )}
       </div>
     </FilterDrawerProvider>
   );

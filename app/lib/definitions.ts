@@ -135,11 +135,15 @@ export type Settings = {
   spare_toggle_6: boolean;
   spare_toggle_7: boolean;
   spare_toggle_8: boolean;
+  // Contact channels — see the comment on the same columns in
+  // app/api/setup/route.ts. Each is a bare username/address (no @, no
+  // https://), turned into a storefront button by app/lib/telegram.ts,
+  // email.ts, instagram.ts respectively.
+  contact_telegram: string | null;
+  contact_email: string | null;
+  contact_instagram: string | null;
   // Unassigned, reserved for future free-text fields — same reasoning as the
   // spare toggles above.
-  spare_text_1: string | null;
-  spare_text_2: string | null;
-  spare_text_3: string | null;
   spare_text_4: string | null;
   spare_text_5: string | null;
   spare_text_6: string | null;

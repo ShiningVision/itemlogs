@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import postgres from 'postgres';
+import { supabase } from '@/app/lib/db/client';
 import {
   currencies,
   languages,
@@ -18,6 +19,16 @@ import {
   settings
 } from '@/app/lib/placeholder-data';
 
+// This route was previously subject to Vercel's default function timeout
+// (10s on the Hobby plan every tenant is on — see the registration wizard's
+// step 1) without ever overriding it. The DDL transaction alone (dozens of
+// sequential CREATE TABLE/INSERT round trips) could already run close to
+// that on a slow connection, and waitForSettingsReadable below needs real
+// room beyond it — so this now claims the Hobby plan's actual ceiling
+// rather than silently inheriting a 10s cap that was never a deliberate
+// choice. See https://vercel.com/docs/functions/configuring-functions/duration.
+export const maxDuration = 60;
+
 // This is the first-run replacement for the old public, unauthenticated
 // /seed route (which created the schema and inserted a fixed placeholder
 // settings row + a hardcoded "123456" password, no matter who ran it, and
@@ -35,6 +46,51 @@ const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 
 const VALID_LANGUAGE_IDS = languages.map((l) => Number(l.id));
 const VALID_CURRENCY_IDS = currencies.map((c) => Number(c.id));
+
+// Right after the transaction below commits, `settings` (and every other
+// table) genuinely exists in Postgres — but PostgREST (the layer
+// app/lib/db/client.ts's `supabase` talks to, used by getSettings/
+// updateSettings and effectively everything outside this one route) keeps
+// its own cached copy of the schema, refreshed via a NOTIFY a DDL event
+// trigger sends once the transaction commits.
+//
+// How long that actually takes in practice turned out to be longer than a
+// first pass at this assumed — plausibly not just "PostgREST hasn't
+// reloaded yet" but the tenant's whole Supabase project (created moments
+// earlier by the Marketplace integration during registration) still
+// warming up its API gateway for the first time, which is a coarser and
+// slower thing than a steady-state schema reload on an established
+// project. There's no reliable signal to distinguish those two cases from
+// here, so this just polls until it works rather than assuming either one.
+//
+// SetupForm.tsx redirects straight to /login the moment this route
+// responds, and from there straight into the dashboard — if that happens
+// before PostgREST catches up, the very first settings save can fail with
+// PGRST205 ("Could not find the table 'settings' in the schema cache"; see
+// isUnprovisionedTenantError.ts, which already knows this exact code) even
+// though setup itself fully succeeded. So: confirm `settings` is actually
+// queryable through the same PostgREST layer the rest of the app uses
+// before telling the client setup is done, rather than finding out only
+// when the tenant's first save fails. Bounded to stay under this route's
+// own maxDuration (60s, see above) with room left for the DDL transaction
+// that runs before this — if the cache is somehow still stale after this
+// budget, this just gives up and returns success anyway rather than
+// holding the request open until Vercel kills it; a tenant would then see
+// the same PGRST205 they'd have seen without this, no worse off.
+async function waitForSettingsReadable(maxAttempts = 40, delayMs = 1000): Promise<void> {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const { error } = await supabase.from('settings').select('id').limit(1);
+    if (!error) return;
+    if (attempt === maxAttempts - 1) {
+      console.warn(
+        `[setup] settings still not readable via PostgREST after ${maxAttempts} attempts (~${(maxAttempts * delayMs) / 1000}s) — giving up, returning success anyway. Last error:`,
+        error
+      );
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+}
 
 interface SetupBody {
   password?: string;
@@ -319,14 +375,17 @@ export async function POST(request: Request) {
       // arbitrary file types (PDF, JPEG, ...) in Vercel Blob, kept out of the
       // `images` table/Gallery-image-picker machinery entirely since they
       // aren't shared/reusable across items the way images are: each
-      // document belongs to exactly one package. Uploaded under a distinct
+      // document belongs to at most one package. Uploaded under a distinct
       // `documents/` Blob prefix (see app/lib/storage/documents.ts) so
       // Gallery's usage bar can split images vs. documents by prefix (see
-      // app/lib/storage/blob-usage.ts).
+      // app/lib/storage/blob-usage.ts). package_id is nullable so the
+      // Gallery can also hold documents uploaded standalone, unrelated to
+      // any package — ON DELETE CASCADE only fires for the package-scoped
+      // ones; a standalone document just keeps package_id NULL forever.
       await sql`
         CREATE TABLE IF NOT EXISTS documents (
           id SERIAL PRIMARY KEY,
-          package_id INTEGER NOT NULL REFERENCES packages(id) ON DELETE CASCADE,
+          package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE,
           url VARCHAR(255) NOT NULL,
           filename VARCHAR(255) NOT NULL,
           content_type VARCHAR(100)
@@ -536,13 +595,20 @@ export async function POST(request: Request) {
           spare_toggle_6 BOOLEAN NOT NULL DEFAULT false,
           spare_toggle_7 BOOLEAN NOT NULL DEFAULT false,
           spare_toggle_8 BOOLEAN NOT NULL DEFAULT false,
-          -- Unassigned, reserved for future free-text fields (contact
+          -- Telegram/Instagram usernames and a contact email — same
+          -- "spare column, claimed and renamed in place" story as
+          -- show_featured_items/show_description above, just for the
+          -- free-text pool instead of the boolean one. See
+          -- components/dashboard/SettingsForm.tsx's contactChannelRow and
+          -- app/lib/telegram.ts, email.ts, instagram.ts for how each is
+          -- turned into a storefront contact button.
+          contact_telegram VARCHAR(255),
+          contact_email VARCHAR(255),
+          contact_instagram VARCHAR(255),
+          -- Unassigned, reserved for future free-text fields (more contact
           -- methods, integration IDs, etc.) — same reasoning as the spare
           -- toggles above, sized to match every other free-text settings
           -- column (see name_category etc. and validation/settings.ts).
-          spare_text_1 VARCHAR(255),
-          spare_text_2 VARCHAR(255),
-          spare_text_3 VARCHAR(255),
           spare_text_4 VARCHAR(255),
           spare_text_5 VARCHAR(255),
           spare_text_6 VARCHAR(255),
@@ -687,6 +753,11 @@ export async function POST(request: Request) {
       `;
       await sql`ALTER TABLE blueprint_types ENABLE ROW LEVEL SECURITY;`;
     });
+
+    // See waitForSettingsReadable's comment above — makes sure the tenant
+    // isn't dropped into the dashboard before PostgREST's schema cache has
+    // caught up with what this transaction just created.
+    await waitForSettingsReadable();
 
     return Response.json({ ok: true });
   } catch (error) {

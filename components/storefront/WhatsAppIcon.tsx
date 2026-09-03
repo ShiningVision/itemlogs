@@ -9,7 +9,7 @@
 // outshine the host site's own branding — this stays a small inline icon
 // used exactly that way, next to itemlogs' own button styling, not a
 // standalone badge.
-export function WhatsAppIcon({ size = 16 }: { size?: number }) {
+export function WhatsAppIcon({ size = 16, style }: { size?: number; style?: React.CSSProperties }) {
   return (
     <svg
       width={size}
@@ -17,6 +17,7 @@ export function WhatsAppIcon({ size = 16 }: { size?: number }) {
       viewBox="0 0 32 32"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
+      style={style}
     >
       <circle cx="16" cy="16" r="16" fill="#25D366" />
       <path

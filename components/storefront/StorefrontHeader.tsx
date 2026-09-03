@@ -19,10 +19,17 @@ export function StorefrontHeader({
   // preserved) instead of sitting inert.
   hideMenuButton = false,
   logoLinksBack = false,
+  // Mobile only (see .storefront-header-search-mobile) — on desktop the
+  // same search bar instance is rendered elsewhere, above the filter
+  // sidebar (see app/page.tsx). Not shown at all where hideMenuButton is
+  // set, same as the filter trigger it sits next to: the item detail page
+  // has no filters/search to offer.
+  searchBar,
 }: {
   packageFilter?: React.ReactNode;
   hideMenuButton?: boolean;
   logoLinksBack?: boolean;
+  searchBar?: React.ReactNode;
 }) {
   const t = useTranslations('storefront');
   const router = useRouter();
@@ -53,6 +60,10 @@ export function StorefrontHeader({
         >
           <FunnelIcon style={{ width: '22px', height: '22px' }} />
         </button>
+      )}
+
+      {!hideMenuButton && searchBar && (
+        <div className="storefront-header-search-mobile">{searchBar}</div>
       )}
 
       <div className="storefront-header-logo-wrap">

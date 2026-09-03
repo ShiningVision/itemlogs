@@ -145,9 +145,17 @@ export function PackageVisibilitySection({
             <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
               {t('packagesShownCount', { count: shownPackages.length })}
             </span>
-            <Button type="button" onClick={() => setAddModalOpen(true)} disabled={hiddenPackages.length === 0}>
-              {t('addPackagesButton', { packages: packageLabel })}
-            </Button>
+            <Tooltip
+              text={
+                hiddenPackages.length === 0
+                  ? t('noAvailablePackagesToAdd', { packages: packageLabel })
+                  : t('addPackagesButtonHint', { packages: packageLabel })
+              }
+            >
+              <Button type="button" onClick={() => setAddModalOpen(true)} disabled={hiddenPackages.length === 0}>
+                {t('addPackagesButton', { packages: packageLabel })}
+              </Button>
+            </Tooltip>
           </div>
 
           {removeError && (

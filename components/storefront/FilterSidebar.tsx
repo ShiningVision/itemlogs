@@ -34,6 +34,7 @@ export function FilterSidebar({
   locationCounts = {},
   packageFilter,
   locationFilter,
+  searchBar,
 }: {
   categories: Option[];
   types: Option[];
@@ -57,6 +58,13 @@ export function FilterSidebar({
   // at the call site (app/page.tsx), so an owner with locations seeded but
   // the toggle off still sees no location section.
   locationFilter?: boolean;
+  // Desktop only — rendered inside .storefront-filter-sidebar itself
+  // (rather than as part of `content` below, which is shared with the
+  // mobile drawer) so it's visually part of the same bordered/padded
+  // column as the rest of the filters, not a separate floating row above
+  // it. Mobile gets its own separate search bar instance in the header
+  // instead (see app/page.tsx), so this is left unset there.
+  searchBar?: React.ReactNode;
 }) {
   const t = useTranslations('storefront');
   const { toggleInList } = useFilterParams();
@@ -189,7 +197,10 @@ export function FilterSidebar({
 
   return (
     <>
-      <aside className="storefront-filter-sidebar">{content}</aside>
+      <aside className="storefront-filter-sidebar">
+        {searchBar && <div className="storefront-filter-sidebar-search">{searchBar}</div>}
+        {content}
+      </aside>
 
       {drawerOpen && (
         <div

@@ -79,11 +79,39 @@ export const updateSettingsSchema = z.object({
   spare_toggle_6: z.boolean().optional(),
   spare_toggle_7: z.boolean().optional(),
   spare_toggle_8: z.boolean().optional(),
+  // Same looseness reasoning as contact_whatsapp above — a real Telegram
+  // username check needs the Telegram API to know for sure it exists, so
+  // this only rejects obviously-wrong input. Stored without a leading @
+  // preference either way; app/lib/telegram.ts strips one off if present.
+  contact_telegram: z
+    .string()
+    .max(50, 'Must be 50 characters or fewer.')
+    .refine((v) => v === '' || /^@?[A-Za-z0-9_]{3,32}$/.test(v), {
+      message: 'Enter a Telegram username, e.g. yourusername.',
+    })
+    .nullable()
+    .optional(),
+  contact_email: z
+    .string()
+    .max(255, 'Must be 255 characters or fewer.')
+    .refine((v) => v === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), {
+      message: 'Enter a valid email address.',
+    })
+    .nullable()
+    .optional(),
+  // Instagram usernames allow periods/underscores, no @ required (same
+  // strip-a-leading-@-if-present handling as Telegram — see
+  // app/lib/instagram.ts).
+  contact_instagram: z
+    .string()
+    .max(30, 'Must be 30 characters or fewer.')
+    .refine((v) => v === '' || /^@?[A-Za-z0-9._]{1,30}$/.test(v), {
+      message: 'Enter an Instagram username, e.g. yourusername.',
+    })
+    .nullable()
+    .optional(),
   // Reserved for future free-text fields — same reasoning as the spare
   // toggles above, capped to match the VARCHAR(255) columns.
-  spare_text_1: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
-  spare_text_2: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
-  spare_text_3: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
   spare_text_4: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
   spare_text_5: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
   spare_text_6: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),

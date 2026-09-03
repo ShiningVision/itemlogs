@@ -5,7 +5,8 @@ import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { FilterPill } from '@/components/ui/FilterPill';
-import { XMarkIcon, Bars3BottomLeftIcon, ChartBarIcon } from '@heroicons/react/24/outline';
+import { Button } from '@/widgets/Button';
+import { XMarkIcon, CheckIcon, Bars3BottomLeftIcon, ChartBarIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 export type PillOption = { id: number; name: string | null };
 
@@ -51,9 +52,16 @@ export function FilterTagPickerModal({
   // own default ordering (see app/dashboard/(protected)/items/page.tsx),
   // so the order here matches what the user is already used to seeing.
   const [sortMode, setSortMode] = useState<'alpha' | 'usage'>('usage');
+  // Client-side substring filter — this modal's whole point is being the
+  // "there are more than fit in the row" overflow, so it's exactly the
+  // case where a tenant with a long tag list benefits from being able to
+  // narrow it down instead of hunting through every pill.
+  const [search, setSearch] = useState('');
 
   const sortedItems = useMemo(() => {
-    const copy = [...items];
+    const query = search.trim().toLowerCase();
+    const filtered = query ? items.filter((item) => (item.name ?? '').toLowerCase().includes(query)) : items;
+    const copy = [...filtered];
     copy.sort((a, b) => {
       if (sortMode === 'usage') {
         const usageDiff = (itemCounts[b.id] ?? 0) - (itemCounts[a.id] ?? 0);
@@ -62,7 +70,7 @@ export function FilterTagPickerModal({
       return (a.name ?? '').localeCompare(b.name ?? '');
     });
     return copy;
-  }, [items, itemCounts, sortMode]);
+  }, [items, itemCounts, sortMode, search]);
 
   return (
     <div
@@ -106,7 +114,57 @@ export function FilterTagPickerModal({
           </Tooltip>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)' }}>
+        <div style={{ position: 'relative', marginBottom: 'var(--spacing-sm)' }}>
+          <MagnifyingGlassIcon
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              left: 'var(--spacing-sm)',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: '16px',
+              height: '16px',
+              color: 'var(--color-text-muted)',
+              pointerEvents: 'none',
+            }}
+          />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('searchPlaceholder')}
+            aria-label={t('searchPlaceholder')}
+            style={{
+              width: '100%',
+              padding: 'var(--spacing-sm)',
+              paddingLeft: '36px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--color-border)',
+            }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)' }}>
+          {selection.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setSelection([])}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--color-text-muted)',
+                fontSize: 'var(--font-size-sm)',
+                textDecoration: 'underline',
+                padding: 0,
+              }}
+            >
+              {t('clearSelection')}
+            </button>
+          ) : (
+            <span />
+          )}
+          <div style={{ display: 'flex', gap: 'var(--spacing-xs)' }}>
           <Tooltip text={t('sortAlpha')}>
             <button
               type="button"
@@ -139,17 +197,34 @@ export function FilterTagPickerModal({
               <ChartBarIcon style={{ width: '18px', height: '18px' }} />
             </button>
           </Tooltip>
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-xs)', overflowY: 'auto' }}>
-          {sortedItems.map((item) => (
-            <FilterPill
-              key={item.id}
-              label={item.name ?? ''}
-              selected={selection.includes(item.id)}
-              onClick={() => toggle(item.id)}
-            />
-          ))}
+          {sortedItems.length === 0 ? (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>{t('noSearchResults')}</p>
+          ) : (
+            sortedItems.map((item) => (
+              <FilterPill
+                key={item.id}
+                label={item.name ?? ''}
+                selected={selection.includes(item.id)}
+                onClick={() => toggle(item.id)}
+              />
+            ))
+          )}
+        </div>
+
+        {/* Backdrop click and the X both already apply-then-close (see
+            handleClose) — this button is a second way to do the exact same
+            thing, for the bottom-right-corner "confirm" reflex a modal like
+            this naturally invites, same spot TagManagerModal's own
+            multi-select Confirm button uses. */}
+        <div style={{ marginTop: 'var(--spacing-md)', display: 'flex', justifyContent: 'flex-end' }}>
+          <Button onClick={handleClose}>
+            <CheckIcon style={{ width: '16px', height: '16px' }} />
+            {t('confirm')}
+          </Button>
         </div>
       </div>
     </div>

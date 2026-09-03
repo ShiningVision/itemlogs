@@ -10,7 +10,7 @@ import { formatBytes } from '@/app/lib/storage/format-bytes';
 
 type DocumentRow = {
   id: number;
-  package_id: number;
+  package_id: number | null;
   url: string;
   filename: string;
   content_type: string | null;

@@ -7,7 +7,7 @@ import { FilterPill } from '@/components/ui/FilterPill';
 import { FilterPillRow } from '@/components/ui/FilterPillRow';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useFilterParams } from '@/app/lib/hooks/useFilterParams';
-import { TagManagerModal } from '@/components/reference-data/TagManagerModal';
+import { ManageFiltersModal, type ManagedResourceConfig } from '@/components/reference-data/ManageFiltersModal';
 import { FilterTagPickerModal } from './FilterTagPickerModal';
 import { Cog6ToothIcon, ChevronDownIcon, ChevronUpIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
@@ -130,16 +130,19 @@ export function ItemFiltersBar({
     lastPushedSearchRef.current = '';
     setParam('search', null);
   }
-  // Which "Manage X" modal (if any) is currently open — kept local to this
-  // component rather than lifted to the page, since it's fed entirely by
-  // props this component already has (categories/types/locations + their
-  // item counts). See TagManagerModal for the shared modal itself.
+  // Whether the shared Manage Filters modal is open, and which resource's
+  // tab it should open on — kept local to this component rather than
+  // lifted to the page, since it's fed entirely by props this component
+  // already has (categories/types/locations + their item counts). Each
+  // section's own cog button sets this to its own resource, but the modal
+  // itself (see ManageFiltersModal) has tabs for all three, so someone can
+  // switch resources without closing and reopening it.
   const [openManager, setOpenManager] = useState<ManagedResource | null>(null);
   // Separate from openManager: the pill row's own "more" overflow button
   // (see FilterPillRow) opens FilterTagPickerModal instead — a plain "pick
   // which tags are active" view (same pills, same instant-toggle
   // interaction as the row itself), not the create/rename/delete tooling
-  // TagManagerModal offers.
+  // ManageFiltersModal offers.
   const [openMore, setOpenMore] = useState<ManagedResource | null>(null);
 
   // Collapsed by default has a real cost (hides functionality from anyone
@@ -340,33 +343,14 @@ export function ItemFiltersBar({
           purely for filtering; it isn't a real row and must never be
           offered as something to rename/delete/pick in either modal
           below. */}
-      {openManager === 'category' && (
-        <TagManagerModal
-          mode="manage"
-          apiPath="/api/v1/categories"
-          label={categoryLabel}
-          items={categories.filter((c) => c.id !== 0)}
-          itemCounts={categoryItemCounts}
-          onClose={() => setOpenManager(null)}
-        />
-      )}
-      {openManager === 'type' && (
-        <TagManagerModal
-          mode="manage"
-          apiPath="/api/v1/types"
-          label={typeLabel}
-          items={types.filter((tp) => tp.id !== 0)}
-          itemCounts={typeItemCounts}
-          onClose={() => setOpenManager(null)}
-        />
-      )}
-      {openManager === 'location' && (
-        <TagManagerModal
-          mode="manage"
-          apiPath="/api/v1/locations"
-          label={locationLabel}
-          items={locations.filter((loc) => loc.id !== 0)}
-          itemCounts={locationItemCounts}
+      {openManager && (
+        <ManageFiltersModal
+          resources={[
+            { key: 'category', apiPath: '/api/v1/categories', label: categoryLabel, items: categories.filter((c) => c.id !== 0), itemCounts: categoryItemCounts },
+            { key: 'type', apiPath: '/api/v1/types', label: typeLabel, items: types.filter((tp) => tp.id !== 0), itemCounts: typeItemCounts },
+            { key: 'location', apiPath: '/api/v1/locations', label: locationLabel, items: locations.filter((loc) => loc.id !== 0), itemCounts: locationItemCounts },
+          ]}
+          initialResource={openManager}
           onClose={() => setOpenManager(null)}
         />
       )}
