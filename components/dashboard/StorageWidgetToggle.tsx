@@ -1,5 +1,9 @@
 'use client';
 
+// DEAD CODE — was StorageDonutWidget.tsx's on/off toggle; the whole storage
+// widget feature was removed. No longer imported anywhere. Safe to delete
+// this file entirely — kept only because file deletion isn't available in
+// this environment.
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';

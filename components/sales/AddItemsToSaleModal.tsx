@@ -1,4 +1,14 @@
 // components/sales/AddItemsToSaleModal.tsx
+//
+// DEAD CODE — no longer imported anywhere. SaleItemsSection.tsx now links
+// to the dedicated /dashboard/sales/[id]/sell page instead of opening this
+// modal (see that file's header comment). This modal only ever attached an
+// item to the sale with no way to set/confirm a sell price at the moment of
+// sale — the new page (SellPicker.tsx + SellReviewPanel.tsx) reuses the
+// real items page's filtering and always goes through a price-review step.
+//
+// Safe to delete this file entirely — kept only because file deletion isn't
+// available in this environment.
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';

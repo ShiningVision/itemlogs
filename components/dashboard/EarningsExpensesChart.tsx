@@ -12,7 +12,22 @@ function formatMoney(amount: number, symbol: string) {
 
 export async function EarningsExpensesChart({ currencySymbol }: { currencySymbol: string }) {
   const t = await getTranslations('dashboard');
-  const { totalCost, totalSell, soldCount } = await getSoldTotals();
+
+  // A tenant can land here moments after /setup, before PostgREST's schema
+  // cache has fully caught up everywhere (see waitUntilReady in
+  // SetupForm.tsx and the comment on getSettings() in
+  // app/lib/services/settings.ts) — this is just a nice-to-have widget, so
+  // a transient read failure here shouldn't take down the whole dashboard
+  // the way an uncaught throw would. Render nothing rather than a
+  // misleading "no sold items yet" empty state.
+  let totals: { totalCost: number; totalSell: number; soldCount: number };
+  try {
+    totals = await getSoldTotals();
+  } catch (error) {
+    console.error('Failed to load sold totals for dashboard chart:', error);
+    return null;
+  }
+  const { totalCost, totalSell, soldCount } = totals;
 
   if (soldCount === 0) {
     return (

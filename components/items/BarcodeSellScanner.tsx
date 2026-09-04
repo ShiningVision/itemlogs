@@ -2,29 +2,35 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { QrCodeIcon } from '@heroicons/react/24/outline';
 import { BarcodeScannerModal } from './BarcodeScannerModal';
 import { Toast, type ToastType } from '@/components/ui/notification';
-import { sellItemToSale } from '@/app/lib/items/sellItemClient';
 import { Tooltip } from '@/components/ui/Tooltip';
+import type { SelectedSellItem } from '@/components/sales/SellPicker';
 
-// Scan-to-sell entry point rendered in the items page's button row while
-// sell mode is active (see app/dashboard/(protected)/items/page.tsx). A
-// scanned barcode is resolved to an available item via the by-barcode API,
-// then sold through the same sellItemToSale helper the per-item Sell
-// button uses.
-export function BarcodeSellScanner({ saleId }: { saleId?: number }) {
+// Scan-to-sell entry point, rendered by SellPicker on the
+// /dashboard/sales/[id]/sell page. Used to instantly mark a scanned item
+// sold via sellItemToSale — now it only adds the resolved item to the
+// picker's selection (via onItemFound), same as clicking its card in the
+// grid would. That keeps every path into a sale going through the same
+// explicit price-review confirm step (see SellReviewPanel.tsx) rather than
+// barcode scans being the one way to skip it.
+export function BarcodeSellScanner({
+  onItemFound,
+}: {
+  // Returns true if the item was newly added, false if it was already in
+  // the selection — lets this component pick the right toast without
+  // needing to inspect the picker's state itself.
+  onItemFound: (item: SelectedSellItem) => boolean;
+}) {
   const t = useTranslations('items');
-  const router = useRouter();
   const [scannerOpen, setScannerOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [notification, setNotification] = useState<{ type: ToastType; message: string } | null>(null);
 
   async function handleScan(barcode: string) {
     setScannerOpen(false);
-    if (!saleId) return;
     setIsProcessing(true);
     try {
       const res = await fetch(`/api/v1/items/by-barcode?code=${encodeURIComponent(barcode)}`);
@@ -34,14 +40,14 @@ export function BarcodeSellScanner({ saleId }: { saleId?: number }) {
       }
       const { data: item } = await res.json();
 
-      const ok = await sellItemToSale(item.id, saleId);
-      setNotification({
-        type: ok ? 'success' : 'error',
-        message: ok ? t('markSoldSuccess') : t('markSoldFailed'),
-      });
-      if (ok) router.refresh();
+      const added = onItemFound({ id: item.id, name: item.name, sell_price: item.sell_price ?? null });
+      // A duplicate scan of something already selected is harmless — no
+      // need to interrupt with a toast for it, only confirm genuine adds.
+      if (added) {
+        setNotification({ type: 'success', message: t('scanAddedToSelection', { name: item.name ?? t('unnamedItem') }) });
+      }
     } catch {
-      setNotification({ type: 'error', message: t('markSoldFailed') });
+      setNotification({ type: 'error', message: t('scanNoMatch') });
     } finally {
       setIsProcessing(false);
     }
@@ -55,7 +61,7 @@ export function BarcodeSellScanner({ saleId }: { saleId?: number }) {
           className="barcode-sell-scan-btn"
           aria-label={t('scanToSell')}
           onClick={() => setScannerOpen(true)}
-          disabled={!saleId || isProcessing}
+          disabled={isProcessing}
         >
           <QrCodeIcon style={{ width: '24px', height: '24px' }} />
           {t('scanToSell')}

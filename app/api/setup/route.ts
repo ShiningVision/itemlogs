@@ -559,28 +559,34 @@ export async function POST(request: Request) {
           name_location VARCHAR(255),
           app_url VARCHAR(255),
           -- Onboarding checklist progress (see OnboardingChecklist.tsx). All
-          -- six are sticky: once a step is detected as done it's written
-          -- here and never flips back to false, even if the underlying
-          -- condition later becomes untrue again (e.g. the tenant deletes
-          -- their only real item, or turns the storefront back off after
-          -- going live once). Rendered in this order: added_item ->
-          -- added_contact -> named_storefront -> organized -> picked_theme
-          -- -> went_live (see the steps array in OnboardingChecklist.tsx,
-          -- which is the actual source of truth for ordering — this is just
-          -- storage).
+          -- are sticky: once a step is detected as done it's written here and
+          -- never flips back to false, even if the underlying condition
+          -- later becomes untrue again (e.g. the tenant deletes their only
+          -- real item, or turns the storefront back off after going live
+          -- once). Rendered in this order: added_item -> renamed_taxonomy ->
+          -- named_storefront -> picked_theme -> went_live (see the steps
+          -- array in OnboardingChecklist.tsx, which is the actual source of
+          -- truth for ordering — this is just storage).
           checklist_added_item BOOLEAN NOT NULL DEFAULT false,
           checklist_named_storefront BOOLEAN NOT NULL DEFAULT false,
           checklist_went_live BOOLEAN NOT NULL DEFAULT false,
-          -- Set once any contact_* field is ever non-empty — was
-          -- spare_toggle_1, same "claim and rename in place" story as
-          -- show_featured_items below.
+          -- No longer read by any onboarding-checklist code — the "add a
+          -- contact channel" and "organize categories/types/locations" steps
+          -- were dropped from the checklist. Left in place rather than
+          -- dropped from the schema (see the spare-column comment below for
+          -- why an ALTER TABLE isn't free); harmless dead columns going
+          -- forward. Was spare_toggle_1/spare_toggle_2 respectively before
+          -- they were themselves claimed for these two now-removed steps.
           checklist_added_contact BOOLEAN NOT NULL DEFAULT false,
-          -- Set once any category/type/location beyond the seeded
-          -- placeholders is ever created — was spare_toggle_2.
           checklist_organized BOOLEAN NOT NULL DEFAULT false,
           -- Set once theme is ever set to anything other than
           -- null/'default' — was spare_toggle_3.
           checklist_picked_theme BOOLEAN NOT NULL DEFAULT false,
+          -- Set once the tenant has given the category/type/location fields
+          -- a custom label of their own (name_category/name_type/
+          -- name_location — see hasRenamedTaxonomy in
+          -- app/lib/services/items.ts) — was spare_toggle_5.
+          checklist_renamed_taxonomy BOOLEAN NOT NULL DEFAULT false,
           -- "Show featured items" — gates the storefront's spotlight strip
           -- (see StorefrontSpotlight / FeaturedItemsSection). Used to live on
           -- a reused spare_toggle_1 column to avoid an ALTER TABLE on every
@@ -606,9 +612,8 @@ export async function POST(request: Request) {
           -- of time means a new toggle-shaped feature can ship by just
           -- claiming one of these instead of needing a fresh migration
           -- rolled out to every tenant. Rename in place when one gets used
-          -- (e.g. ALTER TABLE settings RENAME COLUMN spare_toggle_5 TO
+          -- (e.g. ALTER TABLE settings RENAME COLUMN spare_toggle_6 TO
           -- whatever_it_actually_is), and document what it became here.
-          spare_toggle_5 BOOLEAN NOT NULL DEFAULT false,
           spare_toggle_6 BOOLEAN NOT NULL DEFAULT false,
           spare_toggle_7 BOOLEAN NOT NULL DEFAULT false,
           spare_toggle_8 BOOLEAN NOT NULL DEFAULT false,

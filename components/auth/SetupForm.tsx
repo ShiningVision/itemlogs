@@ -62,6 +62,8 @@ type SetupMessages = {
   submit: string;
   submitting: string;
   genericError: string;
+  finishingTitle: string;
+  finishingHint: string;
 };
 
 // The server only knows how to resolve a locale from `settings.language`
@@ -108,6 +110,11 @@ export function SetupForm() {
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // True once POST /api/setup itself has succeeded (the DDL transaction
+  // committed) but before we've confirmed PostgREST's schema cache has
+  // actually caught up — see handleComplete's comment below for why this
+  // needs its own client-side wait on top of the server-side one.
+  const [finishing, setFinishing] = useState(false);
 
   async function handleSelectLanguage(opt: (typeof LANGUAGE_OPTIONS)[number]) {
     setLanguageId(opt.id);
@@ -137,6 +144,30 @@ export function SetupForm() {
     setStep(2);
   }
 
+  // Polled after /api/setup returns success — see the comment above the
+  // `finishing` state. Client-side polling has no serverless duration
+  // ceiling (unlike the wait that used to live entirely inside /api/setup,
+  // bounded by that route's own maxDuration), so this can genuinely wait as
+  // long as it takes rather than guessing a fixed budget and letting the
+  // tenant in regardless once it's exhausted. Capped at ~2 minutes as a
+  // last resort: if PostgREST is still stale after that, something other
+  // than ordinary warm-up latency is going on, and the dashboard itself now
+  // knows how to show a friendly retry screen instead of crashing (see
+  // app/dashboard/(protected)/page.tsx), so proceeding is no worse than
+  // giving up here.
+  async function waitUntilReady(maxAttempts = 80, delayMs = 1500): Promise<void> {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const res = await fetch('/api/setup/status', { cache: 'no-store' });
+        const data = (await res.json().catch(() => ({}))) as { ready?: boolean };
+        if (data.ready) return;
+      } catch {
+        // Network blip — treat like "not ready yet" and keep polling.
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
   async function handleComplete(finalNeedsPackageFees: boolean) {
     setSubmitting(true);
     setSubmitError(null);
@@ -162,6 +193,14 @@ export function SetupForm() {
         return;
       }
 
+      // The DDL transaction committed, but /api/setup's own best-effort
+      // wait (waitForSettingsReadable) only proves the schema cache caught
+      // up on the one connection *it* happened to check — not on whatever
+      // replica the next request (this poll, then /login, then the
+      // dashboard) actually lands on. So still wait here, client-side,
+      // before ever navigating away from this screen.
+      setFinishing(true);
+      await waitUntilReady();
       router.push('/login');
     } catch {
       setSubmitError(messages.genericError);
@@ -175,6 +214,18 @@ export function SetupForm() {
   }
 
   const showBack = step > 0 && step < TOTAL_STEPS - 1 && !submitting;
+
+  if (finishing) {
+    return (
+      <div className="setup-wizard">
+        <div className="setup-wizard-card setup-wizard-finishing">
+          <div className="setup-wizard-finishing-spinner" aria-hidden="true" />
+          <h1 className="setup-wizard-title">{messages.finishingTitle}</h1>
+          <p className="setup-wizard-hint">{messages.finishingHint}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="setup-wizard">

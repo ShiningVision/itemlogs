@@ -7,12 +7,11 @@ import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import type { Settings } from '@/app/lib/definitions';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { Toast, type ToastType } from '@/components/ui/notification';
 import { NoImagePlaceholder } from '@/components/ui/NoImagePlaceholder';
 import { DeleteXButton } from '@/components/ui/DeleteXButton';
 import { RemoveXButton } from '@/components/ui/RemoveXButton';
 import { getProfitColorClass } from '@/app/lib/locale/profitColor';
-import { sellItemToSale } from '@/app/lib/items/sellItemClient';
+import { CheckCircleIcon } from '@heroicons/react/24/solid';
 
 type ItemWithRelations = {
   id: number;
@@ -28,18 +27,19 @@ export function ItemCard({
   item,
   settings,
   showDeleteButton = false,
-  sellMode = false,
   saleId,
   removeFromPackageButton = false,
   onRemovedFromPackage,
   removeFromSaleButton = false,
   onRemovedFromSale,
   compact = false,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
 }: {
   item: ItemWithRelations;
   settings: Settings;
   showDeleteButton?: boolean;
-  sellMode?: boolean;
   saleId?: number;
   removeFromPackageButton?: boolean;
   onRemovedFromPackage?: () => void;
@@ -49,17 +49,23 @@ export function ItemCard({
   // in globals.css) — used by the dashboard items page's 'compact' density
   // option, a denser-than-dense mode meant for phones.
   compact?: boolean;
+  // Used by the sell-items picker (see components/sales/SellPicker.tsx) —
+  // replaces the old instant one-tap "SELL" button entirely. Clicking the
+  // card toggles selection instead of navigating to the edit page; the
+  // actual status/price change only happens later, in SellReviewPanel's
+  // explicit confirm step, not here.
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (item: ItemWithRelations) => void;
 }) {
   const t = useTranslations('items');
   const locale = useLocale();
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isSelling, setIsSelling] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
 
   const [isRemovingFromSale, setIsRemovingFromSale] = useState(false);
-  const [notification, setNotification] = useState<{ type: ToastType; message: string } | null>(null);
 
   async function handleRemoveFromSale() {
     if (!saleId) return;
@@ -101,23 +107,6 @@ export function ItemCard({
     }
   }
 
-  async function handleMarkSold() {
-    if (!saleId) return;
-    setIsSelling(true);
-    try {
-      const ok = await sellItemToSale(item.id, saleId);
-      setNotification({
-        type: ok ? 'success' : 'error',
-        message: ok ? t('markSoldSuccess') : t('markSoldFailed'),
-      });
-      if (ok) router.refresh(); // item now fails the status=1 filter and drops off the list
-    } catch {
-      setNotification({ type: 'error', message: t('markSoldFailed') });
-    } finally {
-      setIsSelling(false);
-    }
-  }
-
   const showPurchase = settings.display_purchase_price && item.purchase_price !== null;
   const showSell = settings.display_sell_price && item.sell_price !== null;
   const showCost = settings.display_cost_price && item.cost_price !== null;
@@ -132,8 +121,49 @@ export function ItemCard({
   // separate row underneath.
   const costInTopRow = showCost && !showPurchase;
 
+  const cardInner = (
+    <>
+      <div className="catalog-card-art">
+        {item.main_image_ref?.url ? (
+          <img
+            src={item.main_image_ref.url}
+            alt={item.name ?? ''}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          <NoImagePlaceholder label={t('noImage')} />
+        )}
+      </div>
+
+      <div className="catalog-card-body">
+        <span className="catalog-card-name">{item.name}</span>
+
+        {hasAnyPrice && (
+          <div className="catalog-card-prices">
+            {(showPurchase || showSell || costInTopRow) && (
+              <div className="catalog-card-price-row">
+                {showPurchase && <span>{purchaseSymbol}{item.purchase_price!.toFixed(2)}</span>}
+                {costInTopRow && <span>{sellSymbol}{item.cost_price!.toFixed(2)}</span>}
+                {showSell && <span className="catalog-card-sell-price" style={{ marginLeft: 'auto' }}>{sellSymbol}{item.sell_price!.toFixed(2)}</span>}
+              </div>
+            )}
+            {showCost && !costInTopRow && <span>{sellSymbol}{item.cost_price!.toFixed(2)}</span>}
+            {showProfit && (
+              <span className={`catalog-card-profit ${getProfitColorClass(profit!, locale)}`}>
+                {sellSymbol}{profit!.toFixed(2)}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </>
+  );
+
   return (
-    <div className={`catalog-card interactive-card${compact ? ' catalog-card--compact' : ''}`} style={{ position: 'relative' }}>
+    <div
+      className={`catalog-card interactive-card${compact ? ' catalog-card--compact' : ''}${selectable ? ' catalog-card--selectable' : ''}${selected ? ' catalog-card--selected' : ''}`}
+      style={{ position: 'relative' }}
+    >
       {showDeleteButton && (
         <DeleteXButton onClick={() => setConfirmOpen(true)} label={t('delete')} />
       )}
@@ -146,75 +176,46 @@ export function ItemCard({
         <RemoveXButton onClick={handleRemoveFromSale} label={t('removeFromSale')} disabled={isRemovingFromSale || !saleId} loading={isRemovingFromSale} />
       )}
 
-      <Link
-        href={
-          // Tells the nav which section to highlight on the edit page (see
-          // NavLinks.tsx) — that page always lives under /dashboard/items,
-          // but when opened from here it's really a package/sale detail
-          // context, and "back" returns there, not to the items list.
-          removeFromPackageButton
-            ? `/dashboard/items/${item.id}/edit?section=packages`
-            : removeFromSaleButton
-              ? `/dashboard/items/${item.id}/edit?section=sales`
-              : `/dashboard/items/${item.id}/edit`
-        }
-        style={{ display: 'flex', flexDirection: 'column', textDecoration: 'none', color: 'inherit' }}
-      >
-        <div className="catalog-card-art">
-          {item.main_image_ref?.url ? (
-            <img
-              src={item.main_image_ref.url}
-              alt={item.name ?? ''}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          ) : (
-            <NoImagePlaceholder label={t('noImage')} />
-          )}
-        </div>
+      {selected && (
+        <CheckCircleIcon
+          aria-hidden="true"
+          className="catalog-card-select-check"
+        />
+      )}
 
-        <div className="catalog-card-body">
-          <span className="catalog-card-name">{item.name}</span>
-
-          {hasAnyPrice && (
-            <div className="catalog-card-prices">
-              {(showPurchase || showSell || costInTopRow) && (
-                <div className="catalog-card-price-row">
-                  {showPurchase && <span>{purchaseSymbol}{item.purchase_price!.toFixed(2)}</span>}
-                  {costInTopRow && <span>{sellSymbol}{item.cost_price!.toFixed(2)}</span>}
-                  {showSell && <span className="catalog-card-sell-price" style={{ marginLeft: 'auto' }}>{sellSymbol}{item.sell_price!.toFixed(2)}</span>}
-                </div>
-              )}
-              {showCost && !costInTopRow && <span>{sellSymbol}{item.cost_price!.toFixed(2)}</span>}
-              {showProfit && (
-                <span className={`catalog-card-profit ${getProfitColorClass(profit!, locale)}`}>
-                  {sellSymbol}{profit!.toFixed(2)}
-                </span>
-              )}
-            </div>
-          )}
+      {selectable ? (
+        <div
+          role="checkbox"
+          aria-checked={selected}
+          tabIndex={0}
+          onClick={() => onToggleSelect?.(item)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onToggleSelect?.(item);
+            }
+          }}
+          style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer' }}
+        >
+          {cardInner}
         </div>
-      </Link>
-
-      {sellMode && (
-        <div className="catalog-card-actions">
-          <button
-            type="button"
-            onClick={handleMarkSold}
-            disabled={isSelling || !saleId}
-            style={{
-              flex: 1,
-              textAlign: 'center',
-              background: 'var(--color-danger)',
-              color: '#fff',
-              fontWeight: 'var(--font-weight-bold)',
-              borderRadius: 'var(--radius-sm)',
-              padding: 'var(--spacing-xs) var(--spacing-sm)',
-              opacity: isSelling || !saleId ? 0.6 : 1,
-            }}
-          >
-            {isSelling ? t('marking') : t('sold')}
-          </button>
-        </div>
+      ) : (
+        <Link
+          href={
+            // Tells the nav which section to highlight on the edit page (see
+            // NavLinks.tsx) — that page always lives under /dashboard/items,
+            // but when opened from here it's really a package/sale detail
+            // context, and "back" returns there, not to the items list.
+            removeFromPackageButton
+              ? `/dashboard/items/${item.id}/edit?section=packages`
+              : removeFromSaleButton
+                ? `/dashboard/items/${item.id}/edit?section=sales`
+                : `/dashboard/items/${item.id}/edit`
+          }
+          style={{ display: 'flex', flexDirection: 'column', textDecoration: 'none', color: 'inherit' }}
+        >
+          {cardInner}
+        </Link>
       )}
 
       {confirmOpen && (
@@ -225,14 +226,6 @@ export function ItemCard({
           onConfirm={handleDelete}
           onCancel={() => setConfirmOpen(false)}
           isConfirming={isDeleting}
-        />
-      )}
-
-      {notification && (
-        <Toast
-          type={notification.type}
-          message={notification.message}
-          onClose={() => setNotification(null)}
         />
       )}
     </div>

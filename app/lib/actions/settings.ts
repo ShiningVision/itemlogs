@@ -136,11 +136,11 @@ export async function updateGeneralSettingFieldAction(
   return { success: true };
 }
 
-// A single toggle, not part of either settings form above — it lives
-// directly on the dashboard page next to StorageDonutWidget (see
-// components/dashboard/StorageDonutWidget.tsx). Doesn't affect the
-// storefront or general settings pages, so it only revalidates /dashboard
-// itself.
+// DEAD CODE — backed StorageWidgetToggle.tsx, which drove
+// StorageDonutWidget.tsx (see that file's header comment). The whole
+// storage widget feature was removed from the dashboard. No longer called
+// anywhere; kept only because file deletion isn't available in this
+// environment.
 const DASHBOARD_WIDGET_AUTOSAVE_FIELDS = ['show_dashboard_storage_widget'] as const;
 type DashboardWidgetAutosaveField = (typeof DASHBOARD_WIDGET_AUTOSAVE_FIELDS)[number];
 

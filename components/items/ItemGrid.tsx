@@ -6,18 +6,19 @@ export function ItemGrid({
   items,
   settings,
   showDeleteButton = false,
-  sellMode = false,
   saleId,
   removeFromPackageButton = false,
   onItemRemovedFromPackage,
   removeFromSaleButton = false,
   onItemRemovedFromSale,
   density = 'dense',
+  selectable = false,
+  selectedIds,
+  onToggleSelect,
 }: {
   items: any[];
   settings: Settings;
   showDeleteButton?: boolean;
-  sellMode?: boolean;
   saleId?: number;
   removeFromPackageButton?: boolean;
   onItemRemovedFromPackage?: () => void;
@@ -29,6 +30,11 @@ export function ItemGrid({
   // is dashboard-only (see .item-grid--compact): a fixed 3-per-row grid
   // with a shorter image area, for browsing the items list on a phone.
   density?: 'dense' | 'showcase' | 'compact';
+  // See ItemCard's own selectable/onToggleSelect comment — used by the
+  // sell-items picker (components/sales/SellPicker.tsx).
+  selectable?: boolean;
+  selectedIds?: Set<number>;
+  onToggleSelect?: (item: any) => void;
 }) {
   if (items.length === 0) {
     return <div style={{ color: 'var(--color-text-muted)' }}>No items match these filters.</div>;
@@ -45,13 +51,15 @@ export function ItemGrid({
           item={item}
           settings={settings}
           showDeleteButton={showDeleteButton}
-          sellMode={sellMode}
           saleId={saleId}
           removeFromPackageButton={removeFromPackageButton}
           onRemovedFromPackage={onItemRemovedFromPackage}
           removeFromSaleButton={removeFromSaleButton}
           onRemovedFromSale={onItemRemovedFromSale}
           compact={density === 'compact'}
+          selectable={selectable}
+          selected={selectedIds?.has(item.id) ?? false}
+          onToggleSelect={onToggleSelect}
         />
       ))}
     </div>

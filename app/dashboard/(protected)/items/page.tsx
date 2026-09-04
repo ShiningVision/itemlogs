@@ -6,11 +6,9 @@ import { getLocations, getLocationItemCounts } from '@/app/lib/services/location
 import { getSettings } from '@/app/lib/services/settings';
 import { resolveLabel } from '@/app/lib/labels';
 import { ItemFiltersBar } from '@/components/items/ItemFiltersBar';
-import { SellModeControls } from '@/components/items/SellModeControls';
 import { ItemGrid } from '@/components/items/ItemGrid';
 import { ItemDensityToggle, type ItemDensity } from '@/components/items/ItemDensityToggle';
 import { ImportExcelButton } from '@/components/items/ImportExcelButton';
-import { BarcodeSellScanner } from '@/components/items/BarcodeSellScanner';
 import { SortSelect } from '@/components/ui/SortSelect';
 import { Pagination } from '@/components/ui/Pagination';
 import { parsePage, getOffset, getTotalPages, buildPageHref } from '@/app/lib/pagination';
@@ -26,8 +24,6 @@ type SearchParams = {
   statuses?: string;
   types?: string;
   locations?: string;
-  sell?: string;
-  saleId?: string;
   page?: string;
   density?: string;
   sort?: string;
@@ -47,8 +43,6 @@ export default async function ItemsPage({
     statuses: statusesParam,
     types: typesParam,
     locations: locationsParam,
-    sell,
-    saleId: saleIdParam,
     page: pageParam,
     density: densityParam,
     sort: sortParam,
@@ -59,30 +53,22 @@ export default async function ItemsPage({
     densityParam === 'showcase' ? 'showcase' : densityParam === 'compact' ? 'compact' : 'dense';
   const sort: ItemSort = VALID_SORTS.includes(sortParam as ItemSort) ? (sortParam as ItemSort) : 'newest';
 
-  // Settings has to be fetched before sellModeActive is computed (rather than
-  // alongside items/categories/types below) so that a stale/bookmarked
-  // ?sell=1 URL can't force sell mode on — and the per-card sell button with
-  // it — after the owner has turned use_sell_price off.
   const settings = await getSettings();
 
-  const sellModeActive = sell === '1' && settings.use_sell_price;
   const categoryIds = categoriesParam ? categoriesParam.split(',').map(Number) : undefined;
-  // Defensive: even if a stale/crafted `statuses` param exists in the URL, sell mode always forces status 1 only.
   // No `statuses` param at all (fresh page load) defaults to Available-only.
   // Deselecting the last status pill sends the explicit sentinel `all`
   // (see ItemFiltersBar's toggleStatus) rather than removing the param, so
   // it can be told apart from a fresh, never-touched page load — `all`
   // means "no filter", undefined statuses here skips the .in() clause entirely.
-  const statuses = sellModeActive
-    ? [1]
-    : statusesParam === undefined
+  const statuses =
+    statusesParam === undefined
       ? [1]
       : statusesParam === 'all'
         ? undefined
         : statusesParam.split(',').map(Number);
   const typeIds = typesParam ? typesParam.split(',').map(Number) : undefined;
   const locationIds = locationsParam ? locationsParam.split(',').map(Number) : undefined;
-  const saleId = saleIdParam ? Number(saleIdParam) : undefined;
   const search = searchParam?.trim() || undefined;
 
   const page = parsePage(pageParam);
@@ -166,8 +152,6 @@ export default async function ItemsPage({
             </Button>
           </Link>
 
-          {settings.use_sell_price && <SellModeControls sellModeActive={sellModeActive} saleId={saleId} />}
-
           <ImportExcelButton />
 
           <a href={exportHref}>
@@ -176,8 +160,6 @@ export default async function ItemsPage({
               {t('exportExcel')}
             </Button>
           </a>
-
-          {settings.use_sell_price && sellModeActive && settings.use_barcode && <BarcodeSellScanner saleId={saleId} />}
         </div>
       </div>
 
@@ -192,7 +174,6 @@ export default async function ItemsPage({
         selectedStatuses={statuses ?? []}
         selectedTypeIds={typeIds ?? []}
         selectedLocationIds={locationIds ?? []}
-        sellModeActive={sellModeActive}
         categoryLabel={categoryLabel}
         typeLabel={typeLabel}
         locationLabel={locationLabel}
@@ -217,7 +198,7 @@ export default async function ItemsPage({
       </div>
 
       <div style={{ marginTop: 'var(--spacing-md)' }}>
-        <ItemGrid items={items} settings={settings} showDeleteButton sellMode={sellModeActive} saleId={saleId} density={density} />
+        <ItemGrid items={items} settings={settings} showDeleteButton density={density} />
       </div>
 
       <Pagination page={page} totalPages={totalPages} buildHref={(p) => buildPageHref('/dashboard/items', rawSearchParams, p)} />

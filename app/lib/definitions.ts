@@ -117,14 +117,19 @@ export type Settings = {
   checklist_added_item: boolean;
   checklist_named_storefront: boolean;
   checklist_went_live: boolean;
-  // Was spare_toggle_1 — set once any contact_* field is ever non-empty.
+  // No longer read by any onboarding-checklist code — those two steps were
+  // dropped. Kept in the type (and the DB) since removing a column isn't
+  // free; see app/api/setup/route.ts's comment on the same columns.
   checklist_added_contact: boolean;
-  // Was spare_toggle_2 — set once any category/type/location beyond the
-  // seeded placeholders is ever created.
   checklist_organized: boolean;
   // Was spare_toggle_3 — set once `theme` is ever set to anything other
   // than null/'default'.
   checklist_picked_theme: boolean;
+  // Was spare_toggle_5 — set once the tenant has given the category/type/
+  // location fields a custom label of their own (see hasRenamedTaxonomy in
+  // app/lib/services/items.ts, checked against name_category/name_type/
+  // name_location below).
+  checklist_renamed_taxonomy: boolean;
   // "Show featured items" (see components/dashboard/FeaturedItemsSection.tsx).
   // Used to live on a reused spare_toggle_1 column; renamed to a dedicated
   // column now that all pre-rename tenants are on the legacy code path.
@@ -139,7 +144,6 @@ export type Settings = {
   // Unassigned, reserved for future features (see app/api/setup/route.ts's
   // comment on the same columns). Once one gets used, rename it here to
   // match instead of adding a new field.
-  spare_toggle_5: boolean;
   spare_toggle_6: boolean;
   spare_toggle_7: boolean;
   spare_toggle_8: boolean;

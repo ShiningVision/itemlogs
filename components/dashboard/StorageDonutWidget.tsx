@@ -1,4 +1,13 @@
 // components/dashboard/StorageDonutWidget.tsx
+//
+// DEAD CODE — the "storage used" dashboard widget was removed (didn't look
+// good on the dashboard). No longer imported anywhere. Safe to delete this
+// file entirely — kept only because file deletion isn't available in this
+// environment. StorageWidgetToggle.tsx (its toggle) and
+// updateDashboardWidgetFieldAction in app/lib/actions/settings.ts are dead
+// for the same reason. settings.show_dashboard_storage_widget stays in the
+// DB/type (removing a column isn't free) but nothing reads or writes it
+// anymore.
 import { getTranslations } from 'next-intl/server';
 import { getBlobUsage, BLOB_LIMIT_BYTES } from '@/app/lib/storage/blob-usage';
 import { formatBytes } from '@/app/lib/storage/format-bytes';

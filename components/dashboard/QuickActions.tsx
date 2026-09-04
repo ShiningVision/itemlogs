@@ -1,10 +1,11 @@
 // components/dashboard/QuickActions.tsx
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import { PlusIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { PlusIcon } from '@heroicons/react/24/outline';
 import { CopyStorefrontLinkButton } from './CopyStorefrontLinkButton';
+import { QuickSellButton } from '@/components/sales/QuickSellButton';
 
-export async function QuickActions({ appUrl }: { appUrl: string | null }) {
+export async function QuickActions({ appUrl, showQuickSell }: { appUrl: string | null; showQuickSell: boolean }) {
   const t = await getTranslations('dashboard');
 
   return (
@@ -19,10 +20,10 @@ export async function QuickActions({ appUrl }: { appUrl: string | null }) {
           <PlusIcon aria-hidden="true" />
           {t('quickActionAddPackage')}
         </Link>
-        <Link href="/" className="dashboard-quick-action-btn" target="_blank" rel="noreferrer">
-          <ArrowTopRightOnSquareIcon aria-hidden="true" />
-          {t('quickActionViewStorefront')}
-        </Link>
+        {/* Sales/sell-price is an opt-in feature (same gate as the revenue
+            chart — see settings.use_sell_price) — a shortcut into selling
+            makes no sense for a tenant who doesn't track sell prices at all. */}
+        {showQuickSell && <QuickSellButton variant="pill" />}
         {appUrl && <CopyStorefrontLinkButton url={appUrl} />}
       </div>
     </div>

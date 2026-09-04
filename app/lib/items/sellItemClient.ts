@@ -1,6 +1,20 @@
 // app/lib/items/sellItemClient.ts
 'use client';
 
+// DEAD CODE — no longer imported anywhere. This was the instant one-tap
+// "mark sold" sequence used by the old items-page sell mode (ItemCard's
+// per-item Sell button) and the old BarcodeSellScanner. Both were replaced
+// by the sell-items picker on /dashboard/sales/[id]/sell (see
+// components/sales/SellPicker.tsx and SellReviewPanel.tsx), which always
+// goes through an explicit price-review confirm step instead of selling
+// instantly — POST /api/v1/sales/[id]/items now takes an optional
+// sell_price and sets status itself (see addSaleItem in
+// app/lib/services/sales-items.ts), so nothing needs this two-call
+// dance with a manual rollback anymore.
+//
+// Safe to delete this file entirely — kept only because file deletion
+// isn't available in this environment.
+//
 // Shared client-side "mark this item sold and attach it to a sale"
 // sequence, used by both ItemCard's per-item Sell button and the
 // barcode scan-to-sell flow (components/items/BarcodeSellScanner.tsx).

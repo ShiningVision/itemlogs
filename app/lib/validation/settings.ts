@@ -72,7 +72,6 @@ export const updateSettingsSchema = z.object({
   // Reserved for future features — see app/api/setup/route.ts. Kept valid
   // to PATCH here ahead of time so a future feature only needs to start
   // reading/writing one, not also wire up validation for it.
-  spare_toggle_5: z.boolean().optional(),
   spare_toggle_6: z.boolean().optional(),
   spare_toggle_7: z.boolean().optional(),
   spare_toggle_8: z.boolean().optional(),

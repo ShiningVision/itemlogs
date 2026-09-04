@@ -446,27 +446,20 @@ export async function hasRealItem(): Promise<boolean> {
   return (count ?? 0) > 0;
 }
 
-// Onboarding checklist "organized" step — every fresh tenant is seeded with
-// placeholder categories/types/locations too (see app/lib/placeholder-data.ts),
-// same reasoning as PLACEHOLDER_ITEM_IDS above. Checked as three parallel
-// head:true counts rather than one query since categories/types/locations
-// are separate tables with no shared key to join on.
-const PLACEHOLDER_CATEGORY_IDS = [1, 2, 3, 4, 5];
-const PLACEHOLDER_TYPE_IDS = [1, 2, 3, 4];
-const PLACEHOLDER_LOCATION_IDS = [1, 2, 3, 4];
-
-export async function hasCustomizedTaxonomy(): Promise<boolean> {
-  const [categories, types, locations] = await Promise.all([
-    supabase.from('categories').select('id', { count: 'exact', head: true }).not('id', 'in', `(${PLACEHOLDER_CATEGORY_IDS.join(',')})`),
-    supabase.from('types').select('id', { count: 'exact', head: true }).not('id', 'in', `(${PLACEHOLDER_TYPE_IDS.join(',')})`),
-    supabase.from('locations').select('id', { count: 'exact', head: true }).not('id', 'in', `(${PLACEHOLDER_LOCATION_IDS.join(',')})`),
-  ]);
-
-  if (categories.error) throw categories.error;
-  if (types.error) throw types.error;
-  if (locations.error) throw locations.error;
-
-  return (categories.count ?? 0) > 0 || (types.count ?? 0) > 0 || (locations.count ?? 0) > 0;
+// Onboarding checklist "renamed taxonomy" step — nudges a fresh tenant to
+// give the category/type/location fields their own labels (e.g. rename
+// "Category" to "Genre") via the settings page, rather than a check against
+// the seeded example row values. Purely a settings-field check, no DB query
+// needed — takes the relevant name_* fields directly rather than a full
+// Settings object so callers don't need to pull in the whole type.
+export function hasRenamedTaxonomy(settings: {
+  name_category: string | null;
+  name_type: string | null;
+  name_location: string | null;
+}): boolean {
+  return Boolean(
+    settings.name_category?.trim() || settings.name_type?.trim() || settings.name_location?.trim()
+  );
 }
 
 // Dashboard's Earnings vs Expenses chart (see EarningsExpensesChart.tsx).
@@ -693,10 +686,16 @@ export async function getAvailableItems() {
 // item to sell it doesn't make sense. Exact match; barcode has no unique
 // constraint in the schema, so this takes the first match (lowest id) if a
 // barcode is somehow duplicated across multiple available items.
-export async function getAvailableItemByBarcode(barcode: string): Promise<{ id: number; name: string | null } | null> {
+export async function getAvailableItemByBarcode(
+  barcode: string
+): Promise<{ id: number; name: string | null; sell_price: number | null } | null> {
   const { data, error } = await supabase
     .from('items')
-    .select('id, name')
+    // sell_price included so the sell-review step (see SellReviewPanel.tsx)
+    // can prefill the price field for a scanned item the same way it does
+    // for one picked by hand from the grid, instead of always starting
+    // scanned items at an empty price.
+    .select('id, name, sell_price')
     .eq('status', 1)
     .eq('barcode', barcode)
     .order('id', { ascending: true })

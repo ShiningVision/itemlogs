@@ -7,14 +7,14 @@ import { syncOnboardingChecklist } from '@/app/lib/services/settings';
 export async function OnboardingChecklist({ settings }: { settings: Settings }) {
   const t = await getTranslations('dashboard');
 
-  // All six steps are sticky booleans on `settings` — once true, they stay
+  // All five steps are sticky booleans on `settings` — once true, they stay
   // true, even if the tenant later deletes their only real item or turns
   // the storefront back off. Order here is the actual, deliberate onboarding
   // narrative (not just insertion order): get something in the inventory,
-  // make sure visitors can reach you, give the shop an identity, tidy it up,
-  // put a face on it, then flip it on. "Share your link" is deliberately
-  // NOT a step here — it's a one-off action once live, not a state to track,
-  // so it lives in QuickActions instead (see DashboardPage).
+  // make the taxonomy their own, give the shop an identity, put a face on
+  // it, then flip it on. "Share your link" is deliberately NOT a step here
+  // — it's a one-off action once live, not a state to track, so it lives in
+  // QuickActions instead (see DashboardPage).
   const steps = [
     {
       key: 'addItem',
@@ -23,25 +23,21 @@ export async function OnboardingChecklist({ settings }: { settings: Settings }) 
       href: '/dashboard/items',
     },
     {
-      key: 'addContact',
-      done: settings.checklist_added_contact,
-      label: t('checklistAddContact'),
-      href: '/dashboard',
+      key: 'renameTaxonomy',
+      done: settings.checklist_renamed_taxonomy,
+      label: t('checklistRenameTaxonomy'),
+      // This is about the field labels (name_category/name_type/
+      // name_location — e.g. renaming "Category" to "Genre"), set from the
+      // settings page's GeneralSettingsForm. Not to be confused with
+      // renaming individual category/type/location values, which happens
+      // in ManageFiltersModal from the items page instead.
+      href: '/dashboard/settings',
     },
     {
       key: 'nameStorefront',
       done: settings.checklist_named_storefront,
       label: t('checklistNameStorefront'),
       href: '/dashboard',
-    },
-    {
-      key: 'organize',
-      done: settings.checklist_organized,
-      label: t('checklistOrganize'),
-      // Categories/types/locations are managed from the items page's
-      // filter section (see components/reference-data/ManageFiltersModal.tsx)
-      // — there's no standalone route for them.
-      href: '/dashboard/items',
     },
     {
       key: 'pickTheme',
@@ -64,9 +60,8 @@ export async function OnboardingChecklist({ settings }: { settings: Settings }) 
     ...step,
     done:
       step.key === 'addItem' ? synced.checklist_added_item
-      : step.key === 'addContact' ? synced.checklist_added_contact
+      : step.key === 'renameTaxonomy' ? synced.checklist_renamed_taxonomy
       : step.key === 'nameStorefront' ? synced.checklist_named_storefront
-      : step.key === 'organize' ? synced.checklist_organized
       : step.key === 'pickTheme' ? synced.checklist_picked_theme
       : synced.checklist_went_live,
   }));

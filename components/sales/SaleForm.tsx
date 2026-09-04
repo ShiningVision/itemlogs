@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/widgets/Button';
-import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import type { Sale } from '@/app/lib/definitions';
 import { parseApiError } from '@/app/lib/errors/parseApiError';
 
@@ -70,6 +70,29 @@ export function SaleForm({
 
   return (
     <div className="item-sheet-container" style={{ padding: 'var(--spacing-lg)' }}>
+      {mode === 'update' && (
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="interactive-card"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 'var(--spacing-xs)',
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+            marginBottom: 'var(--spacing-sm)',
+            color: 'var(--color-text-muted)',
+            fontSize: 'var(--font-size-sm)',
+            cursor: 'pointer',
+          }}
+        >
+          <ArrowLeftIcon style={{ width: '16px', height: '16px' }} />
+          {t('back')}
+        </button>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-lg)', flexWrap: 'wrap', gap: 'var(--spacing-sm)' }}>
         <h1 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)' }}>
           {mode === 'create' ? t('createSale') : t('updateSale')}

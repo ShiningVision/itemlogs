@@ -1,4 +1,15 @@
 // components/items/SellModeControls.tsx
+//
+// DEAD CODE — no longer imported anywhere. This was the items page's
+// "Enter sell mode" toggle: it locked the whole catalog into a filtered,
+// per-card-instant-sell state via ?sell=1&statuses=1&saleId=. That's been
+// retired in favor of a dedicated sell-items picker scoped to one sale at a
+// time (see QuickSellButton.tsx on the sales list page, and
+// /dashboard/sales/[id]/sell), which also adds a price-confirmation step
+// this never had.
+//
+// Safe to delete this file entirely — kept only because file deletion isn't
+// available in this environment.
 'use client';
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
@@ -79,6 +90,7 @@ export function SellModeControls({
         onClick={sellModeActive ? disableSellMode : enableSellMode}
         disabled={isLoading}
         style={{ background: 'var(--color-danger)' }}
+        title={sellModeActive ? t('exitSellModeHint') : t('enterSellModeHint')}
       >
         {sellModeActive ? t('exitSellMode') : t('enterSellMode')}
       </Button>

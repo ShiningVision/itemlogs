@@ -58,7 +58,8 @@ export function ItemFiltersBar({
   selectedStatuses,
   selectedTypeIds,
   selectedLocationIds,
-  sellModeActive = false,
+  lockStatusToAvailable = false,
+  hideManageButtons = false,
   categoryLabel,
   typeLabel,
   locationLabel,
@@ -76,7 +77,18 @@ export function ItemFiltersBar({
   selectedStatuses: number[];
   selectedTypeIds: number[];
   selectedLocationIds: number[];
-  sellModeActive?: boolean;
+  // Used by the sell-items picker page (/dashboard/sales/[id]/sell), which
+  // only ever shows Available items (the data it's given is pre-filtered
+  // server-side to status=1) — the status row still renders, showing just
+  // the single "Available" pill, selected and un-clickable, so it's obvious
+  // at a glance why nothing else is offered rather than the row silently
+  // disappearing.
+  lockStatusToAvailable?: boolean;
+  // Same sell-picker page: renaming/deleting categories/types/locations
+  // mid-sale isn't something that page should let you do, so the cog
+  // ("manage") button on each filter section is left out — the pill rows
+  // themselves (picking which tags to filter by) stay fully usable.
+  hideManageButtons?: boolean;
   categoryLabel: string;
   typeLabel: string;
   locationLabel: string;
@@ -173,7 +185,7 @@ export function ItemFiltersBar({
     selectedCategoryIds.length +
     selectedTypeIds.length +
     selectedLocationIds.length +
-    (statusIsDefault || sellModeActive ? 0 : selectedStatuses.length);
+    (statusIsDefault || lockStatusToAvailable ? 0 : selectedStatuses.length);
 
   function clearAll() {
     // statuses is deliberately left alone — clearing it back to null just
@@ -218,7 +230,9 @@ export function ItemFiltersBar({
       <div className="filter-section">
         <div className="filter-section-header">
           <span className="filter-section-label">{label}</span>
-          <ManageButton label={t('manageLabel', { label })} onClick={() => setOpenManager(key)} />
+          {!hideManageButtons && (
+            <ManageButton label={t('manageLabel', { label })} onClick={() => setOpenManager(key)} />
+          )}
         </div>
         <FilterPillRow
           pills={options.map((opt) => ({ id: opt.id, label: opt.name ?? '' }))}
@@ -317,14 +331,19 @@ export function ItemFiltersBar({
               <span className="filter-section-label">{statusLabel ?? t('filterStatuses')}</span>
             </div>
             <div className="filter-pill-row">
-              {availableStatuses.map((s) => (
+              {/* Locked to a single, disabled "Available" pill rather than
+                  the full row — makes it obvious at a glance that only
+                  Available items can be picked here, instead of the status
+                  filter silently disappearing (see lockStatusToAvailable's
+                  comment above). */}
+              {(lockStatusToAvailable ? [1] : availableStatuses).map((s) => (
                 <FilterPill
                   key={s}
                   label={t(`status${s}`)}
                   variant="status"
-                  selected={sellModeActive ? s === 1 : selectedStatuses.includes(s)}
-                  disabled={sellModeActive}
-                  onClick={() => !sellModeActive && toggleStatus(s)}
+                  selected={lockStatusToAvailable ? true : selectedStatuses.includes(s)}
+                  disabled={lockStatusToAvailable}
+                  onClick={() => !lockStatusToAvailable && toggleStatus(s)}
                 />
               ))}
             </div>

@@ -215,7 +215,7 @@ const settings = [
     default_purchase_price_currency: '1',
     language: '1',
     show_message:
-      'Itemlogs is a FREE inventory system for collectors, hobbyists, and small retail businesses. \n No gatekeeping of functionalities, no ads, no subscriptions, and no tracking. \n Try it out at itemlogs.com!',
+      'Itemlogs is a FREE inventory system for collectors, hobbyists, and small retail businesses. \nNo gatekeeping of functionalities, no ads, no subscriptions, and no tracking. \nTry it out at itemlogs.com!',
     use_sell_price: true,
     use_package_fees: true,
     use_barcode: false,

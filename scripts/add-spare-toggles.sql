@@ -20,6 +20,12 @@
 -- deliberately upgrading a legacy tenant that's already past the
 -- show_featured_items/show_description rename above.
 --
+-- spare_toggle_5 is claimed too now, as checklist_renamed_taxonomy (the
+-- "add a contact channel"/"organize categories" checklist steps that
+-- checklist_added_contact/checklist_organized used to back were dropped —
+-- those two columns are just unused dead weight on any tenant now, nothing
+-- to migrate for that part).
+--
 -- Run via the Supabase dashboard's SQL Editor, or:
 --   psql "$POSTGRES_URL" -f scripts/add-spare-toggles.sql
 -- (grab POSTGRES_URL from that tenant's Vercel project env vars)
@@ -31,7 +37,7 @@ ALTER TABLE settings ADD COLUMN IF NOT EXISTS checklist_added_contact BOOLEAN NO
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS checklist_organized BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS checklist_picked_theme BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS show_dashboard_storage_widget BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE settings ADD COLUMN IF NOT EXISTS spare_toggle_5 BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS checklist_renamed_taxonomy BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS spare_toggle_6 BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS spare_toggle_7 BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS spare_toggle_8 BOOLEAN NOT NULL DEFAULT false;

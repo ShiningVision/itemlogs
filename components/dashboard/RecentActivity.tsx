@@ -10,7 +10,19 @@ import { getRecentItems } from '@/app/lib/services/items';
 export async function RecentActivity() {
   const t = await getTranslations('dashboard');
   const tItems = await getTranslations('items');
-  const items = await getRecentItems(5);
+
+  // See EarningsExpensesChart.tsx's comment — same rationale: don't let a
+  // transient PostgREST read failure (most likely right after /setup) crash
+  // the whole dashboard over what's just a "recently added" convenience
+  // list. Falls back to the same empty state a genuinely-empty inventory
+  // would show.
+  let items: Awaited<ReturnType<typeof getRecentItems>>;
+  try {
+    items = await getRecentItems(5);
+  } catch (error) {
+    console.error('Failed to load recent items for dashboard:', error);
+    items = [];
+  }
 
   return (
     <div className="dashboard-card dashboard-recent-activity">

@@ -10,6 +10,7 @@ import {
   ShoppingBagIcon,
   PhotoIcon,
   SwatchIcon,
+  ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -28,10 +29,16 @@ export function NavLinks({
   variant = 'vertical',
   onNavigate,
   showSales = true,
+  showVisitorPage = false,
+  visitorPageUrl = null,
 }: {
   variant?: 'vertical' | 'horizontal';
   onNavigate?: () => void;
   showSales?: boolean;
+  // Same gate as the dashboard's storefront-live toggle (settings.show) —
+  // no point linking to a visitor page that's currently turned off.
+  showVisitorPage?: boolean;
+  visitorPageUrl?: string | null;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -59,7 +66,11 @@ export function NavLinks({
         display: 'flex',
         flexDirection: variant === 'horizontal' ? 'row' : 'column',
         alignItems: variant === 'horizontal' ? 'center' : 'stretch',
-        gap: variant === 'horizontal' ? 'var(--spacing-xs)' : 'var(--spacing-xs)',
+        // Vertical (sidebar) list gets more breathing room than the tight
+        // horizontal variant — on the persistent desktop sidebar especially,
+        // a handful of links in a full-height column otherwise left a big
+        // block of empty space above the pinned logout button.
+        gap: variant === 'horizontal' ? 'var(--spacing-xs)' : 'var(--spacing-sm)',
         flexWrap: variant === 'horizontal' ? 'wrap' : 'nowrap',
       }}
     >
@@ -75,7 +86,7 @@ export function NavLinks({
               display: 'flex',
               alignItems: 'center',
               gap: 'var(--spacing-sm)',
-              padding: 'var(--spacing-sm) var(--spacing-md)',
+              padding: variant === 'horizontal' ? 'var(--spacing-sm) var(--spacing-md)' : 'var(--spacing-md)',
               borderRadius: 'var(--radius-md)',
               fontSize: 'var(--font-size-base)',
               fontWeight: isActive ? 'var(--font-weight-bold)' : 'var(--font-weight-normal)',
@@ -85,11 +96,38 @@ export function NavLinks({
               whiteSpace: 'nowrap',
             }}
           >
-            <Icon style={{ width: '20px', height: '20px' }} />
+            <Icon style={{ width: variant === 'horizontal' ? '20px' : '22px', height: variant === 'horizontal' ? '20px' : '22px' }} />
             <span>{t(key)}</span>
           </Link>
         );
       })}
+
+      {showVisitorPage && visitorPageUrl && (
+        <a
+          href={visitorPageUrl}
+          target="_blank"
+          rel="noreferrer"
+          onClick={onNavigate}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--spacing-sm)',
+            padding: variant === 'horizontal' ? 'var(--spacing-sm) var(--spacing-md)' : 'var(--spacing-md)',
+            borderRadius: 'var(--radius-md)',
+            fontSize: 'var(--font-size-base)',
+            fontWeight: 'var(--font-weight-normal)',
+            color: 'var(--color-text)',
+            background: 'transparent',
+            textDecoration: 'none',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <ArrowTopRightOnSquareIcon
+            style={{ width: variant === 'horizontal' ? '20px' : '22px', height: variant === 'horizontal' ? '20px' : '22px' }}
+          />
+          <span>{t('viewVisitorPage')}</span>
+        </a>
+      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/widgets/Button';
 import { PlusIcon } from '@heroicons/react/24/outline';
+import { QuickSellButton } from '@/components/sales/QuickSellButton';
 
 const SALES_PAGE_SIZE = 20;
 
@@ -42,12 +43,15 @@ export default async function SalesPage({
     <div className="page-container-wide" style={{ padding: 'var(--spacing-lg)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-lg)' }}>
         <h1 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)' }}>{t('title')}</h1>
-        <Link href="/dashboard/sales/new">
-          <Button>
-            <PlusIcon style={{ width: '18px', height: '18px' }} />
-            {t('addSale')}
-          </Button>
-        </Link>
+        <div style={{ display: 'flex', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
+          <Link href="/dashboard/sales/new">
+            <Button>
+              <PlusIcon style={{ width: '18px', height: '18px' }} />
+              {t('addSale')}
+            </Button>
+          </Link>
+          <QuickSellButton />
+        </div>
       </div>
 
       {sales.length === 0 ? (

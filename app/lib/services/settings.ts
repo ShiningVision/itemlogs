@@ -1,7 +1,7 @@
 // lib/services/settings.ts
 import { supabase } from '../../lib/db/client';
 import type { UpdateSettingsInput } from '../../lib/validation/settings';
-import { hasRealItem, hasCustomizedTaxonomy } from './items';
+import { hasRealItem, hasRenamedTaxonomy } from './items';
 
 // Every item's sell_price/cost_price is denominated in this single
 // shop-wide currency (items no longer carry their own sell_price_currency),
@@ -51,60 +51,56 @@ export async function syncOnboardingChecklist(settings: {
   checklist_added_item: boolean;
   checklist_named_storefront: boolean;
   checklist_went_live: boolean;
-  checklist_added_contact: boolean;
-  checklist_organized: boolean;
+  checklist_renamed_taxonomy: boolean;
   checklist_picked_theme: boolean;
   storefront_name: string | null;
   show: boolean;
-  contact_whatsapp: string | null;
-  contact_telegram: string | null;
-  contact_email: string | null;
-  contact_instagram: string | null;
   theme: string | null;
+  name_category: string | null;
+  name_type: string | null;
+  name_location: string | null;
 }) {
-  const updates: Record<string, boolean> = {};
+  // Best-effort: this runs on every dashboard load, including the very
+  // first one right after /setup — before PostgREST's schema cache is
+  // guaranteed warm everywhere (see waitUntilReady in SetupForm.tsx). A
+  // transient failure here just means the checklist doesn't tick a step
+  // this render; it'll catch up next time the dashboard loads. That's a far
+  // better outcome than crashing the whole dashboard over onboarding-
+  // checklist bookkeeping.
+  try {
+    const updates: Record<string, boolean> = {};
 
-  if (!settings.checklist_added_item && (await hasRealItem())) {
-    updates.checklist_added_item = true;
-  }
-  if (
-    !settings.checklist_added_contact &&
-    Boolean(
-      settings.contact_whatsapp?.trim() ||
-        settings.contact_telegram?.trim() ||
-        settings.contact_email?.trim() ||
-        settings.contact_instagram?.trim()
-    )
-  ) {
-    updates.checklist_added_contact = true;
-  }
-  if (!settings.checklist_named_storefront && Boolean(settings.storefront_name?.trim())) {
-    updates.checklist_named_storefront = true;
-  }
-  // hasCustomizedTaxonomy() costs three extra head:true queries — only run
-  // it while this step is still unticked, same reasoning as hasRealItem()
-  // above (see the comment on checklist_added_item's DDL).
-  if (!settings.checklist_organized && (await hasCustomizedTaxonomy())) {
-    updates.checklist_organized = true;
-  }
-  if (!settings.checklist_picked_theme && Boolean(settings.theme && settings.theme !== 'default')) {
-    updates.checklist_picked_theme = true;
-  }
-  if (!settings.checklist_went_live && settings.show) {
-    updates.checklist_went_live = true;
-  }
+    if (!settings.checklist_added_item && (await hasRealItem())) {
+      updates.checklist_added_item = true;
+    }
+    if (!settings.checklist_named_storefront && Boolean(settings.storefront_name?.trim())) {
+      updates.checklist_named_storefront = true;
+    }
+    if (!settings.checklist_renamed_taxonomy && hasRenamedTaxonomy(settings)) {
+      updates.checklist_renamed_taxonomy = true;
+    }
+    if (!settings.checklist_picked_theme && Boolean(settings.theme && settings.theme !== 'default')) {
+      updates.checklist_picked_theme = true;
+    }
+    if (!settings.checklist_went_live && settings.show) {
+      updates.checklist_went_live = true;
+    }
 
-  if (Object.keys(updates).length === 0) return settings;
+    if (Object.keys(updates).length === 0) return settings;
 
-  const { data, error } = await supabase
-    .from('settings')
-    .update(updates)
-    .eq('id', 1)
-    .select(SETTINGS_SELECT)
-    .single();
+    const { data, error } = await supabase
+      .from('settings')
+      .update(updates)
+      .eq('id', 1)
+      .select(SETTINGS_SELECT)
+      .single();
 
-  if (error) throw error;
-  return data;
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Failed to sync onboarding checklist:', error);
+    return settings;
+  }
 }
 
 export async function updateSettings(input: UpdateSettingsInput) {

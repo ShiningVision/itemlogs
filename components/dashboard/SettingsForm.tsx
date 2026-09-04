@@ -33,10 +33,15 @@ const ITEM_DETAIL_FIELDS: Array<{ key: keyof Settings; labelKey: string; hintKey
   { key: 'show_sell_price', labelKey: 'showSellPrice', hintKey: 'showSellPriceHint' },
   { key: 'show_purchase_price', labelKey: 'showPurchasePrice', hintKey: 'showPurchasePriceHint' },
   { key: 'show_cost_price', labelKey: 'showCostPrice', hintKey: 'showCostPriceHint' },
-  { key: 'show_location', labelKey: 'showLocation', hintKey: 'showLocationHint' },
   // Not inverted: on for new tenants via the setup route's INSERT, off by
   // default for already-provisioned ones, same as every other field here.
   { key: 'show_description', labelKey: 'showDescription', hintKey: 'showDescriptionHint' },
+  { key: 'show_location', labelKey: 'showLocation', hintKey: 'showLocationHint' },
+  // "Filter by location" (show_location_filter) is rendered manually right
+  // after this array's rows (see below) rather than added as an entry here
+  // — it's the on/off switch for a storefront filter built on show_location,
+  // so it belongs directly beneath that toggle rather than being just
+  // another same-looking row in the list.
 ];
 
 type FieldStatus = 'saving' | 'saved' | 'error';
@@ -321,8 +326,17 @@ export function SettingsForm({
 
       <div className="settings-section">
         <div className="settings-section-title">{t('sectionVisibility')}</div>
+        <div className="settings-group">{toggleRows(VISIBILITY_FIELDS)}</div>
+      </div>
+
+      <div className="settings-section">
+        <div className="settings-section-title">{t('sectionItemDetails')}</div>
         <div className="settings-group">
-          {toggleRows(VISIBILITY_FIELDS)}
+          {toggleRows(ITEM_DETAIL_FIELDS)}
+          {/* Filter by location — the on/off switch for the storefront
+              filter built on show_location just above, so it sits directly
+              beneath it rather than living off in the Visibility Filter
+              section it used to be part of. */}
           <div className="settings-row">
             <Tooltip text={t('showLocationFilterHint')}>
               <span>{t('showLocationFilter')}</span>
@@ -357,11 +371,6 @@ export function SettingsForm({
         cap={featuredItemCap}
         defaultShowFeatured={Boolean(settings.show_featured_items)}
       />
-
-      <div className="settings-section">
-        <div className="settings-section-title">{t('sectionItemDetails')}</div>
-        <div className="settings-group">{toggleRows(ITEM_DETAIL_FIELDS)}</div>
-      </div>
 
       <div className="settings-section">
         <div className="settings-section-title">{t('sectionLayout')}</div>

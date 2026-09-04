@@ -31,7 +31,7 @@ export async function POST(
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const saleItem = await addSaleItem(Number(id), parsed.data.item_id);
+    const saleItem = await addSaleItem(Number(id), parsed.data.item_id, parsed.data.sell_price);
     return NextResponse.json({ data: saleItem }, { status: 201 });
   } catch (error: any) {
     console.error('Failed to add item to sale:', error);

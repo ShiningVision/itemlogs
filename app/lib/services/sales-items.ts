@@ -61,7 +61,13 @@ export async function getSaleItems(saleId: number): Promise<{ item_id: number; i
   }));
 }
 
-export async function addSaleItem(saleId: number, itemId: number) {
+// sellPrice is `undefined` when the caller isn't touching the price at all
+// (left as whatever was already on the item) vs. a real number when the
+// sell-review step (see SellReviewPanel.tsx) is confirming/overriding it —
+// that distinction is exactly why this takes an optional param instead of
+// always writing sell_price, and why the update object below is built
+// conditionally rather than always including the key.
+export async function addSaleItem(saleId: number, itemId: number, sellPrice?: number | null) {
   const { data, error } = await supabase
     .from('sales_items')
     .insert({ sales_id: saleId, item_id: itemId })
@@ -70,9 +76,12 @@ export async function addSaleItem(saleId: number, itemId: number) {
 
   if (error) throw error;
 
+  const itemUpdate: { status: number; sell_price?: number | null } = { status: 2 };
+  if (sellPrice !== undefined) itemUpdate.sell_price = sellPrice;
+
   const { error: statusError } = await supabase
     .from('items')
-    .update({ status: 2 })
+    .update(itemUpdate)
     .eq('id', itemId);
 
   if (statusError) throw statusError;
