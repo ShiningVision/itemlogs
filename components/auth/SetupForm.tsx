@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import enMessages from '@/messages/en.json';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 
 // These mirror the fixed IDs app/lib/placeholder-data.ts seeds languages/
 // currencies with (see app/api/setup/route.ts, which validates against the
@@ -47,6 +48,8 @@ type SetupMessages = {
   passwordCardHint: string;
   password: string;
   confirmPassword: string;
+  showPassword: string;
+  hidePassword: string;
   passwordMismatch: string;
   passwordTooShort: string;
   continueButton: string;
@@ -285,24 +288,24 @@ export function SetupForm() {
             <div className="setup-wizard-field-group">
               <label className="setup-wizard-label">
                 <span>{messages.password}</span>
-                <input
-                  type="password"
+                <PasswordInput
                   autoFocus
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="setup-wizard-input"
+                  toggleLabel={{ show: messages.showPassword, hide: messages.hidePassword }}
                 />
               </label>
               <label className="setup-wizard-label">
                 <span>{messages.confirmPassword}</span>
-                <input
-                  type="password"
+                <PasswordInput
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handlePasswordContinue();
                   }}
                   className="setup-wizard-input"
+                  toggleLabel={{ show: messages.showPassword, hide: messages.hidePassword }}
                 />
               </label>
             </div>

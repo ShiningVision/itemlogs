@@ -35,6 +35,8 @@
     "passwordCardHint": "This is the only key to your itemlogs. If you lose it, you lose access to your account for good — there's no recovery. You'll also need this password if you ever want to change it later.",
     "password": "Password",
     "confirmPassword": "Confirm password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "passwordMismatch": "Passwords do not match.",
     "passwordTooShort": "Password is required.",
     "continueButton": "Continue",
