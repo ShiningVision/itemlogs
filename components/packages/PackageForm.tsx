@@ -1,7 +1,7 @@
 // components/packages/PackageForm.tsx
 'use client';
 
-import { useState, type CSSProperties } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/widgets/Button';
@@ -9,9 +9,10 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AddItemsToPackageModal } from './AddItemsToPackageModal';
 import { ItemGrid } from '@/components/items/ItemGrid';
 import { DocumentListEditor, type DocumentRow } from './DocumentListEditor';
-import { ArrowDownTrayIcon, ArrowsRightLeftIcon, PaperAirplaneIcon, FlagIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, ArrowsRightLeftIcon, PaperAirplaneIcon, FlagIcon, PaperClipIcon, ArchiveBoxIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import type { Package, Settings } from '@/app/lib/definitions';
 import { parseApiError } from '@/app/lib/errors/parseApiError';
+import { useUnsavedChangesGuard } from '@/app/lib/hooks/useUnsavedChangesGuard';
 
 type Currency = { id: number; currency_code: string };
 
@@ -23,6 +24,16 @@ const distributeFeesButtonStyle: CSSProperties = {
     background: 'transparent',
     color: 'var(--color-primary)',
     border: '1px solid var(--color-primary)',
+};
+
+// "Add items" is now the primary action on this page — the document
+// attach control (DocumentListEditor) was shrunk down to a small text
+// link, so this button picks up the visual weight that used to belong to
+// the big dashed "+" document tile.
+const addItemsButtonStyle: CSSProperties = {
+    padding: 'var(--spacing-sm) var(--spacing-lg)',
+    fontSize: 'var(--font-size-lg)',
+    fontWeight: 'var(--font-weight-bold)',
 };
 
 export function PackageForm({
@@ -65,8 +76,17 @@ export function PackageForm({
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [addItemsModalOpen, setAddItemsModalOpen] = useState(false);
+    const [isDocPickerOpen, setIsDocPickerOpen] = useState(false);
     const [distributeConfirmOpen, setDistributeConfirmOpen] = useState(false);
     const [isDistributing, setIsDistributing] = useState(false);
+
+    // Only `form` is guarded — items and documents already save themselves
+    // immediately through their own API calls (see AddItemsToPackageModal /
+    // DocumentListEditor), so they're never "unsaved" in the sense this
+    // guard cares about.
+    const initialFormSnapshotRef = useRef(JSON.stringify(form));
+    const isDirty = mode === 'update' && JSON.stringify(form) !== initialFormSnapshotRef.current;
+    const { confirmNavigation } = useUnsavedChangesGuard(isDirty, t('unsavedChangesConfirm'));
 
     function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
         setForm((prev) => ({ ...prev, [key]: value }));
@@ -86,9 +106,9 @@ export function PackageForm({
             description: form.description || null,
             departure_date: form.departure_date || null,
             arrival_date: form.arrival_date || null,
-            tariff: form.tariff ? Number(form.tariff) : null,
+            tariff: form.tariff ? Math.max(0, Number(form.tariff)) : null,
             tariff_currency: form.tariff_currency,
-            shipping_fee: form.shipping_fee ? Number(form.shipping_fee) : null,
+            shipping_fee: form.shipping_fee ? Math.max(0, Number(form.shipping_fee)) : null,
             shipping_fee_currency: form.shipping_fee_currency,
         };
         try {
@@ -130,13 +150,46 @@ export function PackageForm({
 
     return (
         <div className="item-sheet-container" style={{ padding: 'var(--spacing-lg)' }}>
+            {mode === 'update' && (
+                <button
+                    type="button"
+                    // Always the Packages list, never router.back() — see the
+                    // same fix on SaleForm's back button: history can lead here
+                    // from elsewhere (e.g. the sell/documents flow), and "back"
+                    // would bounce the tenant somewhere unexpected instead of
+                    // to the packages list they actually expect.
+                    onClick={() => {
+                        if (confirmNavigation()) router.push('/dashboard/packages');
+                    }}
+                    className="interactive-card"
+                    style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 'var(--spacing-xs)',
+                        background: 'transparent',
+                        border: 'none',
+                        padding: 0,
+                        marginBottom: 'var(--spacing-sm)',
+                        color: 'var(--color-text-muted)',
+                        fontSize: 'var(--font-size-sm)',
+                        cursor: 'pointer',
+                    }}
+                >
+                    <ArrowLeftIcon style={{ width: '16px', height: '16px' }} />
+                    {t('back')}
+                </button>
+            )}
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-lg)' }}>
                 <h1 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)' }}>
                     {mode === 'create' ? t('createPackage') : t('updatePackage')}
                 </h1>
 
                 {mode === 'update' ? (
-                    <a href={`/api/v1/packages/${pkg!.id}/export`}>
+                    // download attribute — not a real navigation, just steers
+                    // the unsaved-changes guard's click listener away from
+                    // mistaking this for "leaving the page".
+                    <a href={`/api/v1/packages/${pkg!.id}/export`} download>
                         <Button style={{ background: 'var(--color-success)' }}>
                             <ArrowDownTrayIcon style={{ width: '18px', height: '18px' }} />
                             {t('exportExcel')}
@@ -195,8 +248,9 @@ export function PackageForm({
                                         className="stat-box-input"
                                         type="number"
                                         step="0.01"
+                                        min="0"
                                         value={form.tariff}
-                                        onChange={(e) => update('tariff', e.target.value)}
+                                        onChange={(e) => update('tariff', e.target.value.startsWith('-') ? e.target.value.slice(1) : e.target.value)}
                                     />
                                 </div>
                             </div>
@@ -212,8 +266,9 @@ export function PackageForm({
                                         className="stat-box-input"
                                         type="number"
                                         step="0.01"
+                                        min="0"
                                         value={form.shipping_fee}
-                                        onChange={(e) => update('shipping_fee', e.target.value)}
+                                        onChange={(e) => update('shipping_fee', e.target.value.startsWith('-') ? e.target.value.slice(1) : e.target.value)}
                                     />
                                 </div>
                             </div>
@@ -232,7 +287,7 @@ export function PackageForm({
 
                     {error && <div style={{ color: 'var(--color-danger)' }}>{error}</div>}
 
-                    <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-sm)' }}>
                         <Button onClick={handleSave} disabled={isSaving}>
                             {isSaving ? t('saving') : t('save')}
                         </Button>
@@ -253,7 +308,10 @@ export function PackageForm({
                                     </span>
                                 </div>
                                 <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
-                                    <Button onClick={() => setAddItemsModalOpen(true)}>{t('addItemsToPackage')}</Button>
+                                    <Button onClick={() => setAddItemsModalOpen(true)} style={addItemsButtonStyle}>
+                                        <ArchiveBoxIcon style={{ width: '18px', height: '18px' }} />
+                                        {t('addItemsToPackage')}
+                                    </Button>
                                     {settings.use_package_fees && (
                                         <Button
                                             onClick={() => setDistributeConfirmOpen(true)}
@@ -278,13 +336,36 @@ export function PackageForm({
 
                     {mode === 'update' && pkg && (
                         <div className="sheet-section">
-                            <div className="sheet-section-title">
-                                {t('documentsInPackage', { count: documents.length })}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-md)' }}>
+                                <span className="sheet-section-title" style={{ border: 'none', margin: 0, padding: 0 }}>
+                                    {t('documentsInPackage', { count: documents.length })}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsDocPickerOpen(true)}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 'var(--spacing-xs)',
+                                        padding: 'var(--spacing-xs) var(--spacing-sm)',
+                                        background: 'transparent',
+                                        border: '1px solid var(--color-border)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        color: 'var(--color-text-muted)',
+                                        fontSize: 'var(--font-size-sm)',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    <PaperClipIcon style={{ width: '16px', height: '16px' }} />
+                                    {t('addDocument')}
+                                </button>
                             </div>
                             <DocumentListEditor
                                 packageId={pkg.id}
                                 documents={documents}
                                 onChange={setDocuments}
+                                isPickerOpen={isDocPickerOpen}
+                                onClosePicker={() => setIsDocPickerOpen(false)}
                             />
                         </div>
                     )}

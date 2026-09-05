@@ -4,11 +4,15 @@
 // images, the Gallery fetches the full set and sorts/filters client-side).
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadDocumentFile } from '@/app/lib/storage/documents';
-import { createDocument, getDocuments } from '@/app/lib/services/documents';
+import { createDocument, getDocuments, getUnassignedDocuments } from '@/app/lib/services/documents';
 
-export async function GET() {
+// ?unassigned=1 narrows this to package-less documents only — what
+// DocumentPickerModal offers when a tenant is attaching an already-uploaded
+// document to a package, rather than every document across every package.
+export async function GET(request: NextRequest) {
   try {
-    const documents = await getDocuments();
+    const unassignedOnly = request.nextUrl.searchParams.get('unassigned') === '1';
+    const documents = unassignedOnly ? await getUnassignedDocuments() : await getDocuments();
     return NextResponse.json({ data: documents });
   } catch (error) {
     console.error('Failed to fetch documents:', error);

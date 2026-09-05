@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { PlusIcon, CheckIcon, CameraIcon, PhotoIcon, DocumentIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, Squares2X2Icon, CameraIcon, PhotoIcon, DocumentIcon } from '@heroicons/react/24/outline';
 import { compressImageFile } from '@/app/lib/images/compressImage';
 import { formatBytes } from '@/app/lib/storage/format-bytes';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -233,73 +233,36 @@ export function GalleryGrid({
         <h1 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)' }}>{title}</h1>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-          {selectionMode ? (
+          {viewMode === 'images' && (
             <>
-              <button
-                type="button"
-                onClick={toggleSelectAll}
-                style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer', fontSize: 'var(--font-size-sm)' }}
-              >
-                {selectedIds.size === pageSelectableCount ? t('deselectAll') : t('selectAll')}
-              </button>
-              <button
-                type="button"
-                disabled={selectedIds.size === 0}
-                onClick={() => setConfirmBulkDelete(true)}
-                style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--color-danger)', color: '#fff', cursor: selectedIds.size === 0 ? 'not-allowed' : 'pointer', opacity: selectedIds.size === 0 ? 0.6 : 1, fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-bold)' }}
-              >
-                {t('deleteSelected', { count: selectedIds.size })}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }}
-                style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer', fontSize: 'var(--font-size-sm)' }}
-              >
-                {t('cancelSelection')}
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => setSelectionMode(true)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', padding: 'var(--spacing-xs) var(--spacing-sm)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer', fontSize: 'var(--font-size-sm)' }}
-              >
-                <CheckIcon style={{ width: '16px', height: '16px' }} />
-                {t('select')}
-              </button>
-              {viewMode === 'images' && (
-                <>
-                  <Tooltip text={t('takePhoto')}>
-                    <label
-                      className="gallery-camera-btn"
-                      aria-label={t('takePhoto')}
-                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', borderRadius: 'var(--radius-md)', cursor: isUploading ? 'not-allowed' : 'pointer', opacity: isUploading ? 0.6 : 1 }}
-                    >
-                      <CameraIcon style={{ width: '18px', height: '18px' }} />
-                      <input type="file" accept="image/*" capture="environment" onChange={handleUpload} style={{ display: 'none' }} disabled={isUploading} />
-                    </label>
-                  </Tooltip>
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', background: 'var(--color-primary)', color: '#fff', padding: 'var(--spacing-xs) var(--spacing-md)', borderRadius: 'var(--radius-md)', cursor: isUploading ? 'not-allowed' : 'pointer', fontWeight: 'var(--font-weight-bold)', opacity: isUploading ? 0.6 : 1, fontSize: 'var(--font-size-sm)' }}>
-                    <PlusIcon style={{ width: '16px', height: '16px' }} />
-                    {isUploading ? t('uploading') : t('uploadImage')}
-                    <input type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} disabled={isUploading} />
-                  </label>
-                </>
-              )}
-              {viewMode === 'documents' && (
-                // Package-scoped document upload already exists on each
-                // package's own edit page (DocumentListEditor) — this is
-                // the standalone counterpart, for documents unrelated to
-                // any package. Same button styling as the image upload
-                // above, just posting to /api/v1/documents instead.
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', background: 'var(--color-secondary)', color: '#fff', padding: 'var(--spacing-xs) var(--spacing-md)', borderRadius: 'var(--radius-md)', cursor: isUploading ? 'not-allowed' : 'pointer', fontWeight: 'var(--font-weight-bold)', opacity: isUploading ? 0.6 : 1, fontSize: 'var(--font-size-sm)' }}>
-                  <PlusIcon style={{ width: '16px', height: '16px' }} />
-                  {isUploading ? t('uploading') : t('uploadDocument')}
-                  <input type="file" onChange={handleUploadDocument} style={{ display: 'none' }} disabled={isUploading} />
+              <Tooltip text={t('takePhoto')}>
+                <label
+                  className="gallery-camera-btn"
+                  aria-label={t('takePhoto')}
+                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', borderRadius: 'var(--radius-md)', cursor: isUploading ? 'not-allowed' : 'pointer', opacity: isUploading ? 0.6 : 1 }}
+                >
+                  <CameraIcon style={{ width: '18px', height: '18px' }} />
+                  <input type="file" accept="image/*" capture="environment" onChange={handleUpload} style={{ display: 'none' }} disabled={isUploading} />
                 </label>
-              )}
+              </Tooltip>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', background: 'var(--color-primary)', color: '#fff', padding: 'var(--spacing-xs) var(--spacing-md)', borderRadius: 'var(--radius-md)', cursor: isUploading ? 'not-allowed' : 'pointer', fontWeight: 'var(--font-weight-bold)', opacity: isUploading ? 0.6 : 1, fontSize: 'var(--font-size-sm)' }}>
+                <PlusIcon style={{ width: '16px', height: '16px' }} />
+                {isUploading ? t('uploading') : t('uploadImage')}
+                <input type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} disabled={isUploading} />
+              </label>
             </>
+          )}
+          {viewMode === 'documents' && (
+            // Package-scoped document upload already exists on each
+            // package's own edit page (DocumentListEditor) — this is
+            // the standalone counterpart, for documents unrelated to
+            // any package. Same button styling as the image upload
+            // above, just posting to /api/v1/documents instead.
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', background: 'var(--color-secondary)', color: '#fff', padding: 'var(--spacing-xs) var(--spacing-md)', borderRadius: 'var(--radius-md)', cursor: isUploading ? 'not-allowed' : 'pointer', fontWeight: 'var(--font-weight-bold)', opacity: isUploading ? 0.6 : 1, fontSize: 'var(--font-size-sm)' }}>
+              <PlusIcon style={{ width: '16px', height: '16px' }} />
+              {isUploading ? t('uploading') : t('uploadDocument')}
+              <input type="file" onChange={handleUploadDocument} style={{ display: 'none' }} disabled={isUploading} />
+            </label>
           )}
         </div>
       </div>
@@ -380,27 +343,72 @@ export function GalleryGrid({
         </div>
       </div>
 
-      {/* Sort + filter controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-md)', flexWrap: 'wrap' }}>
-        <select
-          value={sortMode}
-          onChange={(e) => { setSortMode(e.target.value as SortMode); setPage(1); }}
-          style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 'var(--font-size-sm)' }}
-        >
-          <option value="newest">{t('sortNewest')}</option>
-          <option value="largest">{t('sortLargest')}</option>
-        </select>
+      {/* Sort + filter controls, and the multi-select toggle right next to
+          them — moved off the title row since selecting is itself a way of
+          filtering/acting on this view, not a page-level action like the
+          upload buttons it used to sit beside. Cancel takes the exact same
+          spot once selection mode is on, so the control doesn't jump
+          around the row. */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-md)', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', flexWrap: 'wrap' }}>
+          <select
+            value={sortMode}
+            onChange={(e) => { setSortMode(e.target.value as SortMode); setPage(1); }}
+            style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 'var(--font-size-sm)' }}
+          >
+            <option value="newest">{t('sortNewest')}</option>
+            <option value="largest">{t('sortLargest')}</option>
+          </select>
 
-        {viewMode === 'images' && (
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', fontSize: 'var(--font-size-sm)', color: 'var(--color-text)', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={orphanOnly}
-              onChange={(e) => { setOrphanOnly(e.target.checked); setPage(1); }}
-            />
-            {t('orphanedOnly')} {orphanIds.length > 0 && `(${orphanIds.length})`}
-          </label>
-        )}
+          {viewMode === 'images' && (
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', fontSize: 'var(--font-size-sm)', color: 'var(--color-text)', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={orphanOnly}
+                onChange={(e) => { setOrphanOnly(e.target.checked); setPage(1); }}
+              />
+              {t('orphanedOnly')} {orphanIds.length > 0 && `(${orphanIds.length})`}
+            </label>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+          {selectionMode ? (
+            <>
+              <button
+                type="button"
+                onClick={toggleSelectAll}
+                style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer', fontSize: 'var(--font-size-sm)' }}
+              >
+                {selectedIds.size === pageSelectableCount ? t('deselectAll') : t('selectAll')}
+              </button>
+              <button
+                type="button"
+                disabled={selectedIds.size === 0}
+                onClick={() => setConfirmBulkDelete(true)}
+                style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--color-danger)', color: '#fff', cursor: selectedIds.size === 0 ? 'not-allowed' : 'pointer', opacity: selectedIds.size === 0 ? 0.6 : 1, fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-bold)' }}
+              >
+                {t('deleteSelected', { count: selectedIds.size })}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }}
+                style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer', fontSize: 'var(--font-size-sm)' }}
+              >
+                {t('cancelSelection')}
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSelectionMode(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', padding: 'var(--spacing-xs) var(--spacing-sm)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer', fontSize: 'var(--font-size-sm)' }}
+            >
+              <Squares2X2Icon style={{ width: '16px', height: '16px' }} />
+              {t('select')}
+            </button>
+          )}
+        </div>
       </div>
 
       {viewMode === 'images' ? (

@@ -1,13 +1,14 @@
 // components/sales/SaleForm.tsx
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/widgets/Button';
 import { ArrowDownTrayIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import type { Sale } from '@/app/lib/definitions';
 import { parseApiError } from '@/app/lib/errors/parseApiError';
+import { useUnsavedChangesGuard } from '@/app/lib/hooks/useUnsavedChangesGuard';
 
 export function SaleForm({
   mode,
@@ -32,6 +33,13 @@ export function SaleForm({
   const [date, setDate] = useState(sale?.date ?? today);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Only the update-mode form has anything worth guarding — a create form
+  // with no saved counterpart yet doesn't have "unsaved changes" to lose in
+  // the same sense.
+  const initialSnapshotRef = useRef(JSON.stringify({ name, date }));
+  const isDirty = mode === 'update' && JSON.stringify({ name, date }) !== initialSnapshotRef.current;
+  const { confirmNavigation } = useUnsavedChangesGuard(isDirty, t('unsavedChangesConfirm'));
 
   async function handleSave() {
     if (!date) {
@@ -73,7 +81,13 @@ export function SaleForm({
       {mode === 'update' && (
         <button
           type="button"
-          onClick={() => router.back()}
+          // Always the Sales list, never router.back() — history can lead
+          // here from the Sell page (e.g. after a checkout redirect), and
+          // "back" would bounce the tenant right back into Sell instead of
+          // to the sales list they actually expect.
+          onClick={() => {
+            if (confirmNavigation()) router.push('/dashboard/sales');
+          }}
           className="interactive-card"
           style={{
             display: 'inline-flex',
@@ -99,7 +113,10 @@ export function SaleForm({
         </h1>
 
         {mode === 'update' && sale && (
-          <a href={`/api/v1/sales/${sale.id}/export`}>
+          // download attribute — not a real navigation, just steers the
+          // unsaved-changes guard's click listener away from mistaking
+          // this for "leaving the page".
+          <a href={`/api/v1/sales/${sale.id}/export`} download>
             <Button style={{ background: 'var(--color-success)' }}>
               <ArrowDownTrayIcon style={{ width: '18px', height: '18px' }} />
               {t('exportExcel')}

@@ -176,11 +176,16 @@ export function ItemCard({
         <RemoveXButton onClick={handleRemoveFromSale} label={t('removeFromSale')} disabled={isRemovingFromSale || !saleId} loading={isRemovingFromSale} />
       )}
 
-      {selected && (
-        <CheckCircleIcon
-          aria-hidden="true"
-          className="catalog-card-select-check"
-        />
+      {/* Always visible in selectable mode — not just once something is
+          selected — so the card reads as selectable at a glance, the same
+          way GalleryImageCard's empty-ring badge does in the Gallery's
+          multi-select mode. */}
+      {selectable && (
+        selected ? (
+          <CheckCircleIcon aria-hidden="true" className="catalog-card-select-check" />
+        ) : (
+          <span aria-hidden="true" className="catalog-card-select-badge" />
+        )
       )}
 
       {selectable ? (

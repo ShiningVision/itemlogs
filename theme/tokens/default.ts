@@ -1,18 +1,23 @@
 // theme/tokens/default.ts
 import { ThemeTokens } from './types';
 
+// Amber & teal, on a warm-neutral base — matches the dashboard's own
+// palette (see app/globals.css) and itemlogs-website's palette, so a
+// tenant's storefront on the free default theme still reads as the same
+// product/brand as the dashboard and marketing site, rather than the old
+// generic-SaaS blue-on-white.
 const defaultTokens: ThemeTokens = {
   colorScheme: 'light',
   color: {
-    primary: '#3b82f6',
-    primaryHover: '#2563eb', // blue-600
-    secondary: '#6366f1',
-    background: '#ffffff',
+    primary: '#d97706',
+    primaryHover: '#b45309', // amber-700
+    secondary: '#0f766e',
+    background: '#fafaf9',
     backgroundImage: null,
-    surface: '#f9fafb',
-    text: '#111827',
-    textMuted: '#6b7280',
-    border: '#e5e7eb',
+    surface: '#ffffff',
+    text: '#292524',
+    textMuted: '#78716c',
+    border: '#e7e5e4',
     danger: '#ef4444',
     success: '#16a34a',
     successHover: '#15803d',

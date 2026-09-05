@@ -9,9 +9,13 @@ export const createPackageSchema = z.object({
   description: z.string().nullable().optional(),
   departure_date: z.string().date().nullable().optional(),
   arrival_date: z.string().date().nullable().optional(),
-  tariff: z.number().nullable().optional(),
+  // .nonnegative() since a package's tariff/shipping fee can't be a
+  // negative charge — the client-side form also blocks typing a minus
+  // sign, but this is the enforcement that actually matters for direct
+  // API calls.
+  tariff: z.number().nonnegative().nullable().optional(),
   tariff_currency: z.number().int(),
-  shipping_fee: z.number().nullable().optional(),
+  shipping_fee: z.number().nonnegative().nullable().optional(),
   shipping_fee_currency: z.number().int(),
   show_on_storefront: z.boolean().optional(),
 });

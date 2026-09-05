@@ -34,6 +34,21 @@ export async function getDocumentsByPackageId(packageId: number): Promise<Docume
   return data ?? [];
 }
 
+// Package-less documents only — what DocumentPickerModal offers to attach
+// to a package. Documents already attached elsewhere aren't reusable across
+// packages (see deletePackageDocuments's comment below), so those never
+// show up as attachable, only ones nobody's claimed yet.
+export async function getUnassignedDocuments(): Promise<DocumentRow[]> {
+  const { data, error } = await supabase
+    .from('documents')
+    .select('*')
+    .is('package_id', null)
+    .order('id', { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function getDocumentById(id: number): Promise<DocumentRow> {
   const { data, error } = await supabase
     .from('documents')
@@ -54,6 +69,25 @@ export async function createDocument(input: {
   const { data, error } = await supabase
     .from('documents')
     .insert(input)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Moves a currently package-less document onto a package — the "attach an
+// already-uploaded document" flow (DocumentPickerModal), as opposed to
+// createDocument above (a genuinely new upload). Only ever called on a
+// document that getUnassignedDocuments() offered, so there's no existing
+// package to silently steal it away from — see this file's header comment
+// on deletePackageDocuments for why documents are one-package-only, unlike
+// images.
+export async function assignDocumentToPackage(id: number, packageId: number): Promise<DocumentRow> {
+  const { data, error } = await supabase
+    .from('documents')
+    .update({ package_id: packageId })
+    .eq('id', id)
     .select()
     .single();
 

@@ -134,7 +134,12 @@ export function AccountSecurityForm({
               <PasswordField name="new_password" label={t('newPassword')} t={t} />
               <PasswordField name="confirm_password" label={t('confirmNewPassword')} t={t} />
 
-              <button type="submit" aria-disabled={isPasswordPending} style={primaryButtonStyle}>
+              <button
+                type="submit"
+                disabled={isPasswordPending}
+                aria-disabled={isPasswordPending}
+                style={{ ...primaryButtonStyle, opacity: isPasswordPending ? 0.6 : 1, cursor: isPasswordPending ? 'not-allowed' : 'pointer' }}
+              >
                 {isPasswordPending ? t('submitting') : t('changePassword')}
               </button>
 
@@ -204,7 +209,17 @@ export function AccountSecurityForm({
               <input name="label" type="text" className="sheet-input" placeholder={t('shareLabelPlaceholder')} />
             </label>
 
-            <button type="submit" aria-disabled={isSharePending} style={primaryButtonStyle}>
+            <button
+              type="submit"
+              // aria-disabled alone left the button clickable — a tenant
+              // clicking repeatedly while "Saving" was still in flight
+              // could fire off multiple createSharePasswordAction calls
+              // and end up with duplicate share passwords. `disabled`
+              // actually blocks the click/submit.
+              disabled={isSharePending}
+              aria-disabled={isSharePending}
+              style={{ ...primaryButtonStyle, opacity: isSharePending ? 0.6 : 1, cursor: isSharePending ? 'not-allowed' : 'pointer' }}
+            >
               {isSharePending ? t('submitting') : t('createSharePassword')}
             </button>
 

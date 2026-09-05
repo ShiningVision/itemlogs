@@ -1,11 +1,11 @@
 // components/packages/DocumentListEditor.tsx
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { PlusIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
-import { Tooltip } from '@/components/ui/Tooltip';
+import { DocumentTextIcon } from '@heroicons/react/24/outline';
 import { parseApiError } from '@/app/lib/errors/parseApiError';
+import { DocumentPickerModal } from './DocumentPickerModal';
 
 export type DocumentRow = {
   id: number;
@@ -18,47 +18,25 @@ export type DocumentRow = {
   content_type: string | null;
 };
 
+// The "Attach document" trigger now lives in PackageForm's header row
+// (next to "Documents (count)"), so its open/close state is controlled
+// from there rather than owned here — this component still owns the
+// picker modal itself and the grid/remove logic.
 export function DocumentListEditor({
   packageId,
   documents,
   onChange,
+  isPickerOpen,
+  onClosePicker,
 }: {
   packageId: number;
   documents: DocumentRow[];
   onChange: (documents: DocumentRow[]) => void;
+  isPickerOpen: boolean;
+  onClosePicker: () => void;
 }) {
   const t = useTranslations('packages');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    if (!file) return;
-
-    setIsUploading(true);
-    setError(null);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch(`/api/v1/packages/${packageId}/documents`, {
-        method: 'POST',
-        body: formData,
-      });
-      const json = await res.json();
-
-      if (!res.ok) {
-        setError(parseApiError(json, t('documentUploadFailed')));
-        return;
-      }
-
-      onChange([json.data, ...documents]);
-    } finally {
-      setIsUploading(false);
-    }
-  }
 
   async function handleRemove(doc: DocumentRow) {
     setError(null);
@@ -144,41 +122,15 @@ export function DocumentListEditor({
           );
         })}
 
-        <Tooltip text={t('addDocument')}>
-          <button
-            type="button"
-            className="gallery-add-btn"
-            onClick={() => fileInputRef.current?.click()}
-            aria-label={t('addDocument')}
-            disabled={isUploading}
-            style={{
-              width: '80px',
-              height: '80px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'var(--color-surface)',
-              border: '1px dashed var(--color-border)',
-              borderRadius: 'var(--radius-sm)',
-              color: 'var(--color-text-muted)',
-              cursor: isUploading ? 'default' : 'pointer',
-            }}
-          >
-            {isUploading ? (
-              <span style={{ fontSize: 'var(--font-size-xs)' }}>{t('uploading')}</span>
-            ) : (
-              <PlusIcon style={{ width: '24px', height: '24px' }} />
-            )}
-          </button>
-        </Tooltip>
       </div>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        onChange={handleFileSelected}
-        style={{ display: 'none' }}
-      />
+      {isPickerOpen && (
+        <DocumentPickerModal
+          packageId={packageId}
+          onAttached={(doc) => onChange([doc, ...documents])}
+          onClose={onClosePicker}
+        />
+      )}
 
       {error && (
         <div style={{ color: 'var(--color-danger)', marginTop: 'var(--spacing-sm)' }}>{error}</div>

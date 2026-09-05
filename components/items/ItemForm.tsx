@@ -1,10 +1,10 @@
 // components/items/ItemForm.tsx
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { ArrowLeftIcon, QrCodeIcon, InformationCircleIcon, MapPinIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, QrCodeIcon, InformationCircleIcon, MapPinIcon, DocumentDuplicateIcon, BookmarkSquareIcon } from '@heroicons/react/24/outline';
 import { MainImagePicker } from './MainImagePicker';
 import { ImageGalleryEditor } from './ImageGalleryEditor';
 import { BlueprintPickerModal } from './BlueprintPickerModal';
@@ -18,6 +18,7 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import type { Settings } from '@/app/lib/definitions';
 import { resolveLabel } from '@/app/lib/labels';
 import { parseApiError } from '@/app/lib/errors/parseApiError';
+import { useUnsavedChangesGuard } from '@/app/lib/hooks/useUnsavedChangesGuard';
 
 type Option = { id: number; name: string | null };
 type Currency = { id: number; currency_code: string; currency_name: string };
@@ -102,10 +103,23 @@ export function ItemForm({
   // per-item override, so just look up its code/symbol for display.
   const shopSellCurrency = currencies.find((c) => c.id === settings.sell_price_currency);
 
+  // Gallery add/remove commit immediately via their own API calls in update
+  // mode (see handleAddGalleryImage/handleRemoveGalleryImage below), so
+  // only `form` — the fields deferred until the Save button — is guarded.
+  const initialFormSnapshotRef = useRef(JSON.stringify(form));
+  const isDirty = mode === 'update' && JSON.stringify(form) !== initialFormSnapshotRef.current;
+  const { confirmNavigation } = useUnsavedChangesGuard(isDirty, t('unsavedChangesConfirm'));
+
   const [gallery, setGallery] = useState<ImageRow[]>(
     initialGalleryImages.map((gi) => gi.images)
   );
-  const [stayOnPage, setStayOnPage] = useState(false);
+  // Replaces the old "stay on this page" toggle — instead of leaving the
+  // form open to re-enter the same item by hand, this creates that many
+  // identical copies (each its own separate item row) in one save. Kept as
+  // a string for the input's value; clampQuantity() is the single source
+  // of truth for turning it into a valid 1-99 integer, used both for the
+  // input's own onBlur correction and for deciding the create loop count.
+  const [quantity, setQuantity] = useState('1');
   const [blueprintModalOpen, setBlueprintModalOpen] = useState(false);
   const [locationModalOpen, setLocationModalOpen] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
@@ -145,6 +159,16 @@ export function ItemForm({
     });
   }
 
+  // Invalid/empty input and anything below 1 becomes 1; anything above 99
+  // is capped at 99 — mirrors the clamp-on-exit pattern used elsewhere
+  // (e.g. the package tariff/shipping fee fields) rather than showing a
+  // validation error.
+  function clampQuantity(raw: string): number {
+    const n = parseInt(raw, 10);
+    if (!Number.isFinite(n) || n < 1) return 1;
+    return Math.min(99, n);
+  }
+
   function buildPayload() {
     return {
       name: form.name,
@@ -174,66 +198,61 @@ export function ItemForm({
 
     try {
       const payload = buildPayload();
-      const url = mode === 'create' ? '/api/v1/items' : `/api/v1/items/${item.id}`;
-      const method = mode === 'create' ? 'POST' : 'PATCH';
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-
-      if (!res.ok) {
-        setErrorMessage(parseApiError(json, t('saveFailed')));
-        return;
-      }
-
-      const savedItemId = mode === 'create' ? json.data.id : item.id;
-
-      // Attach any gallery images picked before the item existed (create mode only)
-      if (mode === 'create' && gallery.length > 0) {
-        await Promise.all(
-          gallery.map((img) =>
-            fetch(`/api/v1/items/${savedItemId}/images`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ image_id: img.id }),
-            })
-          )
-        );
-      }
       if (mode === 'update') {
+        const res = await fetch(`/api/v1/items/${item.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+
+        if (!res.ok) {
+          setErrorMessage(parseApiError(json, t('saveFailed')));
+          return;
+        }
+
         // Go back to wherever this edit was opened from (items list,
         // package view, sale view, ...) instead of always the items list —
         // router.back() also restores that page's scroll position, so the
         // user doesn't have to scroll back down to where they were.
         router.back();
         router.refresh();
-      } else if (!(mode === 'create' && stayOnPage)) {
-        router.push('/dashboard/items');
+        return;
       }
-      // NOTE: The following code is for if you want to reset form after saving.
-      // if (mode === 'create' && stayOnPage) {
-      //   // Reset form for the next item, stay on this page
-      //   setForm({
-      //     name: '',
-      //     description: '',
-      //     location: '',
-      //     barcode: '',
-      //     status: 1,
-      //     category: null,
-      //     type: null,
-      //     main_image: null,
-      //     cost_price: '',
-      //     purchase_price: '',
-      //     purchase_price_currency: settings.default_purchase_price_currency,
-      //     sell_price: '',
-      //   });
-      //   setGallery([]);
-      // } else {
-      //   router.push('/dashboard/items');
-      // }
+
+      // Create mode: repeat the same create call `quantity` times — each
+      // call makes its own independent item row (and its own copy of the
+      // picked gallery images), not a single item with a count field.
+      const copies = clampQuantity(quantity);
+      for (let i = 0; i < copies; i++) {
+        const res = await fetch('/api/v1/items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+
+        if (!res.ok) {
+          setErrorMessage(parseApiError(json, t('saveFailed')));
+          return;
+        }
+
+        // Attach any gallery images picked before the item existed.
+        if (gallery.length > 0) {
+          await Promise.all(
+            gallery.map((img) =>
+              fetch(`/api/v1/items/${json.data.id}/images`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image_id: img.id }),
+              })
+            )
+          );
+        }
+      }
+
+      router.push('/dashboard/items');
     } finally {
       setIsSaving(false);
     }
@@ -303,13 +322,16 @@ export function ItemForm({
         </h1>
         {mode === 'create' && (
           <Button onClick={() => setBlueprintModalOpen(true)} title={t('createFromBlueprintHint')}>
+            <DocumentDuplicateIcon style={{ width: '18px', height: '18px' }} />
             {t('createFromBlueprint')}
           </Button>
         )}
         {mode === 'update' && (
           <button
             type="button"
-            onClick={() => router.back()}
+            onClick={() => {
+              if (confirmNavigation()) router.back();
+            }}
             className="interactive-card"
             style={{
               display: 'inline-flex',
@@ -446,7 +468,9 @@ export function ItemForm({
                 price currency), so each gets its own static small box above it. */}
             <div className="stat-box-group">
               <div className="stat-box stat-box-currency-box">
-                <span className="stat-box-currency">{shopSellCurrency?.currency_code ?? ''}</span>
+                <Tooltip text={t('priceCurrencyHint')}>
+                  <span className="stat-box-currency">{shopSellCurrency?.currency_code ?? ''}</span>
+                </Tooltip>
               </div>
               <div className="stat-box">
                 <Tooltip text={t('costPriceHint')}>
@@ -465,7 +489,9 @@ export function ItemForm({
             {settings.use_sell_price && (
               <div className="stat-box-group">
                 <div className="stat-box stat-box-currency-box">
-                  <span className="stat-box-currency">{shopSellCurrency?.currency_code ?? ''}</span>
+                  <Tooltip text={t('priceCurrencyHint')}>
+                    <span className="stat-box-currency">{shopSellCurrency?.currency_code ?? ''}</span>
+                  </Tooltip>
                 </div>
                 <div className="stat-box">
                   <span className="stat-box-label">{t('sellPrice')}</span>
@@ -560,12 +586,20 @@ export function ItemForm({
           </div>
 
           {mode === 'create' && (
-            <Tooltip text={t('stayOnPageHint')}>
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', alignSelf: 'flex-start' }}>
-                <input type="checkbox" checked={stayOnPage} onChange={(e) => setStayOnPage(e.target.checked)} />
-                {t('stayOnPage')}
-              </label>
-            </Tooltip>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', alignSelf: 'flex-start' }}>
+              {t('quantity')}
+              <input
+                type="number"
+                min="1"
+                max="99"
+                step="1"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                onBlur={(e) => setQuantity(String(clampQuantity(e.target.value)))}
+                className="sheet-input"
+                style={{ width: '4em', textAlign: 'center' }}
+              />
+            </label>
           )}
 
           {errorMessage && <div style={{ color: 'var(--color-danger)' }}>{errorMessage}</div>}
@@ -576,6 +610,7 @@ export function ItemForm({
             </Button>
             {mode === 'create' && (
               <Button onClick={handleSaveAsBlueprint} disabled={isSavingBlueprint} title={t('saveAsBlueprintHint')}>
+                <BookmarkSquareIcon style={{ width: '18px', height: '18px' }} />
                 {isSavingBlueprint ? t('saving') : t('saveAsBlueprint')}
               </Button>
             )}

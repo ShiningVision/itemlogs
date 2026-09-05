@@ -4,6 +4,7 @@
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { authenticate } from '@/app/lib/actions/auth';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 
 export function LoginForm() {
   const t = useTranslations('login');
@@ -34,11 +35,11 @@ export function LoginForm() {
       <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }}>
           <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>{t('password')}</span>
-          <input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             required
+            toggleLabel={{ show: t('showPassword'), hide: t('hidePassword') }}
             style={{
               padding: 'var(--spacing-sm)',
               borderRadius: 'var(--radius-sm)',

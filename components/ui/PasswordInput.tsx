@@ -12,37 +12,34 @@ import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 // login form, ...) without needing extra flex/grid wrapping at each call
 // site beyond a `position: relative` wrapper, which this component provides
 // itself.
+//
+// Everything besides className/toggleLabel/style just passes straight
+// through to the underlying <input> (via ...inputProps) rather than being
+// named individually — this component only actually cares about the type
+// attribute, so it works equally well as a controlled input (SetupForm's
+// value/onChange) or a plain uncontrolled one submitted via a form action
+// (LoginForm's name="password", no React state at all).
 export function PasswordInput({
-  value,
-  onChange,
-  onKeyDown,
-  autoFocus,
   className,
+  style,
   toggleLabel,
+  ...inputProps
 }: {
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  autoFocus?: boolean;
-  // Passed straight through to the <input> so call sites keep their
-  // existing styling (e.g. "setup-wizard-input") unchanged.
   className?: string;
+  style?: React.CSSProperties;
   // Accessible label for the toggle button — no visible text of its own
   // (just the eye/eye-slash icon), so this only reaches screen readers.
   toggleLabel: { show: string; hide: string };
-}) {
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type' | 'className' | 'style'>) {
   const [visible, setVisible] = useState(false);
 
   return (
     <div style={{ position: 'relative', display: 'flex' }}>
       <input
+        {...inputProps}
         type={visible ? 'text' : 'password'}
-        value={value}
-        onChange={onChange}
-        onKeyDown={onKeyDown}
-        autoFocus={autoFocus}
         className={className}
-        style={{ flex: 1, paddingRight: '2.25rem' }}
+        style={{ flex: 1, paddingRight: '2.25rem', ...style }}
       />
       <button
         type="button"

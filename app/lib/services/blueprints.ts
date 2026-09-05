@@ -35,9 +35,14 @@ async function assertBarcodeAvailable(barcode: string | null | undefined, exclud
 // fails on this shape's nested embedded resources (see the identical
 // comment on ITEM_SELECT in app/lib/services/items.ts, where this first
 // broke the build).
+// main_image_ref — not `images` — to match the alias items.ts uses for the
+// same join (see ITEM_SELECT). ItemForm's applyBlueprint() and
+// BlueprintPickerModal both read bp.main_image_ref.url; this alias having
+// drifted from that convention meant it silently returned undefined and
+// the main image never carried over from a saved blueprint.
 const BLUEPRINT_SELECT: string = `
   *,
-  images:main_image(url),
+  main_image_ref:main_image(url),
   location_ref:location_id(name),
   blueprint_categories(category:categories(id, name)),
   blueprint_types(type:types(id, name))

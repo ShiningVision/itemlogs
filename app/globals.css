@@ -1,14 +1,23 @@
 /* app/globals.css */
+/* Amber & teal, on a warm-neutral base — matches itemlogs-website's palette
+   (see that repo's app/globals.css) so the dashboard reads as the same
+   product as the marketing site and logo, rather than a generic-SaaS blue
+   dropped on top of a warm brand. Amber is the primary accent (buttons,
+   links, the Images gallery tab); teal is the secondary accent used
+   wherever a second, clearly distinct color is needed alongside amber
+   (e.g. the Documents gallery tab, chart bars) — a warm terracotta was
+   considered instead but sits too close to amber to tell apart at a
+   glance in those two-tone spots. */
 :root {
-  --color-primary: #3b82f6;
-  --color-secondary: #6366f1;
-  --color-background: #ffffff;
-  --color-surface: #f9fafb;
-  --color-text: #111827;
-  --color-text-muted: #6b7280;
-  --color-border: #e5e7eb;
+  --color-primary: #d97706;
+  --color-secondary: #0f766e;
+  --color-background: #fafaf9;
+  --color-surface: #ffffff;
+  --color-text: #292524;
+  --color-text-muted: #78716c;
+  --color-border: #e7e5e4;
   --color-danger: #ef4444;
-  --color-primary-hover: #2563eb;
+  --color-primary-hover: #b45309;
   --color-success: #16a34a;
   --color-success-hover: #15803d;
 
@@ -1600,6 +1609,22 @@ body {
   color: var(--color-primary);
   background: var(--color-surface);
   border-radius: var(--radius-full);
+  z-index: 1;
+}
+
+/* Unselected-but-selectable state — an empty ring in the same spot the
+   checkmark takes once selected, matching GalleryImageCard's badge so
+   selectable mode reads the same way across Sell items and Gallery. */
+.catalog-card-select-badge {
+  position: absolute;
+  top: var(--spacing-xs);
+  right: var(--spacing-xs);
+  width: 24px;
+  height: 24px;
+  border: 2px solid #fff;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-sm);
   z-index: 1;
 }
 

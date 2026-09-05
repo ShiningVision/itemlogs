@@ -22,8 +22,9 @@ const PIXELS_PER_SECOND = 40;
 
 // News-anchor style "lower third" ticker for the dashboard flavour text —
 // every line joins into one strip (bullet-separated) and scrolls
-// continuously right-to-left. Auto-scroll pauses on hover, and the strip
-// can be dragged left/right with mouse or touch.
+// continuously right-to-left, uninterrupted by hover. The strip can still
+// be dragged left/right with mouse or touch, which does pause auto-scroll
+// for the duration of the drag.
 //
 // The strip is rendered twice back-to-back inside a flex track. `position`
 // (the track's translateX, in px) is kept wrapped into (-singleWidth, 0] —
@@ -36,7 +37,6 @@ export function FlavourTicker({ texts }: { texts: string[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const positionRef = useRef(0);
   const singleWidthRef = useRef(0);
-  const pausedRef = useRef(false);
   const draggingRef = useRef(false);
   const dragStartXRef = useRef(0);
   const dragStartPositionRef = useRef(0);
@@ -64,7 +64,7 @@ export function FlavourTicker({ texts }: { texts: string[] }) {
       const dt = (now - last) / 1000;
       last = now;
       const singleWidth = singleWidthRef.current;
-      if (!pausedRef.current && !draggingRef.current && singleWidth > 0) {
+      if (!draggingRef.current && singleWidth > 0) {
         let next = positionRef.current - speed * dt;
         if (next <= -singleWidth) next += singleWidth;
         positionRef.current = next;
@@ -119,15 +119,7 @@ export function FlavourTicker({ texts }: { texts: string[] }) {
   const strip = SEPARATOR + texts.join(SEPARATOR) + SEPARATOR;
 
   return (
-    <div
-      className="flavour-ticker"
-      onMouseEnter={() => {
-        pausedRef.current = true;
-      }}
-      onMouseLeave={() => {
-        pausedRef.current = false;
-      }}
-    >
+    <div className="flavour-ticker">
       <div
         ref={trackRef}
         className={`flavour-ticker-track${isDragging ? ' flavour-ticker-track-dragging' : ''}`}
