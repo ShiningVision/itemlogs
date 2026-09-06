@@ -2,14 +2,16 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { getRecentItems } from '@/app/lib/services/items';
+import { resolveLabel } from '@/app/lib/labels';
 
 // "Recently added," not "recent activity" in the broader sense — items have
 // no created_at/updated_at column (see getRecentItems's comment), so a
 // sold-items timeline isn't something this can honestly show. Framed
 // narrowly on purpose rather than implying more than the data supports.
-export async function RecentActivity() {
+export async function RecentActivity({ status5Name }: { status5Name?: string | null }) {
   const t = await getTranslations('dashboard');
   const tItems = await getTranslations('items');
+  const status5Label = resolveLabel(status5Name, tItems('status5'));
 
   // See EarningsExpensesChart.tsx's comment — same rationale: don't let a
   // transient PostgREST read failure (most likely right after /setup) crash
@@ -36,7 +38,9 @@ export async function RecentActivity() {
               <Link href={`/dashboard/items/${item.id}/edit`} className="dashboard-recent-link">
                 <span className="dashboard-recent-name">{item.name || t('recentActivityUnnamed')}</span>
                 <span className={`dashboard-recent-status dashboard-recent-status--${item.status}`}>
-                  {tItems(`status${item.status}` as 'status1' | 'status2' | 'status3' | 'status4')}
+                  {item.status === 5
+                    ? status5Label
+                    : tItems(`status${item.status}` as 'status1' | 'status2' | 'status3' | 'status4')}
                 </span>
               </Link>
             </li>

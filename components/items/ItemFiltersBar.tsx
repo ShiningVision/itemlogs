@@ -64,7 +64,8 @@ export function ItemFiltersBar({
   typeLabel,
   locationLabel,
   statusLabel,
-  availableStatuses = [1, 2, 3, 4],
+  status5Label,
+  availableStatuses = [1, 2, 3, 4, 5],
   search = '',
 }: {
   categories: FilterOption[];
@@ -93,6 +94,10 @@ export function ItemFiltersBar({
   typeLabel: string;
   locationLabel: string;
   statusLabel?: string;
+  // Tenant-chosen name for the 5th status option (falls back to the
+  // "status5" translation, "Undefined", when unset — see the items page's
+  // resolveLabel(settings.name_status, ...) call).
+  status5Label?: string;
   availableStatuses?: number[];
   search?: string;
 }) {
@@ -339,7 +344,7 @@ export function ItemFiltersBar({
               {(lockStatusToAvailable ? [1] : availableStatuses).map((s) => (
                 <FilterPill
                   key={s}
-                  label={t(`status${s}`)}
+                  label={s === 5 ? (status5Label ?? t('status5')) : t(`status${s}`)}
                   variant="status"
                   selected={lockStatusToAvailable ? true : selectedStatuses.includes(s)}
                   disabled={lockStatusToAvailable}

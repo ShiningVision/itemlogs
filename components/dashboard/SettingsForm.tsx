@@ -27,6 +27,9 @@ const VISIBILITY_FIELDS: Array<{ key: keyof Settings; labelKey: string; hintKey:
   { key: 'show_status_2', labelKey: 'showStatus2', hintKey: 'showStatus2Hint' },
   { key: 'show_status_3', labelKey: 'showStatus3', hintKey: 'showStatus3Hint' },
   { key: 'show_status_4', labelKey: 'showStatus4', hintKey: 'showStatus4Hint' },
+  // spare_toggle_6 — see app/lib/definitions.ts's Settings.spare_toggle_6
+  // comment. Kept named spare_toggle_6, not renamed.
+  { key: 'spare_toggle_6', labelKey: 'showStatus5', hintKey: 'showStatus5Hint' },
 ];
 
 const ITEM_DETAIL_FIELDS: Array<{ key: keyof Settings; labelKey: string; hintKey: string }> = [

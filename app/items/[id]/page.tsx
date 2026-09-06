@@ -37,6 +37,9 @@ export default async function PublicItemPage({
     2: settings.show_status_2,
     3: settings.show_status_3,
     4: settings.show_status_4,
+    // spare_toggle_6 — see app/lib/definitions.ts's Settings.spare_toggle_6
+    // comment. Kept named spare_toggle_6, not renamed.
+    5: settings.spare_toggle_6,
   };
 
   if (!settings.show) {
@@ -53,6 +56,8 @@ export default async function PublicItemPage({
 
   const categoryLabel = resolveLabel(settings.name_category, itemsT('category'));
   const typeLabel = resolveLabel(settings.name_type, itemsT('type'));
+  const statusBadgeLabel =
+    item.status === 5 ? resolveLabel(settings.name_status, itemsT('status5')) : itemsT(`status${item.status}`);
 
   // Each stat/section below now renders whenever its "show" setting is on,
   // regardless of whether the item actually has a value for it — an item
@@ -109,7 +114,7 @@ export default async function PublicItemPage({
                 <h1 className="sheet-name">{item.name}</h1>
 
                 <div className="sheet-badges">
-                  <Badge tone="primary">{itemsT(`status${item.status}`)}</Badge>
+                  <Badge tone="primary">{statusBadgeLabel}</Badge>
                   <Badge>{categoryLabel}: {item.categories?.length ? item.categories.map((c: { name: string | null }) => c.name).join(', ') : itemsT('other')}</Badge>
                   <Badge>{typeLabel}: {item.types?.length ? item.types.map((t: { name: string | null }) => t.name).join(', ') : itemsT('other')}</Badge>
                 </div>

@@ -69,6 +69,10 @@ export type Settings = {
   use_barcode: boolean;
   language: number;
   name_category: string | null;
+  // No longer a generic "rename the word Status" field — "Status" itself
+  // is not tenant-renameable. Repurposed to hold the tenant-chosen name for
+  // a 5th status option (gated by spare_toggle_6 below), defaulting to the
+  // "status5" translation ("Undefined") when null/blank.
   name_status: string | null;
   name_type: string | null;
   name_package: string | null;
@@ -141,9 +145,27 @@ export type Settings = {
   // StorageDonutWidget.tsx) — off by default, persisted once a tenant
   // opts in. Was spare_toggle_4.
   show_dashboard_storage_widget: boolean;
-  // Unassigned, reserved for future features (see app/api/setup/route.ts's
-  // comment on the same columns). Once one gets used, rename it here to
-  // match instead of adding a new field.
+  // NOTE TO SELF (and any future agent touching this file): the comments on
+  // show_featured_items/show_description/show_dashboard_storage_widget/
+  // checklist_picked_theme/checklist_renamed_taxonomy above describe an
+  // *older* pattern — actually renaming a spare_toggle_N column (via
+  // ALTER TABLE ... RENAME COLUMN, rolled out per-tenant with
+  // scripts/add-spare-toggles.sql) once it got claimed. Do NOT do that
+  // anymore. The entire point of pre-provisioning this spare pool is so a
+  // new toggle-shaped feature ships by reading/writing an existing generic
+  // column as-is — zero DB changes on any already-provisioned tenant.
+  // Renaming the column defeats that: it turns a zero-migration feature
+  // back into "every tenant needs a migration," which is exactly the cost
+  // this pool exists to avoid. So: when claiming one of these, keep the
+  // column/type-field name exactly as `spare_toggle_N` and just document
+  // what it's being used for in a comment (see spare_toggle_6 below for the
+  // current example) — never rename it in the DB or in this type.
+  //
+  // spare_toggle_6 is claimed: gates a 5th, tenant-named status option (the
+  // tenant's chosen name for it lives in name_status above, defaulting to
+  // the "status5" translation, "Undefined", when blank). See
+  // components/dashboard/SettingsForm.tsx, app/page.tsx, and
+  // app/items/[id]/page.tsx for where it's read.
   spare_toggle_6: boolean;
   spare_toggle_7: boolean;
   spare_toggle_8: boolean;

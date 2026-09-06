@@ -95,19 +95,28 @@ export default async function HomePage({
   const t = await getTranslations('storefront');
   const itemsT = await getTranslations('items');
 
+  // "Status" itself is not tenant-renameable — name_status instead holds
+  // the tenant-chosen name for the 5th status option (falls back to the
+  // "status5" translation, "Undefined", when blank).
+  const status5Label = resolveLabel(settings.name_status, itemsT('status5'));
   const statusFlags: Record<number, boolean> = {
     1: settings.show_status_1,
     2: settings.show_status_2,
     3: settings.show_status_3,
     4: settings.show_status_4,
+    // spare_toggle_6 — see app/lib/definitions.ts's Settings.spare_toggle_6
+    // comment. Kept named spare_toggle_6, not renamed.
+    5: settings.spare_toggle_6,
   };
-  const allowedStatuses = [1, 2, 3, 4].filter((s) => statusFlags[s]);
-  const statusOptionLabels = Object.fromEntries(allowedStatuses.map((s) => [s, itemsT(`status${s}`)]));
+  const allowedStatuses = [1, 2, 3, 4, 5].filter((s) => statusFlags[s]);
+  const statusOptionLabels = Object.fromEntries(
+    allowedStatuses.map((s) => [s, s === 5 ? status5Label : itemsT(`status${s}`)])
+  );
 
   const categoryLabel = resolveLabel(settings.name_category, itemsT('category'));
   const typeLabel = resolveLabel(settings.name_type, itemsT('type'));
   const locationLabel = resolveLabel(settings.name_location, itemsT('location'));
-  const statusLabel = resolveLabel(settings.name_status, itemsT('filterStatuses'));
+  const statusLabel = itemsT('filterStatuses');
   const packageLabel = resolveLabel(settings.name_package, itemsT('package'));
 
   const selectedCategoryIds = categoriesParam ? categoriesParam.split(',').map(Number) : [];

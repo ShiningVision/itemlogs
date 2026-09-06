@@ -16,6 +16,10 @@ const STOREFRONT_AUTOSAVE_FIELDS = [
   'show_status_2',
   'show_status_3',
   'show_status_4',
+  // spare_toggle_6 — gates the 5th, tenant-named status option (name lives
+  // in name_status below). Kept named spare_toggle_6, not renamed — see
+  // app/lib/definitions.ts's Settings.spare_toggle_6 comment for why.
+  'spare_toggle_6',
   'show_contact',
   'show_sell_price',
   'show_purchase_price',

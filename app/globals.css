@@ -679,7 +679,8 @@ body {
   border-radius: var(--radius-full);
 }
 
-/* status1 Available, status2 Sold, status3 Unavailable, status4 Lost — see
+/* status1 Available, status2 Sold, status3 Unavailable, status4 Lost,
+   status5 a tenant-named 5th option (defaults to "Undefined") — see
    messages/en.json's items namespace. */
 .dashboard-recent-status--1 {
   background: color-mix(in srgb, var(--color-primary) 15%, transparent);
@@ -699,6 +700,11 @@ body {
 .dashboard-recent-status--4 {
   background: color-mix(in srgb, var(--color-danger) 15%, transparent);
   color: var(--color-danger);
+}
+
+.dashboard-recent-status--5 {
+  background: color-mix(in srgb, var(--color-text-muted) 15%, transparent);
+  color: var(--color-text-muted);
 }
 
 /* -----------------------------------------------------------------------

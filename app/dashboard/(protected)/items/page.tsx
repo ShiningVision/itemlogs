@@ -124,7 +124,10 @@ export default async function ItemsPage({
   const categoryLabel = resolveLabel(settings.name_category, t('category'));
   const typeLabel = resolveLabel(settings.name_type, t('type'));
   const locationLabel = resolveLabel(settings.name_location, t('location'));
-  const statusLabel = resolveLabel(settings.name_status, t('filterStatuses'));
+  // "Status" itself is not tenant-renameable (unlike category/type/
+  // location above) — name_status instead holds the tenant-chosen name for
+  // the 5th status option (see ItemFiltersBar's status5Label prop).
+  const status5Label = resolveLabel(settings.name_status, t('status5'));
 
   // "Other" isn't a real row (see app/lib/placeholder-data.ts) — it's how a
   // null category/type is interpreted app-wide (see ItemForm, Excel export/
@@ -177,7 +180,7 @@ export default async function ItemsPage({
         categoryLabel={categoryLabel}
         typeLabel={typeLabel}
         locationLabel={locationLabel}
-        statusLabel={statusLabel}
+        status5Label={status5Label}
         search={search ?? ''}
       />
 

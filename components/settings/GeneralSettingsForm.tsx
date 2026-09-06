@@ -28,8 +28,12 @@ const PREFERENCE_TOGGLE_FIELDS: Array<{ key: keyof Settings; labelKey: string; h
 const PREFERENCE_NAME_FIELDS: Array<{ key: keyof Settings; labelKey: string; hintKey: string }> = [
   { key: 'name_category', labelKey: 'nameCategory', hintKey: 'nameCategoryHint' },
   { key: 'name_type', labelKey: 'nameType', hintKey: 'nameTypeHint' },
-  { key: 'name_status', labelKey: 'nameStatus', hintKey: 'nameStatusHint' },
   { key: 'name_location', labelKey: 'nameLocation', hintKey: 'nameLocationHint' },
+  // name_status is NOT here — "Status" itself isn't tenant-renameable.
+  // name_status was repurposed to hold the name of the 5th status option
+  // instead (see FIFTH_STATUS_NAME_FIELD below), which is a different
+  // concept from renaming a generic word, so it gets its own section
+  // rather than living among these.
   // name_package moved to the dashboard's Visitor Page Settings ->
   // Package Visibility section (PackageVisibilitySection) — it only ever
   // affects the visitor page, unlike the fields left here (which affect
@@ -41,6 +45,17 @@ const PREFERENCE_NAME_FIELDS: Array<{ key: keyof Settings; labelKey: string; hin
   // once something actually renders it.
   // { key: 'name_item', labelKey: 'nameItem', hintKey: 'nameItemHint' },
 ];
+
+// The 5th status option's tenant-chosen name (defaults to the "status5"
+// translation, "Undefined", when settings.name_status is null/blank — see
+// components/items/ItemForm.tsx and app/page.tsx for where that fallback is
+// applied). Reuses the same name_status column that used to back a generic
+// "rename the word Status" field — "Status" itself is not renameable.
+const FIFTH_STATUS_NAME_FIELD: { key: keyof Settings; labelKey: string; hintKey: string } = {
+  key: 'name_status',
+  labelKey: 'nameStatus',
+  hintKey: 'nameStatusHint',
+};
 
 type FieldStatus = 'saving' | 'saved' | 'error';
 
@@ -61,7 +76,9 @@ export function GeneralSettingsForm({
   // onChange event already carries the new value). Initialized from
   // `settings`; each field's own onBlur is what actually persists a change.
   const [nameValues, setNameValues] = useState<Record<string, string>>(() =>
-    Object.fromEntries(PREFERENCE_NAME_FIELDS.map(({ key }) => [key, (settings[key] as string) ?? '']))
+    Object.fromEntries(
+      [...PREFERENCE_NAME_FIELDS, FIFTH_STATUS_NAME_FIELD].map(({ key }) => [key, (settings[key] as string) ?? ''])
+    )
   );
 
   function autoSave(key: string, value: string | number | boolean) {
@@ -222,6 +239,38 @@ export function GeneralSettingsForm({
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <div className="settings-section-title">{t('sectionFifthStatus')}</div>
+        <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', margin: '0 0 var(--spacing-sm)' }}>
+          {t('sectionFifthStatusIntro')}
+        </p>
+
+        <div className="settings-group">
+          <div className="settings-row">
+            <Tooltip text={t(FIFTH_STATUS_NAME_FIELD.hintKey)}>
+              <span>{t(FIFTH_STATUS_NAME_FIELD.labelKey)}</span>
+            </Tooltip>
+            <div className="settings-row-controls">
+              {statusFor(FIFTH_STATUS_NAME_FIELD.key)}
+              <input
+                type="text"
+                name={FIFTH_STATUS_NAME_FIELD.key}
+                value={nameValues[FIFTH_STATUS_NAME_FIELD.key] ?? ''}
+                onChange={(e) =>
+                  setNameValues((v) => ({ ...v, [FIFTH_STATUS_NAME_FIELD.key]: e.target.value }))
+                }
+                onBlur={(e) => {
+                  if (e.target.value === ((settings[FIFTH_STATUS_NAME_FIELD.key] as string) ?? '')) return;
+                  autoSave(FIFTH_STATUS_NAME_FIELD.key, e.target.value);
+                }}
+                placeholder={t('nameStatusPlaceholder')}
+                className="sheet-input settings-row-control"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

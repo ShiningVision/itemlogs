@@ -515,6 +515,10 @@ export async function POST(request: Request) {
           use_barcode BOOLEAN NOT NULL,
           language INTEGER NOT NULL REFERENCES languages(id),
           name_category VARCHAR(255),
+          -- Not a generic "Status" rename (that word isn't tenant-renameable)
+          -- — holds the tenant-chosen name for a 5th status option gated by
+          -- spare_toggle_6 below, defaulting to the "status5" translation
+          -- ("Undefined") when null.
           name_status VARCHAR(255),
           name_type VARCHAR(255),
           name_package VARCHAR(255),
@@ -611,9 +615,24 @@ export async function POST(request: Request) {
           -- needed on already-existing tenants) — having these ready ahead
           -- of time means a new toggle-shaped feature can ship by just
           -- claiming one of these instead of needing a fresh migration
-          -- rolled out to every tenant. Rename in place when one gets used
-          -- (e.g. ALTER TABLE settings RENAME COLUMN spare_toggle_6 TO
-          -- whatever_it_actually_is), and document what it became here.
+          -- rolled out to every tenant.
+          --
+          -- NOTE: the comments above (show_featured_items/show_description/
+          -- show_dashboard_storage_widget/checklist_picked_theme/
+          -- checklist_renamed_taxonomy) describe an *older, now-abandoned*
+          -- pattern of renaming the column via ALTER TABLE ... RENAME COLUMN
+          -- once claimed. Don't do that for new claims — it defeats the
+          -- whole point of this pool, which is that claiming one requires
+          -- ZERO database changes on any already-provisioned tenant. Just
+          -- start reading/writing the existing spare_toggle_N column as-is
+          -- and document what it means in a comment (see spare_toggle_6
+          -- below for the current example).
+          --
+          -- spare_toggle_6 is claimed: gates a 5th, tenant-named status
+          -- option (its name lives in name_status above, defaulting to the
+          -- "status5" translation, "Undefined", when blank). See
+          -- components/dashboard/SettingsForm.tsx, app/page.tsx, and
+          -- app/items/[id]/page.tsx.
           spare_toggle_6 BOOLEAN NOT NULL DEFAULT false,
           spare_toggle_7 BOOLEAN NOT NULL DEFAULT false,
           spare_toggle_8 BOOLEAN NOT NULL DEFAULT false,

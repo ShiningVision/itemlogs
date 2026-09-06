@@ -226,8 +226,8 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
     }
 
     const statusNum = statusStr !== null ? Number(statusStr) : NaN;
-    if (!Number.isFinite(statusNum) || ![1, 2, 3, 4].includes(statusNum)) {
-      statusErrors.push(`Row ${rowNumber}: "status" must be 1, 2, 3, or 4 (found "${statusStr ?? '(empty)'}").`);
+    if (!Number.isFinite(statusNum) || ![1, 2, 3, 4, 5].includes(statusNum)) {
+      statusErrors.push(`Row ${rowNumber}: "status" must be 1, 2, 3, 4, or 5 (found "${statusStr ?? '(empty)'}").`);
     }
 
     function parsePrice(label: string, str: string | null): number {

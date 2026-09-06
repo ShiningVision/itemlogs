@@ -26,6 +26,14 @@
 -- those two columns are just unused dead weight on any tenant now, nothing
 -- to migrate for that part).
 --
+-- spare_toggle_6 is claimed too now, as the toggle behind a 5th,
+-- tenant-named status option (its name lives in name_status — see
+-- app/api/setup/route.ts and app/lib/definitions.ts's Settings.spare_toggle_6
+-- comment). NOT renamed in the database or in code — see that comment for
+-- why renaming a claimed spare column is no longer how this is done. A
+-- tenant that already has a spare_toggle_6 column needs nothing further;
+-- the ADD COLUMN below only matters for a tenant that never had it at all.
+--
 -- Run via the Supabase dashboard's SQL Editor, or:
 --   psql "$POSTGRES_URL" -f scripts/add-spare-toggles.sql
 -- (grab POSTGRES_URL from that tenant's Vercel project env vars)

@@ -50,7 +50,7 @@ type ItemFormData = {
   notes: string;
 };
 
-const STATUSES = [1, 2, 3, 4];
+const STATUSES = [1, 2, 3, 4, 5];
 
 // Matches the `description VARCHAR(255)` column (see app/api/setup/
 // route.ts) — capped client-side so a paste-heavy description gets an
@@ -131,6 +131,8 @@ export function ItemForm({
   const [blueprintNotification, setBlueprintNotification] = useState<{ type: ToastType; message: string } | null>(null);
   const categoryLabel = resolveLabel(settings.name_category, t('category'));
   const typeLabel = resolveLabel(settings.name_type, t('type'));
+  const status5Label = resolveLabel(settings.name_status, t('status5'));
+  const statusLabel = (s: number) => (s === 5 ? status5Label : t(`status${s}`));
 
   function update<K extends keyof ItemFormData>(key: K, value: ItemFormData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -379,7 +381,7 @@ export function ItemForm({
                   <span className="sheet-label">{t('status')}</span>
                   <select className="sheet-input" value={form.status} onChange={(e) => update('status', Number(e.target.value))}>
                     {STATUSES.map((s) => (
-                      <option key={s} value={s}>{t(`status${s}`)}</option>
+                      <option key={s} value={s}>{statusLabel(s)}</option>
                     ))}
                   </select>
                 </div>

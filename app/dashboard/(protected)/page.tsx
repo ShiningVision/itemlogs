@@ -104,7 +104,7 @@ export default async function DashboardPage() {
               {/* Hidden entirely on mobile, not just stacked below the fold
                   — see .dashboard-mobile-hidden in globals.css. */}
               <div className="dashboard-mobile-hidden">
-                <RecentActivity />
+                <RecentActivity status5Name={settings.name_status} />
               </div>
             </div>
 
