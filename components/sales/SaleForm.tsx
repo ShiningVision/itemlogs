@@ -69,6 +69,12 @@ export function SaleForm({
       if (mode === 'create') {
         router.push(`/dashboard/sales/${json.data.id}/edit`);
       } else {
+        // Same latent bug as PackageForm.tsx had: router.refresh() re-fetches
+        // server data without remounting this component, so
+        // initialSnapshotRef would otherwise keep pointing at the pre-save
+        // values forever — leaving isDirty (and the unsaved-changes guard)
+        // permanently true even right after a successful save.
+        initialSnapshotRef.current = JSON.stringify({ name, date });
         router.refresh();
       }
     } finally {

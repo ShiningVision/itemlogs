@@ -134,7 +134,7 @@
     "showStatus3Hint": "Zeigt Artikel mit dem Status „Reserviert“ auf deiner Besucherseite.",
     "showStatus4": "„Verloren“ anzeigen",
     "showStatus4Hint": "Zeigt Artikel mit dem Status „Verloren“ auf deiner Besucherseite.",
-    "showStatus5": "5. Status anzeigen",
+    "showStatus5": "{label} anzeigen",
     "showStatus5Hint": "Zeigt Artikel mit deinem 5., selbst benannten Status (siehe Allgemeine Einstellungen) auf deiner Besucherseite.",
     "showMessage": "Nachricht der Besucherseite",
     "storefrontName": "Sammlungsname",

@@ -130,6 +130,13 @@ export function PackageForm({
             if (mode === 'create') {
                 router.push(`/dashboard/packages/${json.data.id}/edit`);
             } else {
+                // router.refresh() re-fetches server data but doesn't remount
+                // this component, so initialFormSnapshotRef would otherwise
+                // keep pointing at the pre-save form forever — leaving isDirty
+                // (and therefore the unsaved-changes guard) permanently true
+                // even right after a successful save. Re-baseline it here so
+                // the just-saved values count as "clean" again.
+                initialFormSnapshotRef.current = JSON.stringify(form);
                 router.refresh();
             }
         } finally {

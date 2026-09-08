@@ -31,13 +31,21 @@ export async function OnboardingChecklist({ settings }: { settings: Settings }) 
       // settings page's GeneralSettingsForm. Not to be confused with
       // renaming individual category/type/location values, which happens
       // in ManageFiltersModal from the items page instead.
-      href: '/dashboard/settings',
+      // The #settings-custom-terminology hash targets that section's id
+      // (GeneralSettingsForm.tsx) — next/link scrolls same-origin
+      // navigations to a matching element automatically, no extra JS
+      // needed here, so clicking this drops the tenant right on the fields
+      // instead of the top of a long settings page.
+      href: '/dashboard/settings#settings-custom-terminology',
     },
     {
       key: 'nameStorefront',
       done: settings.checklist_named_storefront,
       label: t('checklistNameStorefront'),
-      href: '/dashboard',
+      // #settings-identity targets the storefront_name section in
+      // SettingsForm.tsx (same page this checklist itself renders on) —
+      // same next/link scroll-to-hash behavior as renameTaxonomy above.
+      href: '/dashboard#settings-identity',
     },
     {
       key: 'pickTheme',

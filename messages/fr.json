@@ -134,7 +134,7 @@
     "showStatus3Hint": "Affiche les articles au statut « Réservé » sur votre page visiteurs.",
     "showStatus4": "Afficher « Perdu »",
     "showStatus4Hint": "Affiche les articles au statut « Perdu » sur votre page visiteurs.",
-    "showStatus5": "Afficher le 5e statut",
+    "showStatus5": "Afficher {label}",
     "showStatus5Hint": "Affiche les articles ayant votre 5e statut personnalisé (voir Paramètres généraux) sur votre page visiteurs.",
     "showMessage": "Message de la page visiteurs",
     "storefrontName": "Nom de la collection",

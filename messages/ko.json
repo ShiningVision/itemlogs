@@ -134,7 +134,7 @@
     "showStatus3Hint": "방문자 페이지에 '예약됨' 상태의 아이템을 표시합니다.",
     "showStatus4": "'분실' 표시",
     "showStatus4Hint": "방문자 페이지에 '분실' 상태의 아이템을 표시합니다.",
-    "showStatus5": "5번째 상태 표시",
+    "showStatus5": "{label} 표시",
     "showStatus5Hint": "방문자 페이지에 직접 이름 붙인 5번째 상태(일반 설정 참고)의 아이템을 표시합니다.",
     "showMessage": "방문자 페이지 메시지",
     "storefrontName": "컬렉션 이름",

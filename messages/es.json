@@ -134,7 +134,7 @@
     "showStatus3Hint": "Muestra los artículos con estado «Reservado» en tu página de visitantes.",
     "showStatus4": "Mostrar «Perdido»",
     "showStatus4Hint": "Muestra los artículos con estado «Perdido» en tu página de visitantes.",
-    "showStatus5": "Mostrar 5.º estado",
+    "showStatus5": "Mostrar {label}",
     "showStatus5Hint": "Muestra los artículos con tu 5.º estado personalizado (ver Ajustes generales) en tu página de visitantes.",
     "showMessage": "Mensaje de la página de visitantes",
     "storefrontName": "Nombre de la colección",

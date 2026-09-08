@@ -134,7 +134,7 @@
     "showStatus3Hint": "在访客页面上显示状态为「已预订」的物品。",
     "showStatus4": "显示「遗失」",
     "showStatus4Hint": "在访客页面上显示状态为「遗失」的物品。",
-    "showStatus5": "显示第5个状态",
+    "showStatus5": "显示{label}",
     "showStatus5Hint": "在访客页面上显示您自定义命名的第5个状态（见常规设置）的物品。",
     "showMessage": "访客页面消息",
     "storefrontName": "收藏名称",

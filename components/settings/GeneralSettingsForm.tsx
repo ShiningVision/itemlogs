@@ -210,7 +210,7 @@ export function GeneralSettingsForm({
         </div>
       </div>
 
-      <div className="settings-section">
+      <div className="settings-section" id="settings-custom-terminology">
         <div className="settings-section-title">{t('sectionCustomTerminology')}</div>
         <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', margin: '0 0 var(--spacing-sm)' }}>
           {t('customTerminologyIntro')}

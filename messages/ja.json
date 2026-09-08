@@ -134,7 +134,7 @@
     "showStatus3Hint": "訪問者ページで「予約済み」ステータスのアイテムを表示します。",
     "showStatus4": "「紛失」を表示",
     "showStatus4Hint": "訪問者ページで「紛失」ステータスのアイテムを表示します。",
-    "showStatus5": "5番目のステータスを表示",
+    "showStatus5": "{label}を表示",
     "showStatus5Hint": "訪問者ページで、あなたが名付けた5番目のステータス（一般設定を参照）のアイテムを表示します。",
     "showMessage": "訪問者ページのメッセージ",
     "storefrontName": "コレクション名",

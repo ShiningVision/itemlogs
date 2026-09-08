@@ -27,9 +27,11 @@ const VISIBILITY_FIELDS: Array<{ key: keyof Settings; labelKey: string; hintKey:
   { key: 'show_status_2', labelKey: 'showStatus2', hintKey: 'showStatus2Hint' },
   { key: 'show_status_3', labelKey: 'showStatus3', hintKey: 'showStatus3Hint' },
   { key: 'show_status_4', labelKey: 'showStatus4', hintKey: 'showStatus4Hint' },
-  // spare_toggle_6 — see app/lib/definitions.ts's Settings.spare_toggle_6
-  // comment. Kept named spare_toggle_6, not renamed.
-  { key: 'spare_toggle_6', labelKey: 'showStatus5', hintKey: 'showStatus5Hint' },
+  // spare_toggle_6 is rendered as its own custom row below instead of an
+  // entry here — see app/lib/definitions.ts's Settings.spare_toggle_6
+  // comment (kept named spare_toggle_6, not renamed) and the row itself,
+  // which needs an interpolated label (the tenant's own name for their 5th
+  // status, e.g. "Show Reserved") the same way show_package_filter does.
 ];
 
 const ITEM_DETAIL_FIELDS: Array<{ key: keyof Settings; labelKey: string; hintKey: string }> = [
@@ -61,7 +63,13 @@ export function SettingsForm({
   visibilityPackages: VisibilityPackage[];
 }) {
   const t = useTranslations('dashboard');
+  const itemsT = useTranslations('items');
   const packageLabel = resolveLabel(settings.name_package, t('packageNameFallback'));
+  // Falls back to the "status5" translation ("Undefined") same as the
+  // storefront itself does wherever name_status is blank (see app/page.tsx,
+  // app/items/[id]/page.tsx) — so the toggle's label always matches what a
+  // visitor would actually see for that status.
+  const status5Label = resolveLabel(settings.name_status, itemsT('status5'));
   const [, startAutosaveTransition] = useTransition();
   const [fieldStatus, setFieldStatus] = useState<Record<string, FieldStatus>>({});
   const [storefrontDensity, setStorefrontDensity] = useState(settings.storefront_density ?? 'dense');
@@ -184,7 +192,7 @@ export function SettingsForm({
           here any more — every field below autosaves on its own (blur for
           text, instant for toggles elsewhere on this page), same as
           Contact Methods below it. */}
-      <div className="settings-section">
+      <div className="settings-section" id="settings-identity">
         <div className="settings-section-title">{t('sectionIdentity')}</div>
         <div className="settings-group">
           <div className="settings-row">
@@ -329,7 +337,29 @@ export function SettingsForm({
 
       <div className="settings-section">
         <div className="settings-section-title">{t('sectionVisibility')}</div>
-        <div className="settings-group">{toggleRows(VISIBILITY_FIELDS)}</div>
+        <div className="settings-group">
+          {toggleRows(VISIBILITY_FIELDS)}
+          {/* spare_toggle_6 — a custom row instead of a VISIBILITY_FIELDS
+              entry so the label can be interpolated with the tenant's own
+              5th-status name (status5Label above), same reasoning as
+              show_location_filter/show_package_filter elsewhere on this
+              page. Kept named spare_toggle_6, not renamed — see
+              app/lib/definitions.ts's Settings.spare_toggle_6 comment. */}
+          <div className="settings-row">
+            <Tooltip text={t('showStatus5Hint')}>
+              <span>{t('showStatus5', { label: status5Label })}</span>
+            </Tooltip>
+            <div className="settings-row-controls">
+              {statusFor('spare_toggle_6')}
+              <Toggle
+                name="spare_toggle_6"
+                defaultChecked={Boolean(settings.spare_toggle_6)}
+                label={t('showStatus5', { label: status5Label })}
+                onChange={(e) => autoSave('spare_toggle_6', e.target.checked)}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="settings-section">

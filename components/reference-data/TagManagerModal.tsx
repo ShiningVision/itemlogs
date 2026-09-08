@@ -226,11 +226,17 @@ export function TagManagerModal({
             {t('manageLabel', { label })}
           </h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-            {/* Single-select assign only — the only way to null out an
+            {/* Single-select assign (location): the only way to null out an
                 already-assigned tag, mirroring the "Other" option on
-                category/type's plain <select>. Not shown in multi mode:
-                clearing there just means unchecking every box, no dedicated
-                action needed. */}
+                category/type's plain <select> — so it clears and closes
+                immediately, same as picking a value would.
+                Multi-select assign (category/type): unlike single-select,
+                "clear" here just unchecks every box rather than assigning —
+                it still goes through the existing Confirm button below, so
+                a tenant can back out of an accidental clear without
+                onClose(). Both need it: with several boxes checked,
+                unchecking each one individually is the only way to start
+                over otherwise. */}
             {mode === 'assign' && !multi && selection.length > 0 && (
               <button
                 type="button"
@@ -238,6 +244,22 @@ export function TagManagerModal({
                   onAssign?.([]);
                   onClose();
                 }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--color-text-muted)',
+                  fontSize: 'var(--font-size-sm)',
+                  textDecoration: 'underline',
+                }}
+              >
+                {t('clear')}
+              </button>
+            )}
+            {mode === 'assign' && multi && selection.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSelection([])}
                 style={{
                   background: 'none',
                   border: 'none',

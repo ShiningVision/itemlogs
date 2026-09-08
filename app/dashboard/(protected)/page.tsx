@@ -88,7 +88,7 @@ export default async function DashboardPage() {
 
           <OnboardingChecklist settings={settings} />
 
-          <DashboardStats />
+          <DashboardStats showSales={settings.use_sell_price} />
 
           <div className="dashboard-grid">
             <div className="dashboard-grid-main">
@@ -113,7 +113,11 @@ export default async function DashboardPage() {
                   toggle sits directly next to the storefront settings
                   section below it. */}
               <div className="dashboard-mobile-hidden">
-                <QuickActions appUrl={settings.app_url} showQuickSell={settings.use_sell_price} />
+                <QuickActions
+                  appUrl={settings.app_url}
+                  showQuickSell={settings.use_sell_price}
+                  visitorPageOnline={settings.show}
+                />
               </div>
               <StorefrontLiveStatus settings={settings} />
             </div>

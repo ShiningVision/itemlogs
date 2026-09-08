@@ -828,6 +828,21 @@ body {
   margin-bottom: var(--spacing-xl);
 }
 
+/* Onboarding checklist deep-links (#settings-identity/
+   #settings-custom-terminology — see OnboardingChecklist.tsx) land
+   directly on these two sections via next/link's scroll-to-hash. On
+   mobile, .app-mobile-header is sticky at top:0 and would otherwise sit
+   right on top of (or overlap) whatever scrolled to the very top of the
+   viewport — scroll-margin-top leaves room so the section's own heading
+   stays visible below it instead of tucked underneath. Harmless on desktop
+   (no sticky header there, just unused extra space above the section).
+   Scoped by id rather than added to .settings-section generally since only
+   these two are ever deep-linked to right now. */
+#settings-identity,
+#settings-custom-terminology {
+  scroll-margin-top: 72px;
+}
+
 .settings-section-title {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
