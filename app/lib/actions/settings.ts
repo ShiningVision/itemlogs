@@ -139,35 +139,3 @@ export async function updateGeneralSettingFieldAction(
   revalidatePath('/'); // sell_price_currency is shown on every storefront price
   return { success: true };
 }
-
-// DEAD CODE — backed StorageWidgetToggle.tsx, which drove
-// StorageDonutWidget.tsx (see that file's header comment). The whole
-// storage widget feature was removed from the dashboard. No longer called
-// anywhere; kept only because file deletion isn't available in this
-// environment.
-const DASHBOARD_WIDGET_AUTOSAVE_FIELDS = ['show_dashboard_storage_widget'] as const;
-type DashboardWidgetAutosaveField = (typeof DASHBOARD_WIDGET_AUTOSAVE_FIELDS)[number];
-
-export async function updateDashboardWidgetFieldAction(
-  field: DashboardWidgetAutosaveField,
-  value: string | number | boolean,
-) {
-  if (!DASHBOARD_WIDGET_AUTOSAVE_FIELDS.includes(field)) {
-    return { error: 'invalidField' };
-  }
-
-  const parsed = updateSettingsSchema.safeParse({ [field]: value });
-  if (!parsed.success) {
-    return { error: 'invalid' };
-  }
-
-  try {
-    await updateSettings(parsed.data);
-  } catch (error) {
-    console.error('Failed to update dashboard widget setting:', error);
-    return { error: 'saveFailed' };
-  }
-  revalidatePath('/dashboard');
-  return { success: true };
-}
-

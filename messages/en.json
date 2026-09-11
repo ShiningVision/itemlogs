@@ -179,7 +179,7 @@
     "liveStatusHint": "Flip the switch above to publish your visitor page.",
     "chartEarningsExpensesTitle": "Revenue vs. Cost",
     "chartEarningsExpensesEmpty": "No sold items yet — mark an item \"Sold\" to see this chart.",
-    "chartEarningsExpensesFootnote": "{count, plural, one {Based on # sold item} other {Based on # sold items}}.",
+    "chartEarningsExpensesFootnote": "{soldCount, plural, one {Based on # sold item} other {Based on # sold items}} and {availableCount, plural, one {# item still in stock} other {# items still in stock}}.",
     "chartProfitLabel": "profit",
     "chartEarningsLabel": "Revenue",
     "chartExpensesLabel": "Cost",

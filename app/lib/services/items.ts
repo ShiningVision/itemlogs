@@ -463,28 +463,48 @@ export function hasRenamedTaxonomy(settings: {
 }
 
 // Dashboard's Earnings vs Expenses chart (see EarningsExpensesChart.tsx).
+// Revenue only ever comes from sold items (sell_price only means anything
+// once an item has actually sold), but cost needs to reflect the tenant's
+// real spend: money already sunk into items still sitting in inventory
+// (status 1, "available") is just as real a cost as money sunk into items
+// that have since sold — so this sums cost_price across BOTH sold and
+// available items, not just sold ones, while revenue stays sold-only.
 // cost_price and sell_price are both always denominated in the single
 // shop-wide settings.sell_price_currency (see settings.ts's SETTINGS_SELECT
 // comment) — unlike purchase_price, neither needs per-item currency
 // conversion, so this is a safe direct sum. Summed client-side rather than
 // via a PostgREST aggregate (`sum()` in `.select()`) since aggregate
 // functions aren't guaranteed enabled on every Supabase project; fetching
-// just these two numeric columns for sold items is cheap regardless of
-// inventory size for the scale this app targets.
-export async function getSoldTotals(): Promise<{ totalCost: number; totalSell: number; soldCount: number }> {
+// just these numeric columns is cheap regardless of inventory size for the
+// scale this app targets.
+export async function getEarningsExpensesTotals(): Promise<{
+  totalCost: number;
+  totalSell: number;
+  soldCount: number;
+  availableCount: number;
+}> {
   const SOLD_STATUS = 2;
-  const { data, error } = await supabase
-    .from('items')
-    .select('cost_price, sell_price')
-    .eq('status', SOLD_STATUS);
+  const AVAILABLE_STATUS = 1;
 
-  if (error) throw error;
+  const [soldRes, availableRes] = await Promise.all([
+    supabase.from('items').select('cost_price, sell_price').eq('status', SOLD_STATUS),
+    supabase.from('items').select('cost_price').eq('status', AVAILABLE_STATUS),
+  ]);
 
-  const rows = data ?? [];
+  if (soldRes.error) throw soldRes.error;
+  if (availableRes.error) throw availableRes.error;
+
+  const soldRows = soldRes.data ?? [];
+  const availableRows = availableRes.data ?? [];
+
+  const soldCost = soldRows.reduce((sum, r) => sum + (r.cost_price ?? 0), 0);
+  const availableCost = availableRows.reduce((sum, r) => sum + (r.cost_price ?? 0), 0);
+
   return {
-    totalCost: rows.reduce((sum, r) => sum + (r.cost_price ?? 0), 0),
-    totalSell: rows.reduce((sum, r) => sum + (r.sell_price ?? 0), 0),
-    soldCount: rows.length,
+    totalCost: soldCost + availableCost,
+    totalSell: soldRows.reduce((sum, r) => sum + (r.sell_price ?? 0), 0),
+    soldCount: soldRows.length,
+    availableCount: availableRows.length,
   };
 }
 

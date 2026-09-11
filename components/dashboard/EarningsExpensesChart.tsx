@@ -1,6 +1,6 @@
 // components/dashboard/EarningsExpensesChart.tsx
 import { getTranslations } from 'next-intl/server';
-import { getSoldTotals } from '@/app/lib/services/items';
+import { getEarningsExpensesTotals } from '@/app/lib/services/items';
 
 // Hand-rolled SVG rather than a charting library — this is genuinely just
 // two bars, and the app already leans toward small flat-color SVGs
@@ -20,16 +20,19 @@ export async function EarningsExpensesChart({ currencySymbol }: { currencySymbol
   // a transient read failure here shouldn't take down the whole dashboard
   // the way an uncaught throw would. Render nothing rather than a
   // misleading "no sold items yet" empty state.
-  let totals: { totalCost: number; totalSell: number; soldCount: number };
+  let totals: { totalCost: number; totalSell: number; soldCount: number; availableCount: number };
   try {
-    totals = await getSoldTotals();
+    totals = await getEarningsExpensesTotals();
   } catch (error) {
-    console.error('Failed to load sold totals for dashboard chart:', error);
+    console.error('Failed to load earnings/expenses totals for dashboard chart:', error);
     return null;
   }
-  const { totalCost, totalSell, soldCount } = totals;
+  const { totalCost, totalSell, soldCount, availableCount } = totals;
 
-  if (soldCount === 0) {
+  // Cost now includes available (unsold) inventory, so there's something
+  // worth showing even before a tenant's first sale — only bail out to the
+  // empty state when there's truly nothing on either side.
+  if (soldCount === 0 && availableCount === 0) {
     return (
       <div className="dashboard-card dashboard-chart-card">
         <h2 className="dashboard-card-title">{t('chartEarningsExpensesTitle')}</h2>
@@ -70,7 +73,9 @@ export async function EarningsExpensesChart({ currencySymbol }: { currencySymbol
         <span className="dashboard-bar-value">{formatMoney(totalCost, currencySymbol)}</span>
       </div>
 
-      <p className="dashboard-chart-footnote">{t('chartEarningsExpensesFootnote', { count: soldCount })}</p>
+      <p className="dashboard-chart-footnote">
+        {t('chartEarningsExpensesFootnote', { soldCount, availableCount })}
+      </p>
     </div>
   );
 }

@@ -179,7 +179,7 @@
     "liveStatusHint": "Betätige den Schalter oben, um deine Besucherseite zu veröffentlichen.",
     "chartEarningsExpensesTitle": "Umsatz vs. Kosten",
     "chartEarningsExpensesEmpty": "Noch keine verkauften Artikel — markiere einen Artikel als „Verkauft“, um dieses Diagramm zu sehen.",
-    "chartEarningsExpensesFootnote": "{count, plural, one {Basierend auf # verkauftem Artikel} other {Basierend auf # verkauften Artikeln}}.",
+    "chartEarningsExpensesFootnote": "{soldCount, plural, one {Basierend auf # verkauftem Artikel} other {Basierend auf # verkauften Artikeln}} und {availableCount, plural, one {# Artikel auf Lager} other {# Artikeln auf Lager}}.",
     "chartProfitLabel": "Gewinn",
     "chartEarningsLabel": "Umsatz",
     "chartExpensesLabel": "Kosten",

@@ -179,7 +179,7 @@
     "liveStatusHint": "上のスイッチをオンにして訪問者ページを公開してください。",
     "chartEarningsExpensesTitle": "収益と原価",
     "chartEarningsExpensesEmpty": "まだ販売されたアイテムがありません — アイテムを「売却済み」にするとこのグラフが表示されます。",
-    "chartEarningsExpensesFootnote": "販売済みアイテム{count}件に基づく。",
+    "chartEarningsExpensesFootnote": "販売済みアイテム{soldCount}件と在庫アイテム{availableCount}件に基づく。",
     "chartProfitLabel": "利益",
     "chartEarningsLabel": "収益",
     "chartExpensesLabel": "原価",

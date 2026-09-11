@@ -179,7 +179,7 @@
     "liveStatusHint": "Activez l'interrupteur ci-dessus pour publier votre page visiteurs.",
     "chartEarningsExpensesTitle": "Recettes contre coût",
     "chartEarningsExpensesEmpty": "Aucun article vendu pour l'instant — marquez un article comme « Vendu » pour voir ce graphique.",
-    "chartEarningsExpensesFootnote": "{count, plural, one {Basé sur # article vendu} other {Basé sur # articles vendus}}.",
+    "chartEarningsExpensesFootnote": "{soldCount, plural, one {Basé sur # article vendu} other {Basé sur # articles vendus}} et {availableCount, plural, one {# article en stock} other {# articles en stock}}.",
     "chartProfitLabel": "bénéfice",
     "chartEarningsLabel": "Recettes",
     "chartExpensesLabel": "Coût",

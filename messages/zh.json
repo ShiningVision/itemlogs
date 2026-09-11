@@ -179,7 +179,7 @@
     "liveStatusHint": "打开上方开关以发布您的访客页面。",
     "chartEarningsExpensesTitle": "收入与成本对比",
     "chartEarningsExpensesEmpty": "尚无已售出的物品——将某件物品标记为「已售出」即可查看此图表。",
-    "chartEarningsExpensesFootnote": "基于 {count} 件已售出物品。",
+    "chartEarningsExpensesFootnote": "基于已售出 {soldCount} 件物品和库存 {availableCount} 件物品。",
     "chartProfitLabel": "利润",
     "chartEarningsLabel": "收入",
     "chartExpensesLabel": "成本",

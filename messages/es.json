@@ -179,7 +179,7 @@
     "liveStatusHint": "Activa el interruptor de arriba para publicar tu página de visitantes.",
     "chartEarningsExpensesTitle": "Ingresos frente a coste",
     "chartEarningsExpensesEmpty": "Aún no hay artículos vendidos — marca un artículo como «Vendido» para ver este gráfico.",
-    "chartEarningsExpensesFootnote": "{count, plural, one {Basado en # artículo vendido} other {Basado en # artículos vendidos}}.",
+    "chartEarningsExpensesFootnote": "{soldCount, plural, one {Basado en # artículo vendido} other {Basado en # artículos vendidos}} y {availableCount, plural, one {# artículo en stock} other {# artículos en stock}}.",
     "chartProfitLabel": "beneficio",
     "chartEarningsLabel": "Ingresos",
     "chartExpensesLabel": "Coste",
