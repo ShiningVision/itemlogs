@@ -7,8 +7,10 @@ import { useRouter } from 'next/navigation';
 import { PlusIcon, Squares2X2Icon, CameraIcon, PhotoIcon, DocumentIcon } from '@heroicons/react/24/outline';
 import { compressImageFile } from '@/app/lib/images/compressImage';
 import { formatBytes } from '@/app/lib/storage/format-bytes';
+import { MAX_UPLOAD_BYTES } from '@/app/lib/storage/upload-limits';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ImageZoomModal } from '@/components/ui/ImageZoomModal';
+import { Toast } from '@/components/ui/notification';
 import { GalleryImageCard } from './GalleryImageCard';
 import { GalleryDocumentCard } from './GalleryDocumentCard';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -49,6 +51,7 @@ export function GalleryGrid({
   const [usedDocumentsBytes, setUsedDocumentsBytes] = useState(documentsBytes);
 
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [zoomImage, setZoomImage] = useState<ImageRow | null>(null);
   const [deleteImageTarget, setDeleteImageTarget] = useState<ImageRow | null>(null);
   const [deleteDocumentTarget, setDeleteDocumentTarget] = useState<DocumentRow | null>(null);
@@ -102,16 +105,34 @@ export function GalleryGrid({
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploading(true);
+    setUploadError(null);
     const formData = new FormData();
     try {
       const compressedFile = await compressImageFile(file);
+      // Checked post-compression, not on the original file — compression
+      // usually brings a file well under the limit, so checking the
+      // original first would reject uploads that would actually have gone
+      // through fine once compressed. A file that's still too large after
+      // compression (e.g. a huge already-optimized image, or a gif, which
+      // compressImageFile skips) hits this instead of a server round trip.
+      if (compressedFile.size > MAX_UPLOAD_BYTES) {
+        setUploadError(t('fileTooLarge', { limit: formatBytes(MAX_UPLOAD_BYTES) }));
+        return;
+      }
       formData.append('file', compressedFile);
       const res = await fetch('/api/v1/images', { method: 'POST', body: formData });
       const json = await res.json();
       if (res.ok) {
         setImages((prev) => [json.data, ...prev]);
         router.refresh();
+      } else if (json.error === 'fileTooLarge') {
+        setUploadError(t('fileTooLarge', { limit: formatBytes(MAX_UPLOAD_BYTES) }));
+      } else {
+        setUploadError(t('uploadFailed'));
       }
+    } catch (error) {
+      console.error('Failed to upload image:', error);
+      setUploadError(t('uploadFailed'));
     } finally {
       setIsUploading(false);
       e.target.value = '';
@@ -122,6 +143,17 @@ export function GalleryGrid({
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploading(true);
+    setUploadError(null);
+    // Unlike images, documents aren't compressed client-side, so this is
+    // the only chance to catch an oversized file before a round trip to the
+    // server (which would reject it too — see POST /api/v1/documents — but
+    // failing here is instant and doesn't burn an upload attempt).
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setUploadError(t('fileTooLarge', { limit: formatBytes(MAX_UPLOAD_BYTES) }));
+      setIsUploading(false);
+      e.target.value = '';
+      return;
+    }
     const formData = new FormData();
     try {
       // Unlike images, documents aren't compressed client-side first — a
@@ -135,7 +167,14 @@ export function GalleryGrid({
       if (res.ok) {
         setDocuments((prev) => [json.data, ...prev]);
         router.refresh();
+      } else if (json.error === 'fileTooLarge') {
+        setUploadError(t('fileTooLarge', { limit: formatBytes(MAX_UPLOAD_BYTES) }));
+      } else {
+        setUploadError(t('uploadFailed'));
       }
+    } catch (error) {
+      console.error('Failed to upload document:', error);
+      setUploadError(t('uploadFailed'));
     } finally {
       setIsUploading(false);
       e.target.value = '';
@@ -245,11 +284,13 @@ export function GalleryGrid({
                   <input type="file" accept="image/*" capture="environment" onChange={handleUpload} style={{ display: 'none' }} disabled={isUploading} />
                 </label>
               </Tooltip>
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', background: 'var(--color-primary)', color: '#fff', padding: 'var(--spacing-xs) var(--spacing-md)', borderRadius: 'var(--radius-md)', cursor: isUploading ? 'not-allowed' : 'pointer', fontWeight: 'var(--font-weight-bold)', opacity: isUploading ? 0.6 : 1, fontSize: 'var(--font-size-sm)' }}>
-                <PlusIcon style={{ width: '16px', height: '16px' }} />
-                {isUploading ? t('uploading') : t('uploadImage')}
-                <input type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} disabled={isUploading} />
-              </label>
+              <Tooltip text={t('uploadImageHint', { limit: formatBytes(MAX_UPLOAD_BYTES) })}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', background: 'var(--color-primary)', color: '#fff', padding: 'var(--spacing-xs) var(--spacing-md)', borderRadius: 'var(--radius-md)', cursor: isUploading ? 'not-allowed' : 'pointer', fontWeight: 'var(--font-weight-bold)', opacity: isUploading ? 0.6 : 1, fontSize: 'var(--font-size-sm)' }}>
+                  <PlusIcon style={{ width: '16px', height: '16px' }} />
+                  {isUploading ? t('uploading') : t('uploadImage')}
+                  <input type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} disabled={isUploading} />
+                </label>
+              </Tooltip>
             </>
           )}
           {viewMode === 'documents' && (
@@ -258,11 +299,13 @@ export function GalleryGrid({
             // the standalone counterpart, for documents unrelated to
             // any package. Same button styling as the image upload
             // above, just posting to /api/v1/documents instead.
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', background: 'var(--color-secondary)', color: '#fff', padding: 'var(--spacing-xs) var(--spacing-md)', borderRadius: 'var(--radius-md)', cursor: isUploading ? 'not-allowed' : 'pointer', fontWeight: 'var(--font-weight-bold)', opacity: isUploading ? 0.6 : 1, fontSize: 'var(--font-size-sm)' }}>
-              <PlusIcon style={{ width: '16px', height: '16px' }} />
-              {isUploading ? t('uploading') : t('uploadDocument')}
-              <input type="file" onChange={handleUploadDocument} style={{ display: 'none' }} disabled={isUploading} />
-            </label>
+            <Tooltip text={t('uploadDocumentHint', { limit: formatBytes(MAX_UPLOAD_BYTES) })}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', background: 'var(--color-secondary)', color: '#fff', padding: 'var(--spacing-xs) var(--spacing-md)', borderRadius: 'var(--radius-md)', cursor: isUploading ? 'not-allowed' : 'pointer', fontWeight: 'var(--font-weight-bold)', opacity: isUploading ? 0.6 : 1, fontSize: 'var(--font-size-sm)' }}>
+                <PlusIcon style={{ width: '16px', height: '16px' }} />
+                {isUploading ? t('uploading') : t('uploadDocument')}
+                <input type="file" onChange={handleUploadDocument} style={{ display: 'none' }} disabled={isUploading} />
+              </label>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -507,6 +550,10 @@ export function GalleryGrid({
           onCancel={() => setConfirmBulkDelete(false)}
           isConfirming={isBulkDeleting}
         />
+      )}
+
+      {uploadError && (
+        <Toast message={uploadError} type="error" onClose={() => setUploadError(null)} />
       )}
     </div>
   );

@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadDocumentFile } from '@/app/lib/storage/documents';
 import { createDocument, getDocuments, getUnassignedDocuments } from '@/app/lib/services/documents';
+import { MAX_UPLOAD_BYTES } from '@/app/lib/storage/upload-limits';
 
 // ?unassigned=1 narrows this to package-less documents only — what
 // DocumentPickerModal offers when a tenant is attaching an already-uploaded
@@ -31,6 +32,14 @@ export async function POST(request: NextRequest) {
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    }
+
+    // Documents aren't compressed client-side (unlike images), so this is
+    // the first size check they ever hit — see upload-limits.ts for why
+    // 4.5MB specifically. The client also checks this pre-flight (see
+    // GalleryGrid.tsx) for a snappier failure, but this is the real guard.
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return NextResponse.json({ error: 'fileTooLarge', maxBytes: MAX_UPLOAD_BYTES }, { status: 413 });
     }
 
     const url = await uploadDocumentFile(file);
