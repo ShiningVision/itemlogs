@@ -381,7 +381,8 @@
     "themeDefault": "默认",
     "themeDark": "深色",
     "themeSunset": "日落",
-    "themeForest": "森林"
+    "themeForest": "森林",
+    "themeBlossom": "花朵"
   },
   "account": {
     "sectionTitle": "账户与安全",

@@ -381,7 +381,8 @@
     "themeDefault": "기본",
     "themeDark": "다크",
     "themeSunset": "선셋",
-    "themeForest": "포레스트"
+    "themeForest": "포레스트",
+    "themeBlossom": "블로썸"
   },
   "account": {
     "sectionTitle": "계정 및 보안",

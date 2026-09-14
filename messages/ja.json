@@ -381,7 +381,8 @@
     "themeDefault": "デフォルト",
     "themeDark": "ダーク",
     "themeSunset": "サンセット",
-    "themeForest": "フォレスト"
+    "themeForest": "フォレスト",
+    "themeBlossom": "ブロッサム"
   },
   "account": {
     "sectionTitle": "アカウントとセキュリティ",

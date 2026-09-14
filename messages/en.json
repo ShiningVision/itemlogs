@@ -381,7 +381,8 @@
     "themeDefault": "Default",
     "themeDark": "Dark",
     "themeSunset": "Sunset",
-    "themeForest": "Forest"
+    "themeForest": "Forest",
+    "themeBlossom": "Blossom"
   },
   "account": {
     "sectionTitle": "Account & Security",

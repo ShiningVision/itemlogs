@@ -11,10 +11,12 @@ import defaultTokens from './default';
 import darkTokens from './dark';
 import sunsetTokens from './sunset';
 import forestTokens from './forest';
+import blossomTokens from './blossom';
 
 export const themes: Record<string, ThemeTokens> = {
   default: defaultTokens,
   dark: darkTokens,
   sunset: sunsetTokens,
   forest: forestTokens,
+  blossom: blossomTokens,
 };

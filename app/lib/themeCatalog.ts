@@ -20,6 +20,14 @@ export const THEME_DISPLAY_CATALOG: ThemeCatalogEntry[] = [
   { name: 'dark', labelKey: 'themeDark' },
   { name: 'sunset', labelKey: 'themeSunset' },
   { name: 'forest', labelKey: 'themeForest' },
+  // Priced at $4.99, same as dark/sunset/forest — see itemlogs-website's
+  // app/lib/db/schema.sql for the migration comment + the themes table row
+  // this needs (INSERT INTO themes ...). Until that INSERT is actually run
+  // against the live D1 database, this will behave like an unregistered
+  // theme on the real Themes page: selectThemeAction/tryThemeAction
+  // (app/lib/actions/themes.ts) fail closed with no matching central-site
+  // entry, so "Try it out" appears but silently does nothing.
+  { name: 'blossom', labelKey: 'themeBlossom' },
 ];
 
 export const THEME_TRIAL_DURATION_MS = 10 * 60 * 1000;

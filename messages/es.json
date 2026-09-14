@@ -381,7 +381,8 @@
     "themeDefault": "Predeterminado",
     "themeDark": "Oscuro",
     "themeSunset": "Atardecer",
-    "themeForest": "Bosque"
+    "themeForest": "Bosque",
+    "themeBlossom": "Flor"
   },
   "account": {
     "sectionTitle": "Cuenta y seguridad",
