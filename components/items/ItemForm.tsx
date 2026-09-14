@@ -218,8 +218,20 @@ export function ItemForm({
         // package view, sale view, ...) instead of always the items list —
         // router.back() also restores that page's scroll position, so the
         // user doesn't have to scroll back down to where they were.
-        router.back();
+        //
+        // Order matters here: router.refresh() clears the *entire*
+        // client-side Router Cache (not just this page's), so it needs to
+        // run first, while we're still on the edit page. Calling it after
+        // router.back() is unreliable — by the time it runs, the router's
+        // notion of "current route" may not have caught up to the
+        // just-completed back-navigation, so the refresh can miss the items
+        // list entirely and it's left showing its stale, pre-edit Router
+        // Cache entry (e.g. an item whose status changed out of the active
+        // filter stays visible until a hard reload). Refreshing first
+        // invalidates that cached entry, so back() has nothing stale left
+        // to reuse and is forced to refetch from the server.
         router.refresh();
+        router.back();
         return;
       }
 
