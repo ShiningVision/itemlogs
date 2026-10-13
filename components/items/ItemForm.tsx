@@ -19,6 +19,7 @@ import type { Settings } from '@/app/lib/definitions';
 import { resolveLabel } from '@/app/lib/labels';
 import { parseApiError } from '@/app/lib/errors/parseApiError';
 import { useUnsavedChangesGuard } from '@/app/lib/hooks/useUnsavedChangesGuard';
+import { typesEnabled } from '@/app/lib/typesEnabled';
 
 type Option = { id: number; name: string | null };
 type Currency = { id: number; currency_code: string; currency_name: string };
@@ -51,13 +52,6 @@ type ItemFormData = {
 };
 
 const STATUSES = [1, 2, 3, 4, 5];
-
-// Matches the `description VARCHAR(255)` column (see app/api/setup/
-// route.ts) — capped client-side so a paste-heavy description gets an
-// immediate character count instead of failing at save time. `notes` has no
-// equivalent cap: it's a TEXT column with no length limit (see the same
-// setup route), so its counter (below) shows a running count with no max.
-const DESCRIPTION_MAX_LENGTH = 255;
 
 export function ItemForm({
   mode,
@@ -107,12 +101,54 @@ export function ItemForm({
   // mode (see handleAddGalleryImage/handleRemoveGalleryImage below), so
   // only `form` — the fields deferred until the Save button — is guarded.
   const initialFormSnapshotRef = useRef(JSON.stringify(form));
-  const isDirty = mode === 'update' && JSON.stringify(form) !== initialFormSnapshotRef.current;
-  const { confirmNavigation } = useUnsavedChangesGuard(isDirty, t('unsavedChangesConfirm'));
-
+  // Always the newest form state, for code that runs after an `await` and
+  // would otherwise see the stale `form` its render captured (see
+  // saveItem / buildPayload).
+  const formRef = useRef(form);
+  formRef.current = form;
+  // Set once a save-and-leave has succeeded, so the page counts as clean
+  // for the unsaved-changes guard while the browser navigates away.
+  const leavingAfterSaveRef = useRef(false);
   const [gallery, setGallery] = useState<ImageRow[]>(
     initialGalleryImages.map((gi) => gi.images)
   );
+  // Set once a create has gone through while the person is still on this
+  // page (the unsaved-changes dialog's Save), so the now-saved form stops
+  // counting as unsaved.
+  const [justCreated, setJustCreated] = useState(false);
+  const formChanged = JSON.stringify(form) !== initialFormSnapshotRef.current;
+  // Update mode: only `form` counts (gallery edits save themselves). Create
+  // mode: nothing exists yet, so gallery images picked before the first save
+  // are unsaved work too, on top of any edited field.
+  const isDirty =
+    !leavingAfterSaveRef.current &&
+    (mode === 'update' ? formChanged : !justCreated && (formChanged || gallery.length > 0));
+
+  // Last snapshot already sent by a background (page-hidden) save — stops
+  // visibilitychange + pagehide from sending the same edit twice. Not the
+  // "clean" baseline: the form stays dirty until a real save succeeds,
+  // since a keepalive request's outcome can't be observed.
+  const lastBackgroundSavedRef = useRef<string | null>(null);
+  function backgroundSave() {
+    if (mode !== 'update' || !form.name.trim()) return;
+    const snapshot = JSON.stringify(form);
+    if (snapshot === initialFormSnapshotRef.current || snapshot === lastBackgroundSavedRef.current) return;
+    lastBackgroundSavedRef.current = snapshot;
+    fetch(`/api/v1/items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildPayload()),
+      keepalive: true,
+    }).catch(() => {});
+  }
+
+  const { requestLeave, guardDialog } = useUnsavedChangesGuard(isDirty, {
+    // Save from the unsaved-changes dialog: save in place, the dialog then
+    // continues to wherever the person was actually heading.
+    onSave: () => saveItem(false),
+    onBackgroundSave: backgroundSave,
+  });
+
   // Replaces the old "stay on this page" toggle — instead of leaving the
   // form open to re-enter the same item by hand, this creates that many
   // identical copies (each its own separate item row) in one save. Kept as
@@ -171,28 +207,44 @@ export function ItemForm({
     return Math.min(99, n);
   }
 
-  function buildPayload() {
+  // Reads the LATEST form (formRef), not the render's closure — a save can
+  // be kicked off from a handler whose closure is a render or two stale
+  // (e.g. a phone keyboard's autocorrect committing the last word of the
+  // description around the moment Save is tapped).
+  function buildPayload(f: ItemFormData = formRef.current) {
     return {
-      name: form.name,
-      description: form.description || undefined,
-      location_id: form.location?.id ?? null,
-      barcode: settings.use_barcode && form.barcode ? form.barcode.trim() : undefined,
-      status: form.status,
-      category_ids: form.categories.map((c) => c.id),
-      type_ids: form.types.map((tp) => tp.id),
-      main_image: form.main_image?.id ?? null,
-      cost_price: form.cost_price ? Number(form.cost_price) : 0,
-      purchase_price: form.purchase_price ? Number(form.purchase_price) : 0,
-      purchase_price_currency: form.purchase_price_currency,
-      sell_price: settings.use_sell_price && form.sell_price ? Number(form.sell_price) : Number(form.sell_price || 0),
-      notes: settings.use_secret_notes ? form.notes || undefined : undefined,
+      name: f.name,
+      description: f.description || undefined,
+      location_id: f.location?.id ?? null,
+      barcode: settings.use_barcode && f.barcode ? f.barcode.trim() : undefined,
+      status: f.status,
+      category_ids: f.categories.map((c) => c.id),
+      // Left out entirely when types are turned off (typesEnabled), so
+      // saving never touches the item's stored type assignments — an update
+      // that omits type_ids leaves them alone (see updateItem), and they
+      // come back untouched if the setting is turned on again.
+      type_ids: typesEnabled(settings) ? f.types.map((tp) => tp.id) : undefined,
+      main_image: f.main_image?.id ?? null,
+      cost_price: f.cost_price ? Number(f.cost_price) : 0,
+      purchase_price: f.purchase_price ? Number(f.purchase_price) : 0,
+      purchase_price_currency: f.purchase_price_currency,
+      sell_price: settings.use_sell_price && f.sell_price ? Number(f.sell_price) : Number(f.sell_price || 0),
+      notes: settings.use_secret_notes ? f.notes || undefined : undefined,
     };
   }
 
-  async function handleSave() {
-    if (!form.name.trim()) {
+  function handleSave() {
+    return saveItem(true);
+  }
+
+  // `navigate: false` is for the unsaved-changes dialog's Save button: save
+  // in place and let the dialog carry on to wherever the person was going,
+  // instead of this function also sending them back. Resolves true only on
+  // success.
+  async function saveItem(navigate: boolean): Promise<boolean> {
+    if (!formRef.current.name.trim()) {
       setErrorMessage(t('nameRequired'));
-      return;
+      return false;
     }
 
     setIsSaving(true);
@@ -202,37 +254,73 @@ export function ItemForm({
       const payload = buildPayload();
 
       if (mode === 'update') {
-        const res = await fetch(`/api/v1/items/${item.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const json = await res.json();
+        // The form can still change while the request is in flight — typing
+        // in the description during a slow save, or a phone keyboard
+        // committing an autocorrect as Save is tapped. Whatever was sent
+        // then no longer matches what's on screen, so after each response
+        // the latest form is compared with what was sent and, if it moved,
+        // sent again (a few times at most). That way the saved item always
+        // equals the final form: no edit silently lost, and no false
+        // "unsaved changes" warning right after a successful save.
+        let savedSnapshot = '';
+        for (let attempt = 0; attempt < 4; attempt++) {
+          const sentForm = formRef.current;
+          savedSnapshot = JSON.stringify(sentForm);
+          const res = await fetch(`/api/v1/items/${item.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(buildPayload(sentForm)),
+          });
+          const json = await res.json();
 
-        if (!res.ok) {
-          setErrorMessage(parseApiError(json, t('saveFailed')));
-          return;
+          if (!res.ok) {
+            setErrorMessage(parseApiError(json, t('saveFailed')));
+            return false;
+          }
+          if (JSON.stringify(formRef.current) === savedSnapshot) break;
+        }
+        // Baseline = what was actually saved. If the form STILL differs
+        // (kept changing through every retry) it correctly stays dirty.
+        initialFormSnapshotRef.current = savedSnapshot;
+
+        if (!navigate) {
+          // Stays on this page until the dialog navigates; refresh server
+          // data so wherever we go next isn't served stale.
+          router.refresh();
+          return true;
         }
 
         // Go back to wherever this edit was opened from (items list,
-        // package view, sale view, ...) instead of always the items list —
-        // router.back() also restores that page's scroll position, so the
-        // user doesn't have to scroll back down to where they were.
+        // package view, sale view, ...) instead of always the items list.
         //
-        // Order matters here: router.refresh() clears the *entire*
-        // client-side Router Cache (not just this page's), so it needs to
-        // run first, while we're still on the edit page. Calling it after
-        // router.back() is unreliable — by the time it runs, the router's
-        // notion of "current route" may not have caught up to the
-        // just-completed back-navigation, so the refresh can miss the items
-        // list entirely and it's left showing its stale, pre-edit Router
-        // Cache entry (e.g. an item whose status changed out of the active
-        // filter stays visible until a hard reload). Refreshing first
-        // invalidates that cached entry, so back() has nothing stale left
-        // to reuse and is forced to refetch from the server.
-        router.refresh();
-        router.back();
-        return;
+        // Neither ordering of router.back()/router.refresh() reliably
+        // busts the client-side Router Cache here (confirmed: an item whose
+        // status changed out of the active filter kept showing in the list
+        // after either ordering, even in dev, and only disappeared on a
+        // full hard reload). That points to the soft back-navigation
+        // itself serving the previous page straight from cache without
+        // ever re-running Next's refresh invalidation in time.
+        //
+        // So skip the soft-navigation cache path entirely for this return
+        // trip: use the raw History API to go back, then force a real
+        // full-document reload once the browser finishes changing the URL
+        // (the 'popstate' event fires only after window.location has
+        // already updated to the previous page's address). This is
+        // heavier than a client-side transition, but it's the same hard
+        // reload already confirmed to always show correct, fresh data.
+        // Saved, so count it as clean — otherwise the unsaved-changes
+        // guard's beforeunload prompt (and background save) would fire on
+        // the reload below. (The baseline was already set to the saved
+        // snapshot above; this flag also forces "clean" for the re-render
+        // that follows, regardless of any last-instant form change.)
+        leavingAfterSaveRef.current = true;
+        window.addEventListener(
+          'popstate',
+          () => window.location.reload(),
+          { once: true }
+        );
+        window.history.back();
+        return true;
       }
 
       // Create mode: repeat the same create call `quantity` times — each
@@ -249,7 +337,7 @@ export function ItemForm({
 
         if (!res.ok) {
           setErrorMessage(parseApiError(json, t('saveFailed')));
-          return;
+          return false;
         }
 
         // Attach any gallery images picked before the item existed.
@@ -266,7 +354,12 @@ export function ItemForm({
         }
       }
 
-      router.push('/dashboard/items');
+      // Created, so nothing here is unsaved anymore (matters for the
+      // unsaved-changes dialog's Save, which continues to its own
+      // destination instead of this push).
+      setJustCreated(true);
+      if (navigate) router.push('/dashboard/items');
+      return true;
     } finally {
       setIsSaving(false);
     }
@@ -343,9 +436,7 @@ export function ItemForm({
         {mode === 'update' && (
           <button
             type="button"
-            onClick={() => {
-              if (confirmNavigation()) router.back();
-            }}
+            onClick={() => requestLeave(() => router.back())}
             className="interactive-card"
             style={{
               display: 'inline-flex',
@@ -373,6 +464,7 @@ export function ItemForm({
                 value={form.main_image}
                 onChange={(img) => update('main_image', img)}
                 excludeIds={gallery.map((g) => g.id)}
+                galleryImages={gallery}
               />
             </div>
 
@@ -416,23 +508,25 @@ export function ItemForm({
                   </button>
                 </div>
 
-                <div className="sheet-field">
-                  <span className="sheet-label">{typeLabel}</span>
-                  <button
-                    type="button"
-                    className="sheet-input"
-                    onClick={() => setTypeModalOpen(true)}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-xs)', cursor: 'pointer', textAlign: 'left' }}
-                  >
-                    <span style={{ color: form.types.length ? 'inherit' : 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {form.types.length
-                        ? form.types.length > 2
-                          ? t('chipSummary', { first: form.types.slice(0, 2).map((tp) => tp.name).join(', '), count: form.types.length - 2 })
-                          : form.types.map((tp) => tp.name).join(', ')
-                        : t('other')}
-                    </span>
-                  </button>
-                </div>
+                {typesEnabled(settings) && (
+                  <div className="sheet-field">
+                    <span className="sheet-label">{typeLabel}</span>
+                    <button
+                      type="button"
+                      className="sheet-input"
+                      onClick={() => setTypeModalOpen(true)}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-xs)', cursor: 'pointer', textAlign: 'left' }}
+                    >
+                      <span style={{ color: form.types.length ? 'inherit' : 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {form.types.length
+                          ? form.types.length > 2
+                            ? t('chipSummary', { first: form.types.slice(0, 2).map((tp) => tp.name).join(', '), count: form.types.length - 2 })
+                            : form.types.map((tp) => tp.name).join(', ')
+                          : t('other')}
+                      </span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -444,6 +538,7 @@ export function ItemForm({
               onAdd={handleAddGalleryImage}
               onRemove={handleRemoveGalleryImage}
               additionalExcludeIds={form.main_image ? [form.main_image.id] : []}
+              mainImage={form.main_image}
             />
           </div>
 
@@ -526,7 +621,6 @@ export function ItemForm({
             <CharCountTextarea
               className="sheet-input"
               minHeight="100px"
-              maxLength={DESCRIPTION_MAX_LENGTH}
               value={form.description}
               onChange={(value) => update('description', value)}
             />
@@ -622,12 +716,13 @@ export function ItemForm({
             <Button onClick={handleSave} disabled={isSaving}>
               {isSaving ? t('saving') : t('save')}
             </Button>
-            {mode === 'create' && (
-              <Button onClick={handleSaveAsBlueprint} disabled={isSavingBlueprint} title={t('saveAsBlueprintHint')}>
-                <BookmarkSquareIcon style={{ width: '18px', height: '18px' }} />
-                {isSavingBlueprint ? t('saving') : t('saveAsBlueprint')}
-              </Button>
-            )}
+            {/* Available in update mode too, for when you forgot to save a
+                blueprint while creating the item. Uses the form's current
+                values (saved or not) and doesn't touch the item itself. */}
+            <Button onClick={handleSaveAsBlueprint} disabled={isSavingBlueprint} title={t('saveAsBlueprintHint')}>
+              <BookmarkSquareIcon style={{ width: '18px', height: '18px' }} />
+              {isSavingBlueprint ? t('saving') : t('saveAsBlueprint')}
+            </Button>
           </div>
         </div>
       </div>
@@ -663,7 +758,7 @@ export function ItemForm({
         />
       )}
 
-      {typeModalOpen && (
+      {typesEnabled(settings) && typeModalOpen && (
         <TagManagerModal
           mode="assign"
           multi
@@ -684,6 +779,8 @@ export function ItemForm({
           onClose={() => setBlueprintNotification(null)}
         />
       )}
+
+      {guardDialog}
 
       {scannerOpen && (
         <BarcodeScannerModal

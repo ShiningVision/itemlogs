@@ -167,6 +167,16 @@ export type Settings = {
   // components/dashboard/SettingsForm.tsx, app/page.tsx, and
   // app/items/[id]/page.tsx for where it's read.
   spare_toggle_6: boolean;
+  // spare_toggle_7 is claimed: INVERTED "hide types" — true means the whole
+  // "type" tag pool is hidden (filters on the dashboard and visitor page,
+  // the item form's type picker, the item page's type badge, the Excel type
+  // column/import). Inverted on purpose: spare toggles default to false, and
+  // existing tenants must keep types visible with zero migration, so "off"
+  // (false) has to mean "types shown". The settings UI presents it as a
+  // normal "Use types" switch (checked = false here); code should read it
+  // through typesEnabled() in app/lib/typesEnabled.ts rather than testing
+  // the raw flag. Hiding never deletes stored type assignments. Kept named
+  // spare_toggle_7 — do not rename (see the note above).
   spare_toggle_7: boolean;
   spare_toggle_8: boolean;
   // Contact channels — see the comment on the same columns in

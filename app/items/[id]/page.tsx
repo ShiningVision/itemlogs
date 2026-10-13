@@ -3,6 +3,7 @@ import { getItemById } from '@/app/lib/services/items';
 import { getItemImages } from '@/app/lib/services/item-images';
 import { getSettings } from '@/app/lib/services/settings';
 import { resolveLabel } from '@/app/lib/labels';
+import { typesEnabled } from '@/app/lib/typesEnabled';
 import { getTranslations } from 'next-intl/server';
 import { notFound, redirect } from 'next/navigation';
 import { BackToStorefrontButton } from '@/components/storefront/BackToStorefrontButton';
@@ -116,7 +117,9 @@ export default async function PublicItemPage({
                 <div className="sheet-badges">
                   <Badge tone="primary">{statusBadgeLabel}</Badge>
                   <Badge>{categoryLabel}: {item.categories?.length ? item.categories.map((c: { name: string | null }) => c.name).join(', ') : itemsT('other')}</Badge>
-                  <Badge>{typeLabel}: {item.types?.length ? item.types.map((t: { name: string | null }) => t.name).join(', ') : itemsT('other')}</Badge>
+                  {typesEnabled(settings) && (
+                    <Badge>{typeLabel}: {item.types?.length ? item.types.map((t: { name: string | null }) => t.name).join(', ') : itemsT('other')}</Badge>
+                  )}
                 </div>
 
                 {hasStats && (

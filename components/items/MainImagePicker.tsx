@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { PhotoIcon } from '@heroicons/react/24/outline';
 import { ImagePickerModal } from './ImagePickerModal';
-import { ImageZoomModal } from '@/components/ui/ImageZoomModal';
+import { ImageLightbox } from '@/components/ui/ImageLightbox';
 import { NoImagePlaceholder } from '@/components/ui/NoImagePlaceholder';
 
 type ImageRow = { id: number; url: string };
@@ -14,12 +14,18 @@ export function MainImagePicker({
   value,
   onChange,
   excludeIds,
+  galleryImages = [],
 }: {
   value: ImageRow | null;
   onChange: (image: ImageRow) => void;
   excludeIds?: number[];
+  // The item's gallery images, so the zoom popup can flip through them after
+  // the main image — same lightbox as the visitor page's item gallery (and
+  // as ImageGalleryEditor's thumbnails).
+  galleryImages?: ImageRow[];
 }) {
   const t = useTranslations('items');
+  const storefrontT = useTranslations('storefront');
   const [modalOpen, setModalOpen] = useState(false);
   const [zoomOpen, setZoomOpen] = useState(false);
 
@@ -75,7 +81,14 @@ export function MainImagePicker({
       )}
 
       {zoomOpen && value?.url && (
-        <ImageZoomModal url={value.url} onClose={() => setZoomOpen(false)} />
+        <ImageLightbox
+          images={[value, ...galleryImages].map((img) => ({ id: img.id, url: img.url }))}
+          startIndex={0}
+          onClose={() => setZoomOpen(false)}
+          prevLabel={storefrontT('prevImage')}
+          nextLabel={storefrontT('nextImage')}
+          closeLabel={storefrontT('close')}
+        />
       )}
     </div>
   );

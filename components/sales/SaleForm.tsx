@@ -39,12 +39,35 @@ export function SaleForm({
   // the same sense.
   const initialSnapshotRef = useRef(JSON.stringify({ name, date }));
   const isDirty = mode === 'update' && JSON.stringify({ name, date }) !== initialSnapshotRef.current;
-  const { confirmNavigation } = useUnsavedChangesGuard(isDirty, t('unsavedChangesConfirm'));
+  // Last snapshot already sent by a background (page-hidden) save, so the
+  // visibilitychange + pagehide pair doesn't send the same edit twice. Not
+  // the "clean" baseline — the form stays dirty until a real save succeeds,
+  // since a keepalive request's outcome can't be observed.
+  const lastBackgroundSavedRef = useRef<string | null>(null);
+  function backgroundSave() {
+    if (mode !== 'update' || !date) return;
+    const snapshot = JSON.stringify({ name, date });
+    if (snapshot === initialSnapshotRef.current || snapshot === lastBackgroundSavedRef.current) return;
+    lastBackgroundSavedRef.current = snapshot;
+    fetch(`/api/v1/sales/${sale!.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name || undefined, date }),
+      keepalive: true,
+    }).catch(() => {});
+  }
 
-  async function handleSave() {
+  const { requestLeave, guardDialog } = useUnsavedChangesGuard(isDirty, {
+    onSave: handleSave,
+    onBackgroundSave: backgroundSave,
+  });
+
+  // Resolves true on success so the unsaved-changes dialog's Save button
+  // knows it's safe to continue leaving.
+  async function handleSave(): Promise<boolean> {
     if (!date) {
       setError(t('dateRequired'));
-      return;
+      return false;
     }
 
     setIsSaving(true);
@@ -63,7 +86,7 @@ export function SaleForm({
 
       if (!res.ok) {
         setError(parseApiError(json, t('saveFailed')));
-        return;
+        return false;
       }
 
       if (mode === 'create') {
@@ -77,6 +100,7 @@ export function SaleForm({
         initialSnapshotRef.current = JSON.stringify({ name, date });
         router.refresh();
       }
+      return true;
     } finally {
       setIsSaving(false);
     }
@@ -91,9 +115,7 @@ export function SaleForm({
           // here from the Sell page (e.g. after a checkout redirect), and
           // "back" would bounce the tenant right back into Sell instead of
           // to the sales list they actually expect.
-          onClick={() => {
-            if (confirmNavigation()) router.push('/dashboard/sales');
-          }}
+          onClick={() => requestLeave(() => router.push('/dashboard/sales'))}
           className="interactive-card"
           style={{
             display: 'inline-flex',
@@ -164,6 +186,8 @@ export function SaleForm({
           </div>
         </div>
       </div>
+
+      {guardDialog}
     </div>
   );
 }

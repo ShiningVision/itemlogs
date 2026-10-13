@@ -13,6 +13,12 @@ export async function POST(
     return NextResponse.json({ data: result });
   } catch (error) {
     console.error('Failed to distribute fees:', error);
+    // The service throws plain Errors with user-meaningful messages for
+    // expected problems (package has no items, total purchase price is
+    // zero) — pass those through so the UI can say what's wrong.
+    if (error instanceof Error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: 'Failed to distribute fees' }, { status: 500 });
   }
 }

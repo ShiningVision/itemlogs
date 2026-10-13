@@ -1,5 +1,6 @@
 // app/lib/items/exportItems.ts
 import ExcelJS from 'exceljs';
+import { typesEnabled } from '@/app/lib/typesEnabled';
 
 // Columns are deliberately explicit (not a raw dump of the items table) —
 // package_id, gallery images, and is_featured are internal/organizational
@@ -30,11 +31,13 @@ export const ITEM_EXPORT_COLUMNS: { header: string; key: string; width?: number 
 // export any more than it shows up in the UI. Owner-triggered exports are
 // private (not the storefront), so the columns that ARE included are shown
 // in full, unredacted; this only controls which columns exist at all.
-type ExportGateSettings = { use_sell_price: boolean; use_barcode: boolean; use_secret_notes: boolean };
+type ExportGateSettings = { use_sell_price: boolean; use_barcode: boolean; use_secret_notes: boolean; spare_toggle_7: boolean };
 
 export function getItemExportColumns(settings: ExportGateSettings) {
   return ITEM_EXPORT_COLUMNS.filter((column) => {
     if (column.key === 'sell_price') return settings.use_sell_price;
+    // spare_toggle_7 is the inverted "hide types" flag (see typesEnabled).
+    if (column.key === 'type') return typesEnabled(settings);
     if (column.key === 'barcode') return settings.use_barcode;
     if (column.key === 'notes') return settings.use_secret_notes;
     return true;

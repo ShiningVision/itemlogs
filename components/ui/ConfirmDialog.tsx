@@ -10,6 +10,7 @@ export function ConfirmDialog({
   cancelLabel,
   onConfirm,
   onCancel,
+  onDismiss,
   isConfirming = false,
 }: {
   message: string;
@@ -17,6 +18,11 @@ export function ConfirmDialog({
   cancelLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
+  // Backdrop click. Defaults to onCancel, but a dialog whose "cancel" button
+  // is itself a real action (e.g. the unsaved-changes dialog's "Discard")
+  // must not fire it on a stray click outside the card — it passes a
+  // separate no-op-ish dismiss instead.
+  onDismiss?: () => void;
   isConfirming?: boolean;
 }) {
   // Rendered via a portal straight into <body>. Callers often open this from
@@ -29,7 +35,7 @@ export function ConfirmDialog({
   if (typeof document === 'undefined') return null;
 
   return createPortal(
-    <div className="confirm-dialog-overlay" onClick={onCancel}>
+    <div className="confirm-dialog-overlay" onClick={onDismiss ?? onCancel}>
       <div className="confirm-dialog-card" role="alertdialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="confirm-dialog-icon">
           <ExclamationTriangleIcon style={{ width: '26px', height: '26px' }} />

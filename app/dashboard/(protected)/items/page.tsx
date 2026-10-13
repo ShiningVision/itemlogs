@@ -2,6 +2,7 @@
 import { getItems, getUncategorizedItemCounts, OTHER_FILTER_ID, type ItemSort } from '@/app/lib/services/items';
 import { getCategories, getCategoryItemCounts } from '@/app/lib/services/categories';
 import { getTypes, getTypeItemCounts } from '@/app/lib/services/types';
+import { typesEnabled } from '@/app/lib/typesEnabled';
 import { getLocations, getLocationItemCounts } from '@/app/lib/services/locations';
 import { getSettings } from '@/app/lib/services/settings';
 import { resolveLabel } from '@/app/lib/labels';
@@ -67,7 +68,9 @@ export default async function ItemsPage({
       : statusesParam === 'all'
         ? undefined
         : statusesParam.split(',').map(Number);
-  const typeIds = typesParam ? typesParam.split(',').map(Number) : undefined;
+  // With types turned off (see typesEnabled) a leftover `types` URL param
+  // must not keep filtering with no visible filter to explain it.
+  const typeIds = typesEnabled(settings) && typesParam ? typesParam.split(',').map(Number) : undefined;
   const locationIds = locationsParam ? locationsParam.split(',').map(Number) : undefined;
   const search = searchParam?.trim() || undefined;
 
@@ -96,11 +99,11 @@ export default async function ItemsPage({
       offset,
     }),
     getCategories(),
-    getTypes(),
+    typesEnabled(settings) ? getTypes() : Promise.resolve([]),
     getLocations(),
     getUncategorizedItemCounts(),
     getCategoryItemCounts(),
-    getTypeItemCounts(),
+    typesEnabled(settings) ? getTypeItemCounts() : Promise.resolve({} as Record<number, number>),
     getLocationItemCounts(),
   ]);
 
@@ -138,7 +141,7 @@ export default async function ItemsPage({
   if (uncategorizedCounts.category > 0) {
     sortedCategories.push({ id: OTHER_FILTER_ID, name: otherLabel });
   }
-  if (uncategorizedCounts.type > 0) {
+  if (typesEnabled(settings) && uncategorizedCounts.type > 0) {
     sortedTypes.push({ id: OTHER_FILTER_ID, name: otherLabel });
   }
 
@@ -172,6 +175,7 @@ export default async function ItemsPage({
         locations={sortedLocations}
         categoryItemCounts={categoryItemCounts}
         typeItemCounts={typeItemCounts}
+        showTypes={typesEnabled(settings)}
         locationItemCounts={locationItemCounts}
         selectedCategoryIds={categoryIds ?? []}
         selectedStatuses={statuses ?? []}

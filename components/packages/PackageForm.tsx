@@ -9,7 +9,9 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AddItemsToPackageModal } from './AddItemsToPackageModal';
 import { ItemGrid } from '@/components/items/ItemGrid';
 import { DocumentListEditor, type DocumentRow } from './DocumentListEditor';
-import { ArrowDownTrayIcon, ArrowsRightLeftIcon, PaperAirplaneIcon, FlagIcon, PaperClipIcon, ArchiveBoxIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, ArrowsRightLeftIcon, PaperAirplaneIcon, FlagIcon, PaperClipIcon, ArchiveBoxIcon, ArrowLeftIcon, ClockIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { Toast, type ToastType } from '@/components/ui/notification';
+import { getPackageStatus } from '@/app/lib/packageStatus';
 import type { Package, Settings } from '@/app/lib/definitions';
 import { parseApiError } from '@/app/lib/errors/parseApiError';
 import { useUnsavedChangesGuard } from '@/app/lib/hooks/useUnsavedChangesGuard';
@@ -79,6 +81,52 @@ export function PackageForm({
     const [isDocPickerOpen, setIsDocPickerOpen] = useState(false);
     const [distributeConfirmOpen, setDistributeConfirmOpen] = useState(false);
     const [isDistributing, setIsDistributing] = useState(false);
+    const [isMarking, setIsMarking] = useState(false);
+    const [markNotification, setMarkNotification] = useState<{ type: ToastType; message: string } | null>(null);
+
+    // Which bulk action the package's shipment status offers, from the SAVED
+    // dates (pkg, not the unsaved form): in transit -> mark items "Soon",
+    // arrived -> mark items "Available". A package that hasn't shipped yet
+    // offers neither.
+    const markTarget: 'soon' | 'available' | null = (() => {
+        if (mode !== 'update' || !pkg) return null;
+        const shipment = getPackageStatus(pkg);
+        return shipment === 'in_transit' ? 'soon' : shipment === 'arrived' ? 'available' : null;
+    })();
+
+    async function handleMarkItems() {
+        if (!markTarget || !pkg) return;
+        setIsMarking(true);
+        try {
+            const res = await fetch(`/api/v1/packages/${pkg.id}/mark-items`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target: markTarget }),
+            });
+            const json = await res.json().catch(() => null);
+            if (!res.ok) {
+                setMarkNotification({ type: 'error', message: parseApiError(json, t('saveFailed')) });
+                return;
+            }
+            const count: number = json?.data?.updated ?? 0;
+            if (count === 0) {
+                setMarkNotification({
+                    type: 'success',
+                    message: t(markTarget === 'soon' ? 'markNothingToChangeSoon' : 'markNothingToChangeAvailable'),
+                });
+                return;
+            }
+            setMarkNotification({
+                type: 'success',
+                message: t(markTarget === 'soon' ? 'markedItemsSoon' : 'markedItemsAvailable', { count }),
+            });
+            router.refresh();
+        } catch {
+            setMarkNotification({ type: 'error', message: t('saveFailed') });
+        } finally {
+            setIsMarking(false);
+        }
+    }
 
     // Only `form` is guarded — items and documents already save themselves
     // immediately through their own API calls (see AddItemsToPackageModal /
@@ -86,22 +134,36 @@ export function PackageForm({
     // guard cares about.
     const initialFormSnapshotRef = useRef(JSON.stringify(form));
     const isDirty = mode === 'update' && JSON.stringify(form) !== initialFormSnapshotRef.current;
-    const { confirmNavigation } = useUnsavedChangesGuard(isDirty, t('unsavedChangesConfirm'));
+
+    // Last snapshot already sent by a background (page-hidden) save — stops
+    // visibilitychange + pagehide from sending the same edit twice. Not the
+    // "clean" baseline: the form stays dirty until a real save succeeds,
+    // since a keepalive request's outcome can't be observed.
+    const lastBackgroundSavedRef = useRef<string | null>(null);
+    function backgroundSave() {
+        if (mode !== 'update' || !form.name.trim()) return;
+        const snapshot = JSON.stringify(form);
+        if (snapshot === initialFormSnapshotRef.current || snapshot === lastBackgroundSavedRef.current) return;
+        lastBackgroundSavedRef.current = snapshot;
+        fetch(`/api/v1/packages/${pkg!.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(buildPayload()),
+            keepalive: true,
+        }).catch(() => {});
+    }
+
+    const { requestLeave, guardDialog } = useUnsavedChangesGuard(isDirty, {
+        onSave: handleSave,
+        onBackgroundSave: backgroundSave,
+    });
 
     function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
         setForm((prev) => ({ ...prev, [key]: value }));
     }
 
-    async function handleSave() {
-        if (!form.name.trim()) {
-            setError(t('nameRequired'));
-            return;
-        }
-
-        setIsSaving(true);
-        setError(null);
-
-        const payload = {
+    function buildPayload() {
+        return {
             name: form.name,
             description: form.description || null,
             departure_date: form.departure_date || null,
@@ -111,6 +173,20 @@ export function PackageForm({
             shipping_fee: form.shipping_fee ? Math.max(0, Number(form.shipping_fee)) : null,
             shipping_fee_currency: form.shipping_fee_currency,
         };
+    }
+
+    // Resolves true on success so the unsaved-changes dialog's Save button
+    // knows it's safe to continue leaving.
+    async function handleSave(): Promise<boolean> {
+        if (!form.name.trim()) {
+            setError(t('nameRequired'));
+            return false;
+        }
+
+        setIsSaving(true);
+        setError(null);
+
+        const payload = buildPayload();
         try {
             const url = mode === 'create' ? '/api/v1/packages' : `/api/v1/packages/${pkg!.id}`;
             const method = mode === 'create' ? 'POST' : 'PATCH';
@@ -124,7 +200,7 @@ export function PackageForm({
 
             if (!res.ok) {
                 setError(parseApiError(json, t('saveFailed')));
-                return;
+                return false;
             }
 
             if (mode === 'create') {
@@ -139,6 +215,7 @@ export function PackageForm({
                 initialFormSnapshotRef.current = JSON.stringify(form);
                 router.refresh();
             }
+            return true;
         } finally {
             setIsSaving(false);
         }
@@ -147,8 +224,16 @@ export function PackageForm({
     async function handleDistributeFees() {
         setIsDistributing(true);
         try {
-            await fetch(`/api/v1/packages/${pkg!.id}/distribute-fees`, { method: 'POST' });
+            const res = await fetch(`/api/v1/packages/${pkg!.id}/distribute-fees`, { method: 'POST' });
             setDistributeConfirmOpen(false);
+            if (!res.ok) {
+                // Previously ignored — a failed distribution (no items, zero
+                // total purchase price, ...) just closed the dialog as if it
+                // had worked. Surfaced through the form's existing error line.
+                const json = await res.json().catch(() => null);
+                setError(parseApiError(json, t('saveFailed')));
+                return;
+            }
             router.refresh();
         } finally {
             setIsDistributing(false);
@@ -165,9 +250,7 @@ export function PackageForm({
                     // from elsewhere (e.g. the sell/documents flow), and "back"
                     // would bounce the tenant somewhere unexpected instead of
                     // to the packages list they actually expect.
-                    onClick={() => {
-                        if (confirmNavigation()) router.push('/dashboard/packages');
-                    }}
+                    onClick={() => requestLeave(() => router.push('/dashboard/packages'))}
                     className="interactive-card"
                     style={{
                         display: 'inline-flex',
@@ -319,6 +402,21 @@ export function PackageForm({
                                         <ArchiveBoxIcon style={{ width: '18px', height: '18px' }} />
                                         {t('addItemsToPackage')}
                                     </Button>
+                                    {markTarget && (
+                                        <Button
+                                            onClick={handleMarkItems}
+                                            disabled={isMarking || packageItems.length === 0}
+                                            style={distributeFeesButtonStyle}
+                                            title={t(markTarget === 'soon' ? 'markItemsSoonHint' : 'markItemsAvailableHint')}
+                                        >
+                                            {markTarget === 'soon' ? (
+                                                <ClockIcon style={{ width: '16px', height: '16px' }} />
+                                            ) : (
+                                                <CheckCircleIcon style={{ width: '16px', height: '16px' }} />
+                                            )}
+                                            {isMarking ? t('saving') : t(markTarget === 'soon' ? 'markItemsSoon' : 'markItemsAvailable')}
+                                        </Button>
+                                    )}
                                     {settings.use_package_fees && (
                                         <Button
                                             onClick={() => setDistributeConfirmOpen(true)}
@@ -397,6 +495,16 @@ export function PackageForm({
                     isConfirming={isDistributing}
                 />
             )}
+
+            {markNotification && (
+                <Toast
+                    type={markNotification.type}
+                    message={markNotification.message}
+                    onClose={() => setMarkNotification(null)}
+                />
+            )}
+
+            {guardDialog}
         </div>
     );
 }

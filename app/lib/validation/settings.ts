@@ -76,6 +76,9 @@ export const updateSettingsSchema = z.object({
   // see app/lib/definitions.ts's Settings.spare_toggle_6 comment). Kept
   // named spare_toggle_6 here too — do not rename; see that comment for why.
   spare_toggle_6: z.boolean().optional(),
+  // spare_toggle_7 is claimed (inverted "hide types" — see
+  // app/lib/definitions.ts's Settings.spare_toggle_7 comment). Kept named
+  // spare_toggle_7 here too — do not rename.
   spare_toggle_7: z.boolean().optional(),
   spare_toggle_8: z.boolean().optional(),
   // Same looseness reasoning as contact_whatsapp above — a real Telegram

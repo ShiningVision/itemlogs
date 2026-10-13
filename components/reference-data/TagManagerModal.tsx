@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { InlineEditActions } from './InlineEditActions';
 import { Button } from '@/widgets/Button';
 import {
   XMarkIcon,
@@ -359,8 +360,13 @@ export function TagManagerModal({
                       style={{ flex: 1, padding: 'var(--spacing-xs)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
                       autoFocus
                     />
-                    <button type="button" onClick={() => handleSaveEdit(item.id)} disabled={isSubmitting}>{t('save')}</button>
-                    <button type="button" onClick={() => setEditingId(null)}>{t('cancel')}</button>
+                    <InlineEditActions
+                      onSave={() => handleSaveEdit(item.id)}
+                      onCancel={() => setEditingId(null)}
+                      saveLabel={t('save')}
+                      cancelLabel={t('cancel')}
+                      disabled={isSubmitting}
+                    />
                   </>
                 ) : (
                   <>

@@ -2,6 +2,7 @@
 import { getSettings } from '@/app/lib/services/settings';
 import { getCategories } from '@/app/lib/services/categories';
 import { getTypes } from '@/app/lib/services/types';
+import { typesEnabled } from '@/app/lib/typesEnabled';
 import { getLocations } from '@/app/lib/services/locations';
 import { getPublicPackages } from '@/app/lib/services/packages';
 import {
@@ -120,7 +121,9 @@ export default async function HomePage({
   const packageLabel = resolveLabel(settings.name_package, itemsT('package'));
 
   const selectedCategoryIds = categoriesParam ? categoriesParam.split(',').map(Number) : [];
-  const selectedTypeIds = typesParam ? typesParam.split(',').map(Number) : [];
+  // Types turned off (see typesEnabled): a leftover `types` URL param must
+  // not keep filtering with no visible filter or chip to explain it.
+  const selectedTypeIds = typesEnabled(settings) && typesParam ? typesParam.split(',').map(Number) : [];
   const selectedLocationIds = locationsParam ? locationsParam.split(',').map(Number) : [];
   const selectedStatuses = statusesParam ? statusesParam.split(',').map(Number) : [];
   const selectedPackageId = packageParam ? Number(packageParam) : null;
@@ -159,11 +162,11 @@ export default async function HomePage({
         allowedStatuses
       ),
       getCategories(),
-      getTypes(),
+      typesEnabled(settings) ? getTypes() : Promise.resolve([]),
       settings.show_location_filter ? getLocations() : Promise.resolve([]),
       getPublicItemsCount(allowedStatuses),
       getPublicCategoryCounts(allowedStatuses),
-      getPublicTypeCounts(allowedStatuses),
+      typesEnabled(settings) ? getPublicTypeCounts(allowedStatuses) : Promise.resolve({} as Record<number, number>),
       settings.show_location_filter ? getPublicLocationCounts(allowedStatuses) : Promise.resolve({}),
       settings.show_featured_items ? getFeaturedPublicItems(allowedStatuses) : Promise.resolve([]),
       settings.show_package_filter ? getPublicPackages() : Promise.resolve([]),
@@ -277,6 +280,7 @@ export default async function HomePage({
           statusOptionLabels={statusOptionLabels}
           categoryCounts={categoryCounts}
           typeCounts={typeCounts}
+          showTypes={typesEnabled(settings)}
           locationCounts={locationCounts}
           packageFilter={packageFilterDropdown}
           locationFilter={settings.show_location_filter}

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getItems, getUncategorizedItemCounts, OTHER_FILTER_ID, type ItemSort } from '@/app/lib/services/items';
 import { getCategories, getCategoryItemCounts } from '@/app/lib/services/categories';
 import { getTypes, getTypeItemCounts } from '@/app/lib/services/types';
+import { typesEnabled } from '@/app/lib/typesEnabled';
 import { getLocations, getLocationItemCounts } from '@/app/lib/services/locations';
 import { getSettings } from '@/app/lib/services/settings';
 import { getSaleById } from '@/app/lib/services/sales';
@@ -44,7 +45,9 @@ export default async function SellIntoSalePage({
   const sale = await getSaleById(saleId);
 
   const categoryIds = categoriesParam ? categoriesParam.split(',').map(Number) : undefined;
-  const typeIds = typesParam ? typesParam.split(',').map(Number) : undefined;
+  // Ignored with types turned off (see typesEnabled) — see the dashboard
+  // items page.
+  const typeIds = typesEnabled(settings) && typesParam ? typesParam.split(',').map(Number) : undefined;
   const locationIds = locationsParam ? locationsParam.split(',').map(Number) : undefined;
   const search = searchParam?.trim() || undefined;
 
@@ -67,11 +70,11 @@ export default async function SellIntoSalePage({
         offset,
       }),
       getCategories(),
-      getTypes(),
+      typesEnabled(settings) ? getTypes() : Promise.resolve([]),
       getLocations(),
       getUncategorizedItemCounts(),
       getCategoryItemCounts(),
-      getTypeItemCounts(),
+      typesEnabled(settings) ? getTypeItemCounts() : Promise.resolve({} as Record<number, number>),
       getLocationItemCounts(),
     ]);
 
@@ -97,7 +100,7 @@ export default async function SellIntoSalePage({
   if (uncategorizedCounts.category > 0) {
     sortedCategories.push({ id: OTHER_FILTER_ID, name: otherLabel });
   }
-  if (uncategorizedCounts.type > 0) {
+  if (typesEnabled(settings) && uncategorizedCounts.type > 0) {
     sortedTypes.push({ id: OTHER_FILTER_ID, name: otherLabel });
   }
 
@@ -118,6 +121,7 @@ export default async function SellIntoSalePage({
           locations: sortedLocations,
           categoryItemCounts,
           typeItemCounts,
+          showTypes: typesEnabled(settings),
           locationItemCounts,
           selectedCategoryIds: categoryIds ?? [],
           selectedTypeIds: typeIds ?? [],

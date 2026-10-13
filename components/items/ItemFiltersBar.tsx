@@ -60,6 +60,7 @@ export function ItemFiltersBar({
   selectedLocationIds,
   lockStatusToAvailable = false,
   hideManageButtons = false,
+  showTypes = true,
   categoryLabel,
   typeLabel,
   locationLabel,
@@ -90,6 +91,9 @@ export function ItemFiltersBar({
   // ("manage") button on each filter section is left out — the pill rows
   // themselves (picking which tags to filter by) stay fully usable.
   hideManageButtons?: boolean;
+  // False when the tenant has turned types off (see typesEnabled) — the
+  // whole type section (pill row, manage button, "more" picker) disappears.
+  showTypes?: boolean;
   categoryLabel: string;
   typeLabel: string;
   locationLabel: string;
@@ -188,7 +192,7 @@ export function ItemFiltersBar({
   const statusIsDefault = selectedStatuses.length === 1 && selectedStatuses[0] === 1;
   const activeCount =
     selectedCategoryIds.length +
-    selectedTypeIds.length +
+    (showTypes ? selectedTypeIds.length : 0) +
     selectedLocationIds.length +
     (statusIsDefault || lockStatusToAvailable ? 0 : selectedStatuses.length);
 
@@ -196,6 +200,8 @@ export function ItemFiltersBar({
     // statuses is deliberately left alone — clearing it back to null just
     // returns to the Available-only default (see app/dashboard/(protected)/
     // items/page.tsx), which stays selected rather than being wiped too.
+    // `types` is cleared even when the section is hidden, so a stale URL
+    // param can't keep filtering invisibly.
     setParams({ categories: null, types: null, locations: null, statuses: null });
   }
 
@@ -356,7 +362,7 @@ export function ItemFiltersBar({
 
           {renderPillFilterSection('category', categoryLabel, categories, selectedCategoryIds)}
 
-          {renderPillFilterSection('type', typeLabel, types, selectedTypeIds)}
+          {showTypes && renderPillFilterSection('type', typeLabel, types, selectedTypeIds)}
 
           {renderPillFilterSection('location', locationLabel, locations, selectedLocationIds)}
         </>
@@ -364,14 +370,20 @@ export function ItemFiltersBar({
 
       {/* The "Other" pill (id 0, synthetic — see OTHER_FILTER_ID in
           app/lib/services/items.ts) is appended into `categories`/`types`
-          purely for filtering; it isn't a real row and must never be
-          offered as something to rename/delete/pick in either modal
-          below. */}
+          purely for filtering; it isn't a real row, so it must never be
+          offered as something to rename/delete in ManageFiltersModal. It
+          MUST still be passed to FilterTagPickerModal though: Other is
+          appended last, so in a long list it's the first pill to overflow
+          into the "more" picker — filtering it out there made it
+          unreachable (hit types first, since they tend to be the longer
+          list). */}
       {openManager && (
         <ManageFiltersModal
           resources={[
             { key: 'category', apiPath: '/api/v1/categories', label: categoryLabel, items: categories.filter((c) => c.id !== 0), itemCounts: categoryItemCounts },
-            { key: 'type', apiPath: '/api/v1/types', label: typeLabel, items: types.filter((tp) => tp.id !== 0), itemCounts: typeItemCounts },
+            ...(showTypes
+              ? [{ key: 'type' as const, apiPath: '/api/v1/types', label: typeLabel, items: types.filter((tp) => tp.id !== 0), itemCounts: typeItemCounts }]
+              : []),
             { key: 'location', apiPath: '/api/v1/locations', label: locationLabel, items: locations.filter((loc) => loc.id !== 0), itemCounts: locationItemCounts },
           ]}
           initialResource={openManager}
@@ -382,17 +394,17 @@ export function ItemFiltersBar({
       {openMore === 'category' && (
         <FilterTagPickerModal
           label={categoryLabel}
-          items={categories.filter((c) => c.id !== 0)}
+          items={categories}
           itemCounts={categoryItemCounts}
           selectedIds={selectedCategoryIds}
           onApply={(ids) => setParam('categories', ids.length ? ids.join(',') : null)}
           onClose={() => setOpenMore(null)}
         />
       )}
-      {openMore === 'type' && (
+      {showTypes && openMore === 'type' && (
         <FilterTagPickerModal
           label={typeLabel}
-          items={types.filter((tp) => tp.id !== 0)}
+          items={types}
           itemCounts={typeItemCounts}
           selectedIds={selectedTypeIds}
           onApply={(ids) => setParam('types', ids.length ? ids.join(',') : null)}

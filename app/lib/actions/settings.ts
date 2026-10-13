@@ -101,6 +101,8 @@ const GENERAL_SETTINGS_AUTOSAVE_FIELDS = [
   'language',
   'use_sell_price',
   'use_barcode',
+  // Inverted "hide types" (see Settings.spare_toggle_7 in definitions.ts).
+  'spare_toggle_7',
   'use_package_fees',
   'use_secret_notes',
   'display_profit',

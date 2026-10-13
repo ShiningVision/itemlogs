@@ -35,7 +35,10 @@ export function FilterSidebar({
   packageFilter,
   locationFilter,
   searchBar,
+  showTypes = true,
 }: {
+  // False when the tenant turned types off (see typesEnabled).
+  showTypes?: boolean;
   categories: Option[];
   types: Option[];
   locations?: Option[];
@@ -175,9 +178,10 @@ export function FilterSidebar({
         ? checkboxSection(categoryLabel, categoryOptions, selectedCategoryIds, 'categories', categoryCounts, categoriesOpen, () => setCategoriesOpen((v) => !v))
         : pillSection(categoryLabel, categoryOptions, selectedCategoryIds, 'categories', categoriesOpen, () => setCategoriesOpen((v) => !v))}
 
-      {typeOptions.length > ADAPTIVE_THRESHOLD
-        ? checkboxSection(typeLabel, typeOptions, selectedTypeIds, 'types', typeCounts, typesOpen, () => setTypesOpen((v) => !v))
-        : pillSection(typeLabel, typeOptions, selectedTypeIds, 'types', typesOpen, () => setTypesOpen((v) => !v))}
+      {showTypes &&
+        (typeOptions.length > ADAPTIVE_THRESHOLD
+          ? checkboxSection(typeLabel, typeOptions, selectedTypeIds, 'types', typeCounts, typesOpen, () => setTypesOpen((v) => !v))
+          : pillSection(typeLabel, typeOptions, selectedTypeIds, 'types', typesOpen, () => setTypesOpen((v) => !v)))}
 
       {locationFilter && locationOptions.length > 0 &&
         (locationOptions.length > ADAPTIVE_THRESHOLD

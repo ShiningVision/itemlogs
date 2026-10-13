@@ -7,13 +7,20 @@ import { updateGeneralSettingFieldAction } from '@/app/lib/actions/settings';
 import { Toggle } from '@/components/ui/Toggle';
 import { Tooltip } from '@/components/ui/Tooltip';
 import type { Settings } from '@/app/lib/definitions';
+import { typesEnabled } from '@/app/lib/typesEnabled';
 
 type Currency = { id: number; currency_code: string; currency_name: string };
 type Language = { id: number; name: string };
 
-const FUNCTIONALITY_FIELDS: Array<{ key: keyof Settings; labelKey: string; hintKey: string }> = [
+// `inverted`: the stored column means the OPPOSITE of what the switch shows
+// (checked = false in the database). Used for "Use types", which lives on the
+// pre-provisioned spare_toggle_7 as "hide types" so existing tenants keep
+// types visible with no migration — see Settings.spare_toggle_7 in
+// app/lib/definitions.ts.
+const FUNCTIONALITY_FIELDS: Array<{ key: keyof Settings; labelKey: string; hintKey: string; inverted?: boolean }> = [
   { key: 'use_sell_price', labelKey: 'useSellPrice', hintKey: 'useSellPriceHint' },
   { key: 'use_barcode', labelKey: 'useBarcode', hintKey: 'useBarcodeHint' },
+  { key: 'spare_toggle_7', labelKey: 'useType', hintKey: 'useTypeHint', inverted: true },
   { key: 'use_package_fees', labelKey: 'usePackageFees', hintKey: 'usePackageFeesHint' },
   { key: 'use_secret_notes', labelKey: 'useSecretNotes', hintKey: 'useSecretNotesHint' },
 ];
@@ -71,6 +78,7 @@ export function GeneralSettingsForm({
   const t = useTranslations('generalSettings');
   const [, startAutosaveTransition] = useTransition();
   const [fieldStatus, setFieldStatus] = useState<Record<string, FieldStatus>>({});
+  const [typesOn, setTypesOn] = useState(typesEnabled(settings));
   // Local values for the free-text name-override fields — needed so onBlur
   // has something to read (unlike the toggles/selects above, whose native
   // onChange event already carries the new value). Initialized from
@@ -168,7 +176,7 @@ export function GeneralSettingsForm({
       <div className="settings-section">
         <div className="settings-section-title">{t('sectionFunctionality')}</div>
         <div className="settings-group">
-          {FUNCTIONALITY_FIELDS.map(({ key, labelKey, hintKey }) => (
+          {FUNCTIONALITY_FIELDS.map(({ key, labelKey, hintKey, inverted }) => (
             <div key={key} className="settings-row">
               <Tooltip text={t(hintKey)}>
                 <span>{t(labelKey)}</span>
@@ -177,9 +185,15 @@ export function GeneralSettingsForm({
                 {statusFor(key)}
                 <Toggle
                   name={key}
-                  defaultChecked={Boolean(settings[key])}
+                  defaultChecked={inverted ? !settings[key] : Boolean(settings[key])}
                   label={t(labelKey)}
-                  onChange={(e) => autoSave(key, e.target.checked)}
+                  onChange={(e) => {
+                    // Mirrored locally so the type rename field below
+                    // appears/disappears immediately instead of after the
+                    // next page load.
+                    if (key === 'spare_toggle_7') setTypesOn(e.target.checked);
+                    autoSave(key, inverted ? !e.target.checked : e.target.checked);
+                  }}
                 />
               </div>
             </div>
@@ -217,7 +231,8 @@ export function GeneralSettingsForm({
         </p>
 
         <div className="settings-group">
-          {PREFERENCE_NAME_FIELDS.map(({ key, labelKey, hintKey }) => (
+          {/* No point renaming "type" while types are turned off. */}
+          {PREFERENCE_NAME_FIELDS.filter(({ key }) => key !== 'name_type' || typesOn).map(({ key, labelKey, hintKey }) => (
             <div key={key} className="settings-row">
               <Tooltip text={t(hintKey)}>
                 <span>{t(labelKey)}</span>

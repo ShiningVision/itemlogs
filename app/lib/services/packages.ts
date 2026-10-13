@@ -18,6 +18,35 @@ export async function getPackageItemCounts(): Promise<Record<number, number>> {
   return counts;
 }
 
+// Item status values used by the package "Mark items Soon/Available" action
+// (see items.status: 1 Available, 4 Soon — the status formerly named "Lost").
+const STATUS_AVAILABLE = 1;
+const STATUS_SOON = 4;
+
+// Bulk-flips a package's items between Available and Soon, and ONLY between
+// those two: marking Soon touches just the package's Available items, marking
+// Available touches just its Soon items. Anything else in the package (Sold,
+// Reserved, the custom 5th status) is deliberately left alone — that's the
+// whole point of filtering on the source status in the UPDATE itself, rather
+// than fetching items and filtering afterwards. Returns how many changed.
+export async function setPackageItemsSoonOrAvailable(
+  packageId: number,
+  target: 'soon' | 'available'
+): Promise<number> {
+  const from = target === 'soon' ? STATUS_AVAILABLE : STATUS_SOON;
+  const to = target === 'soon' ? STATUS_SOON : STATUS_AVAILABLE;
+
+  const { data, error } = await supabase
+    .from('items')
+    .update({ status: to })
+    .eq('package_id', packageId)
+    .eq('status', from)
+    .select('id');
+
+  if (error) throw error;
+  return data?.length ?? 0;
+}
+
 // Dashboard "total packages" stat — cheap count-only query, no row fetch.
 export async function getPackagesTotalCount(): Promise<number> {
   const { count, error } = await supabase
@@ -132,9 +161,12 @@ import { getSettings } from './settings';
 export async function distributePackageFees(packageId: number) {
   const pkg = await getPackageById(packageId);
 
-  if (pkg.shipping_fee === null || pkg.tariff === null) {
-    throw new Error('Package shipping fee or tariff is missing');
-  }
+  // A blank tariff or shipping fee means "no such fee" — treated as 0
+  // rather than an error (e.g. a package with shipping but no tariff is
+  // normal). The currency columns are NOT NULL with defaults, so they're
+  // always usable even when the amount is blank.
+  const tariff = pkg.tariff ?? 0;
+  const shippingFee = pkg.shipping_fee ?? 0;
 
   const items = await getItemsByPackageId(packageId);
   if (!items || items.length === 0) {
@@ -155,7 +187,7 @@ export async function distributePackageFees(packageId: number) {
 
   const tariffToPivot = await getExchangeRate(tariffCode, pivotCode);
   const shippingToPivot = await getExchangeRate(shippingCode, pivotCode);
-  const totalFeesPivot = pkg.tariff * tariffToPivot + pkg.shipping_fee * shippingToPivot;
+  const totalFeesPivot = tariff * tariffToPivot + shippingFee * shippingToPivot;
 
   const itemsWithPivot = await Promise.all(
     items.map(async (item: any) => {

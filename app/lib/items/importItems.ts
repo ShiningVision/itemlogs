@@ -5,7 +5,7 @@
 // Flow:
 //   1. Validate the workbook's shape — every mandatory column present by
 //      name (order-independent), no unrecognized extra columns. Optional
-//      columns gated by a use_* setting (barcode, sell_price, notes) don't
+//      columns gated by a use_* setting (barcode, sell_price, notes, type) don't
 //      have to be present at all: a tenant who had the toggle off (or
 //      turned it off after exporting) can still reimport that file. A
 //      missing optional column reads as null for every row — same
@@ -38,6 +38,8 @@ import { getCategories, createCategory } from '@/app/lib/services/categories';
 import { getTypes, createType } from '@/app/lib/services/types';
 import { getLocations, createLocation } from '@/app/lib/services/locations';
 import { getCurrencies } from '@/app/lib/services/currencies';
+import { getSettings } from '@/app/lib/services/settings';
+import { typesEnabled } from '@/app/lib/typesEnabled';
 import { getImageByUrl, createImage } from '@/app/lib/services/images';
 import { uploadImageBuffer } from '@/app/lib/storage/images';
 
@@ -47,7 +49,6 @@ const MANDATORY_HEADERS = [
   'id',
   'name',
   'status',
-  'type',
   'category',
   'location',
   'description',
@@ -64,7 +65,14 @@ const MANDATORY_HEADERS = [
 // one of these columns is missing; each is looked up by name below rather
 // than assumed to exist, and its absence is handled per-column (see
 // resolveOptionalNumber/row construction).
-const OPTIONAL_HEADERS = ['barcode', 'sell_price', 'notes'];
+//
+// 'type' is optional for the same reason (types can be turned off — see
+// typesEnabled / Settings.spare_toggle_7): an export from
+// a tenant with types turned off has no type column, and that file must
+// import cleanly. A missing type column leaves every item's existing type
+// assignments untouched — it does NOT mean "clear them" the way a present
+// but blank/"Other" cell does.
+const OPTIONAL_HEADERS = ['barcode', 'sell_price', 'notes', 'type'];
 
 const ALL_KNOWN_HEADERS = new Set([...MANDATORY_HEADERS, ...OPTIONAL_HEADERS]);
 
@@ -162,6 +170,14 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
     };
   }
   const hasSellPriceColumn = headerIndex.has('sell_price');
+
+  // Types are only imported when BOTH the file has a type column AND the
+  // tenant currently has types turned on (typesEnabled). With types off,
+  // a type column in the file is accepted but ignored — no type rows are
+  // created and no assignments change, so a file exported back when types
+  // were on can still be imported.
+  const settings = await getSettings();
+  const importTypes = typesEnabled(settings) && headerIndex.has('type');
 
   // ---- 2. Parse rows + full validation scan (nothing written yet) ----
   const currencies = await getCurrencies();
@@ -480,7 +496,7 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
   for (const row of rows) {
     try {
       const categoryIds = await resolveCategories(row.category, row.rowNumber);
-      const typeIds = await resolveTypes(row.type, row.rowNumber);
+      const typeIds = importTypes ? await resolveTypes(row.type, row.rowNumber) : undefined;
       const locationId = await resolveLocation(row.location);
       const mainImageId = await resolveMainImage(row.main_image);
 
@@ -497,6 +513,8 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
         notes: row.notes ?? undefined,
         status: row.status,
         category_ids: categoryIds,
+        // undefined (not []) when types aren't being imported, so an update
+        // leaves existing assignments alone (see updateItem).
         type_ids: typeIds,
         location_id: locationId,
         main_image: mainImageId,

@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { ImagePickerModal } from './ImagePickerModal';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { ImageLightbox } from '@/components/ui/ImageLightbox';
 
 type ImageRow = { id: number; url: string };
 
@@ -14,24 +15,36 @@ export function ImageGalleryEditor({
   onAdd,
   onRemove,
   additionalExcludeIds = [],
+  mainImage = null,
 }: {
   images: ImageRow[];
-  onAdd: (image: ImageRow) => void;
+  onAdd: (image: ImageRow) => void | Promise<void>;
   onRemove: (imageId: number) => void;
   additionalExcludeIds?: number[];
+  // Only used for the zoom popup: the main image is shown first in it, same
+  // as the visitor page's item gallery (see components/storefront/
+  // ItemGallery.tsx), so flipping through covers every picture of the item.
+  mainImage?: ImageRow | null;
 }) {
   const t = useTranslations('items');
+  // Reused from the storefront namespace — same lightbox, same labels.
+  const storefrontT = useTranslations('storefront');
   const [modalOpen, setModalOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  const lightboxImages = mainImage ? [mainImage, ...images] : images;
+  const lightboxOffset = mainImage ? 1 : 0;
 
   return (
     <div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-sm)' }}>
-        {images.map((img) => (
+        {images.map((img, i) => (
           <div key={img.id} style={{ position: 'relative', width: '80px', height: '80px' }}>
             <img
               src={img.url}
               alt=""
-              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }}
+              onClick={() => setLightboxIndex(i + lightboxOffset)}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'var(--radius-sm)', cursor: 'zoom-in' }}
             />
             <button
               type="button"
@@ -79,10 +92,22 @@ export function ImageGalleryEditor({
         </Tooltip>
       </div>
 
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={lightboxImages.map((img) => ({ id: img.id, url: img.url }))}
+          startIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          prevLabel={storefrontT('prevImage')}
+          nextLabel={storefrontT('nextImage')}
+          closeLabel={storefrontT('close')}
+        />
+      )}
+
       {modalOpen && (
         <ImagePickerModal
           onSelect={(img) => onAdd(img)}
           onClose={() => setModalOpen(false)}
+          multiple
           excludeIds={[...images.map((img) => img.id), ...additionalExcludeIds]}
         />
       )}

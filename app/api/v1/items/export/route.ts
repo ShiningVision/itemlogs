@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getItems } from '@/app/lib/services/items';
 import { getSettings } from '@/app/lib/services/settings';
 import { buildItemsWorkbook } from '@/app/lib/items/exportItems';
+import { typesEnabled } from '@/app/lib/typesEnabled';
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,14 +19,14 @@ export async function GET(request: NextRequest) {
     // page of the (paginated) grid the user is currently looking at.
     const categoryIds = categoriesParam ? categoriesParam.split(',').map(Number) : undefined;
     const statuses = statusesParam ? statusesParam.split(',').map(Number) : undefined;
-    const typeIds = typesParam ? typesParam.split(',').map(Number) : undefined;
     const locationIds = locationsParam ? locationsParam.split(',').map(Number) : undefined;
     const search = searchParam || undefined;
 
-    const [{ items }, settings] = await Promise.all([
-      getItems({ categoryIds, statuses, typeIds, locationIds, search }),
-      getSettings(),
-    ]);
+    const settings = await getSettings();
+    // A leftover `types` param is ignored with types turned off
+    // (typesEnabled), same as the items page itself.
+    const typeIds = typesEnabled(settings) && typesParam ? typesParam.split(',').map(Number) : undefined;
+    const { items } = await getItems({ categoryIds, statuses, typeIds, locationIds, search });
     const buffer = await buildItemsWorkbook(items, settings);
 
     return new NextResponse(buffer, {

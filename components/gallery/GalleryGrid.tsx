@@ -5,7 +5,8 @@ import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { PlusIcon, Squares2X2Icon, CameraIcon, PhotoIcon, DocumentIcon } from '@heroicons/react/24/outline';
-import { compressImageFile } from '@/app/lib/images/compressImage';
+import { uploadImageFiles } from '@/app/lib/images/uploadImages';
+import { useBeforeUnloadWhile } from '@/app/lib/hooks/useBeforeUnloadWhile';
 import { formatBytes } from '@/app/lib/storage/format-bytes';
 import { MAX_UPLOAD_BYTES } from '@/app/lib/storage/upload-limits';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -51,6 +52,10 @@ export function GalleryGrid({
   const [usedDocumentsBytes, setUsedDocumentsBytes] = useState(documentsBytes);
 
   const [isUploading, setIsUploading] = useState(false);
+  // { done, total } while a multi-image upload is running — drives the
+  // on-screen "don't close the app" banner below.
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
+  useBeforeUnloadWhile(isUploading);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [zoomImage, setZoomImage] = useState<ImageRow | null>(null);
   const [deleteImageTarget, setDeleteImageTarget] = useState<ImageRow | null>(null);
@@ -102,40 +107,39 @@ export function GalleryGrid({
   }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    // Several files can be picked at once (the camera button only ever
+    // yields one). Copied out of the input before it's reset below, since
+    // clearing `value` empties the live FileList.
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    if (files.length === 0) return;
     setIsUploading(true);
     setUploadError(null);
-    const formData = new FormData();
     try {
-      const compressedFile = await compressImageFile(file);
-      // Checked post-compression, not on the original file — compression
-      // usually brings a file well under the limit, so checking the
-      // original first would reject uploads that would actually have gone
-      // through fine once compressed. A file that's still too large after
-      // compression (e.g. a huge already-optimized image, or a gif, which
-      // compressImageFile skips) hits this instead of a server round trip.
-      if (compressedFile.size > MAX_UPLOAD_BYTES) {
-        setUploadError(t('fileTooLarge', { limit: formatBytes(MAX_UPLOAD_BYTES) }));
-        return;
+      // Each file is compressed, then size-checked post-compression (see
+      // uploadImageFiles) — compression usually brings a file well under
+      // the limit, so checking the original first would reject uploads that
+      // would have gone through fine. Uploaded one request per file, and
+      // each image appears in the grid as soon as it lands.
+      const { tooLarge, failed } = await uploadImageFiles(
+        files,
+        (image) => {
+          setImages((prev) => [image, ...prev]);
+        },
+        (done, total) => setUploadProgress({ done, total })
+      );
+      const failures = tooLarge + failed;
+      if (failures > 0) {
+        if (files.length === 1) {
+          setUploadError(tooLarge > 0 ? t('fileTooLarge', { limit: formatBytes(MAX_UPLOAD_BYTES) }) : t('uploadFailed'));
+        } else {
+          setUploadError(t('uploadSomeFailed', { failed: failures, total: files.length, limit: formatBytes(MAX_UPLOAD_BYTES) }));
+        }
       }
-      formData.append('file', compressedFile);
-      const res = await fetch('/api/v1/images', { method: 'POST', body: formData });
-      const json = await res.json();
-      if (res.ok) {
-        setImages((prev) => [json.data, ...prev]);
-        router.refresh();
-      } else if (json.error === 'fileTooLarge') {
-        setUploadError(t('fileTooLarge', { limit: formatBytes(MAX_UPLOAD_BYTES) }));
-      } else {
-        setUploadError(t('uploadFailed'));
-      }
-    } catch (error) {
-      console.error('Failed to upload image:', error);
-      setUploadError(t('uploadFailed'));
+      if (failures < files.length) router.refresh();
     } finally {
       setIsUploading(false);
-      e.target.value = '';
+      setUploadProgress(null);
     }
   }
 
@@ -288,7 +292,7 @@ export function GalleryGrid({
                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)', background: 'var(--color-primary)', color: '#fff', padding: 'var(--spacing-xs) var(--spacing-md)', borderRadius: 'var(--radius-md)', cursor: isUploading ? 'not-allowed' : 'pointer', fontWeight: 'var(--font-weight-bold)', opacity: isUploading ? 0.6 : 1, fontSize: 'var(--font-size-sm)' }}>
                   <PlusIcon style={{ width: '16px', height: '16px' }} />
                   {isUploading ? t('uploading') : t('uploadImage')}
-                  <input type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} disabled={isUploading} />
+                  <input type="file" accept="image/*" multiple onChange={handleUpload} style={{ display: 'none' }} disabled={isUploading} />
                 </label>
               </Tooltip>
             </>
@@ -309,6 +313,19 @@ export function GalleryGrid({
           )}
         </div>
       </div>
+
+      {/* Shown for the whole upload: leaving or closing the app mid-upload
+          cuts it off, and phones can't show a native "leave?" prompt. */}
+      {isUploading && (
+        <div
+          role="status"
+          style={{ marginBottom: 'var(--spacing-md)', padding: 'var(--spacing-sm) var(--spacing-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-size-sm)' }}
+        >
+          {uploadProgress
+            ? t('uploadingProgress', { done: Math.min(uploadProgress.done + 1, uploadProgress.total), total: uploadProgress.total })
+            : t('uploading')}
+        </div>
+      )}
 
       {/* Images / Documents switch */}
       <div style={{ display: 'inline-flex', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: 'var(--spacing-md)' }}>

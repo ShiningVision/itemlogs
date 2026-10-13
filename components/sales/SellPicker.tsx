@@ -57,6 +57,8 @@ export function SellPicker({
     locations: FilterOption[];
     categoryItemCounts: Record<number, number>;
     typeItemCounts: Record<number, number>;
+    // typesEnabled(settings) — hides the type filter section when off.
+    showTypes: boolean;
     locationItemCounts: Record<number, number>;
     selectedCategoryIds: number[];
     selectedTypeIds: number[];
@@ -143,6 +145,7 @@ export function SellPicker({
         locations={filtersBar.locations}
         categoryItemCounts={filtersBar.categoryItemCounts}
         typeItemCounts={filtersBar.typeItemCounts}
+        showTypes={filtersBar.showTypes}
         locationItemCounts={filtersBar.locationItemCounts}
         selectedCategoryIds={filtersBar.selectedCategoryIds}
         selectedStatuses={[1]}

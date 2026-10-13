@@ -63,6 +63,9 @@ export function FilterTagPickerModal({
     const filtered = query ? items.filter((item) => (item.name ?? '').toLowerCase().includes(query)) : items;
     const copy = [...filtered];
     copy.sort((a, b) => {
+      // The synthetic "Other" bucket (id 0) always sorts last, regardless
+      // of mode, matching where it sits in the pill row itself.
+      if (a.id === 0 || b.id === 0) return a.id === 0 ? 1 : -1;
       if (sortMode === 'usage') {
         const usageDiff = (itemCounts[b.id] ?? 0) - (itemCounts[a.id] ?? 0);
         if (usageDiff !== 0) return usageDiff;

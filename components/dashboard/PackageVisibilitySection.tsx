@@ -100,6 +100,25 @@ export function PackageVisibilitySection({
       <div className="settings-section-title">{t('sectionPackageVisibility', { packages: packageLabel })}</div>
       <div className="settings-group">
         <div className="settings-row">
+          <Tooltip text={t('showPackageFilterHint', { packages: packageLabel })}>
+            <span>{t('showPackageFilter', { packages: packageLabel })}</span>
+          </Tooltip>
+          <div className="settings-row-controls">
+            {toggleStatus && (
+              <span className="settings-row-status" style={toggleStatus === 'error' ? { color: 'var(--color-danger)' } : undefined}>
+                {toggleStatus === 'saving' ? t('saving') : toggleStatus === 'error' ? t('saveFailed') : t('saved')}
+              </span>
+            )}
+            <Toggle
+              name="show_package_filter"
+              defaultChecked={showPackageFilter}
+              label={t('showPackageFilter', { packages: packageLabel })}
+              onChange={handleToggleChange}
+            />
+          </div>
+        </div>
+
+        <div className="settings-row">
           <Tooltip text={t('namePackageHint')}>
             <span>{t('namePackage')}</span>
           </Tooltip>
@@ -117,25 +136,6 @@ export function PackageVisibilitySection({
               onBlur={handleNamePackageBlur}
               placeholder={t('namePackagePlaceholder')}
               className="sheet-input settings-row-control"
-            />
-          </div>
-        </div>
-
-        <div className="settings-row">
-          <Tooltip text={t('showPackageFilterHint', { packages: packageLabel })}>
-            <span>{t('showPackageFilter', { packages: packageLabel })}</span>
-          </Tooltip>
-          <div className="settings-row-controls">
-            {toggleStatus && (
-              <span className="settings-row-status" style={toggleStatus === 'error' ? { color: 'var(--color-danger)' } : undefined}>
-                {toggleStatus === 'saving' ? t('saving') : toggleStatus === 'error' ? t('saveFailed') : t('saved')}
-              </span>
-            )}
-            <Toggle
-              name="show_package_filter"
-              defaultChecked={showPackageFilter}
-              label={t('showPackageFilter', { packages: packageLabel })}
-              onChange={handleToggleChange}
             />
           </div>
         </div>

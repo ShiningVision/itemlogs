@@ -9,6 +9,7 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { Button } from '@/widgets/Button';
 import { XMarkIcon, PlusIcon, TrashIcon, Bars3BottomLeftIcon, ChartBarIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import type { Tag } from './TagManagerModal';
+import { InlineEditActions } from './InlineEditActions';
 
 export type ManagedResourceKey = 'category' | 'type' | 'location';
 
@@ -336,8 +337,13 @@ export function ManageFiltersModal({
                     style={{ flex: 1, padding: 'var(--spacing-xs)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
                     autoFocus
                   />
-                  <button type="button" onClick={() => handleSaveEdit(item.id)} disabled={isSubmitting}>{t('save')}</button>
-                  <button type="button" onClick={() => setEditingId(null)}>{t('cancel')}</button>
+                  <InlineEditActions
+                    onSave={() => handleSaveEdit(item.id)}
+                    onCancel={() => setEditingId(null)}
+                    saveLabel={t('save')}
+                    cancelLabel={t('cancel')}
+                    disabled={isSubmitting}
+                  />
                 </>
               ) : (
                 <>
