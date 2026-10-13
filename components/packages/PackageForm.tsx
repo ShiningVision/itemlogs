@@ -397,7 +397,7 @@ export function PackageForm({
                                         {t('itemsInPackage', { count: packageItems.length })}
                                     </span>
                                 </div>
-                                <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-sm)' }}>
                                     <Button onClick={() => setAddItemsModalOpen(true)} style={addItemsButtonStyle}>
                                         <ArchiveBoxIcon style={{ width: '18px', height: '18px' }} />
                                         {t('addItemsToPackage')}

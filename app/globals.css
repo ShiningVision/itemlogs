@@ -68,6 +68,16 @@ body {
 html {
   -webkit-text-size-adjust: 100%;
   tab-size: 4;
+  /* Safety net: if any element ever pokes past the right edge, the page
+     must not become horizontally scrollable — otherwise the layout viewport
+     widens on mobile and every fixed/centered modal centers on the wider
+     page instead of the screen. `clip` (unlike `hidden`) doesn't create a
+     scroll container, so position: sticky keeps working. */
+  overflow-x: clip;
+}
+
+body {
+  overflow-x: clip;
 }
 
 button {

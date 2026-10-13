@@ -109,6 +109,11 @@ export function FilterPillRow({
           right: 0,
           visibility: 'hidden',
           pointerEvents: 'none',
+          // An absolutely-positioned box still extends the page's scrollable
+          // area when its content is wider than the container (e.g. one very
+          // long tag name on a phone) — clip it so this invisible measuring
+          // pass can never make the page scroll sideways.
+          overflow: 'hidden',
           display: 'flex',
           flexWrap: 'wrap',
           gap: 'var(--spacing-xs)',
