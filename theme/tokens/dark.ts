@@ -14,6 +14,7 @@ const darkTokens: ThemeTokens = {
     textMuted: '#94a3b8',
     border: '#334155',
     danger: '#f87171',
+    warning: '#fbbf24',
     success: '#4ade80',
     successHover: '#22c55e',
   },

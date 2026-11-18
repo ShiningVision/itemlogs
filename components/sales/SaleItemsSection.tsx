@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { Button } from '@/widgets/Button';
-import { ItemGrid } from '@/components/items/ItemGrid';
+import { FilteredItemGrid } from '@/components/items/FilteredItemGrid';
+import { useExportFilter } from '@/components/items/ExportFilterContext';
 import type { Settings } from '@/app/lib/definitions';
 
 // "Sell items into this sale" used to open AddItemsToSaleModal — a picker
@@ -26,6 +27,7 @@ export function SaleItemsSection({
 }) {
     const t = useTranslations('sales');
     const router = useRouter();
+    const { setIds: setExportIds } = useExportFilter();
 
     return (
         <div className="item-sheet-container" style={{ padding: 'var(--spacing-lg)', paddingTop: 0 }}>
@@ -41,8 +43,9 @@ export function SaleItemsSection({
                             </Link>
                         </div>
 
-                        <ItemGrid
+                        <FilteredItemGrid
                             items={items}
+                            onFilteredIdsChange={setExportIds}
                             settings={settings}
                             removeFromSaleButton
                             saleId={saleId}

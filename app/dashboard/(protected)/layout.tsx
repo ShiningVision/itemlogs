@@ -3,7 +3,7 @@ import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { Sidebar } from '@/components/navigation/Sidebar';
-import { getSettings } from '@/app/lib/services/settings';
+import { getSettings, recordDashboardAccess } from '@/app/lib/services/settings';
 
 export default async function ProtectedLayout({
   children,
@@ -25,6 +25,7 @@ export default async function ProtectedLayout({
   let visitorPageUrl: string | null = null;
   try {
     const settings = await getSettings();
+    await recordDashboardAccess(settings);
     showSales = settings.use_sell_price;
     showVisitorPage = settings.show;
     visitorPageUrl = settings.app_url;

@@ -12,6 +12,8 @@ import { SellPicker } from '@/components/sales/SellPicker';
 import { Pagination } from '@/components/ui/Pagination';
 import { parsePage, getOffset, getTotalPages, buildPageHref } from '@/app/lib/pagination';
 import { getTranslations } from 'next-intl/server';
+import { SELLABLE_STATUSES } from '@/app/lib/sellableStatuses';
+import { parseIdList } from '@/app/lib/idList';
 
 const SELL_PAGE_SIZE = 24;
 
@@ -19,6 +21,10 @@ type SearchParams = {
   categories?: string;
   types?: string;
   locations?: string;
+  xcategories?: string;
+  xtypes?: string;
+  xlocations?: string;
+  statuses?: string;
   page?: string;
   search?: string;
 };
@@ -33,7 +39,7 @@ export default async function SellIntoSalePage({
   const { id } = await params;
   const saleId = Number(id);
   const rawSearchParams = await searchParams;
-  const { categories: categoriesParam, types: typesParam, locations: locationsParam, page: pageParam, search: searchParam } = rawSearchParams;
+  const { categories: categoriesParam, types: typesParam, locations: locationsParam, xcategories: xcategoriesParam, xtypes: xtypesParam, xlocations: xlocationsParam, statuses: statusesParam, page: pageParam, search: searchParam } = rawSearchParams;
 
   const settings = await getSettings();
   // Same guard as the sale-edit page and the sales list — this whole
@@ -49,21 +55,37 @@ export default async function SellIntoSalePage({
   // items page.
   const typeIds = typesEnabled(settings) && typesParam ? typesParam.split(',').map(Number) : undefined;
   const locationIds = locationsParam ? locationsParam.split(',').map(Number) : undefined;
+  const excludedCategoryIds = parseIdList(xcategoriesParam);
+  const excludedTypeIds = typesEnabled(settings) ? parseIdList(xtypesParam) : [];
+  const excludedLocationIds = parseIdList(xlocationsParam);
   const search = searchParam?.trim() || undefined;
+
+  // Defaults to every sellable status (Available, Reserved, status 5). A
+  // `statuses` param narrows it, but is always clamped to the sellable set —
+  // a hand-edited URL can't surface Sold/Soon items here — and the `all`
+  // sentinel (last pill deselected, see ItemFiltersBar) means "every
+  // sellable status", never "every status".
+  const statuses =
+    statusesParam && statusesParam !== 'all'
+      ? statusesParam.split(',').map(Number).filter((s) => SELLABLE_STATUSES.includes(s))
+      : SELLABLE_STATUSES;
+  const effectiveStatuses = statuses.length > 0 ? statuses : SELLABLE_STATUSES;
 
   const page = parsePage(pageParam);
   const offset = getOffset(page, SELL_PAGE_SIZE);
 
   const [{ items, totalCount }, categories, types, locations, uncategorizedCounts, categoryItemCounts, typeItemCounts, locationItemCounts] =
     await Promise.all([
-      // Always status 1 (Available) — this page only ever offers items that
-      // can actually be sold, so there's no status filter to show at all
-      // (see ItemFiltersBar's hideStatusFilter).
+      // Only sellable statuses (see SELLABLE_STATUSES) — Available,
+      // Reserved and the custom 5th status.
       getItems({
         categoryIds,
-        statuses: [1],
+        statuses: effectiveStatuses,
         typeIds,
         locationIds,
+        excludeCategoryIds: excludedCategoryIds,
+        excludeTypeIds: excludedTypeIds,
+        excludeLocationIds: excludedLocationIds,
         search,
         sort: 'newest' as ItemSort,
         limit: SELL_PAGE_SIZE,
@@ -95,6 +117,7 @@ export default async function SellIntoSalePage({
   const categoryLabel = resolveLabel(settings.name_category, t('category'));
   const typeLabel = resolveLabel(settings.name_type, t('type'));
   const locationLabel = resolveLabel(settings.name_location, t('location'));
+  const status5Label = resolveLabel(settings.name_status, t('status5'));
 
   const otherLabel = t('other');
   if (uncategorizedCounts.category > 0) {
@@ -126,6 +149,12 @@ export default async function SellIntoSalePage({
           selectedCategoryIds: categoryIds ?? [],
           selectedTypeIds: typeIds ?? [],
           selectedLocationIds: locationIds ?? [],
+          excludedCategoryIds,
+          excludedTypeIds,
+          excludedLocationIds,
+          selectedStatuses: effectiveStatuses,
+          sellableStatuses: SELLABLE_STATUSES,
+          status5Label,
           categoryLabel,
           typeLabel,
           locationLabel,

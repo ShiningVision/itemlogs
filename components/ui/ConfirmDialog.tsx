@@ -12,6 +12,7 @@ export function ConfirmDialog({
   onCancel,
   onDismiss,
   isConfirming = false,
+  saveLayout = false,
 }: {
   message: string;
   confirmLabel: string;
@@ -24,6 +25,11 @@ export function ConfirmDialog({
   // separate no-op-ish dismiss instead.
   onDismiss?: () => void;
   isConfirming?: boolean;
+  // Swaps the buttons so the confirm action sits on the left and the cancel
+  // action on the right, and styles confirm as a normal primary button
+  // instead of the red destructive one. Used by the unsaved-changes dialog,
+  // where "confirm" is Save and the right-hand button is Discard.
+  saveLayout?: boolean;
 }) {
   // Rendered via a portal straight into <body>. Callers often open this from
   // inside a hovered `.interactive-card` (e.g. item/package/sale cards),
@@ -43,7 +49,7 @@ export function ConfirmDialog({
 
         <p className="confirm-dialog-message">{message}</p>
 
-        <div className="confirm-dialog-actions">
+        <div className={`confirm-dialog-actions${saveLayout ? ' confirm-dialog-actions--save' : ''}`}>
           <button type="button" className="confirm-dialog-cancel" onClick={onCancel} disabled={isConfirming}>
             {cancelLabel}
           </button>

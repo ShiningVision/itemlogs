@@ -26,6 +26,7 @@ export function FilterTagPickerModal({
   items,
   itemCounts,
   selectedIds,
+  excludedIds = [],
   onApply,
   onClose,
 }: {
@@ -33,18 +34,29 @@ export function FilterTagPickerModal({
   items: PillOption[];
   itemCounts: Record<number, number>;
   selectedIds: number[];
-  onApply: (ids: number[]) => void;
+  excludedIds?: number[];
+  onApply: (included: number[], excluded: number[]) => void;
   onClose: () => void;
 }) {
   const t = useTranslations('referenceData');
   const [selection, setSelection] = useState<number[]>(selectedIds);
+  const [excluded, setExcluded] = useState<number[]>(excludedIds);
 
+  // Same three-state cycle as the pill row itself: off -> included ->
+  // excluded -> off.
   function toggle(id: number) {
-    setSelection((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    if (selection.includes(id)) {
+      setSelection((prev) => prev.filter((x) => x !== id));
+      setExcluded((prev) => [...prev, id]);
+    } else if (excluded.includes(id)) {
+      setExcluded((prev) => prev.filter((x) => x !== id));
+    } else {
+      setSelection((prev) => [...prev, id]);
+    }
   }
 
   function handleClose() {
-    onApply(selection);
+    onApply(selection, excluded);
     onClose();
   }
 
@@ -148,10 +160,13 @@ export function FilterTagPickerModal({
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-sm)' }}>
-          {selection.length > 0 ? (
+          {selection.length + excluded.length > 0 ? (
             <button
               type="button"
-              onClick={() => setSelection([])}
+              onClick={() => {
+                setSelection([]);
+                setExcluded([]);
+              }}
               style={{
                 background: 'none',
                 border: 'none',
@@ -212,6 +227,7 @@ export function FilterTagPickerModal({
                 key={item.id}
                 label={item.name ?? ''}
                 selected={selection.includes(item.id)}
+                excluded={excluded.includes(item.id)}
                 onClick={() => toggle(item.id)}
               />
             ))

@@ -429,7 +429,13 @@ export async function POST(request: Request) {
           -- equivalent column on blueprints: a blueprint is a reusable
           -- template, not a specific purchased unit, so a purchase note
           -- doesn't apply to it.
-          notes TEXT
+          notes TEXT,
+          -- Optional DATE (no time of day) shown on the visitor item page (a
+          -- "vacation item" feature, gated by settings.spare_toggle_8 =
+          -- use_datetime and spare_toggle_9 = show_datetime). Not on
+          -- blueprints. KEEP IN SYNC with migrations 0007 + 0008 in
+          -- vercel-cli-runner/lib/migrations.js.
+          item_datetime DATE
         );
       `;
       await sql`ALTER TABLE items ENABLE ROW LEVEL SECURITY;`;
@@ -445,16 +451,10 @@ export async function POST(request: Request) {
       // resolveSearchItemIds for the JS side that calls this function.
       await sql`CREATE EXTENSION IF NOT EXISTS pg_trgm;`;
       await sql`CREATE INDEX IF NOT EXISTS items_name_trgm_idx ON items USING gin (name gin_trgm_ops);`;
-      await sql`
-        CREATE OR REPLACE FUNCTION search_items_by_name(search_term text, match_limit integer DEFAULT 300)
-        RETURNS TABLE(id integer, rank real) AS $$
-          SELECT id, word_similarity(search_term, name) AS rank
-          FROM items
-          WHERE search_term <% name
-          ORDER BY rank DESC
-          LIMIT match_limit;
-        $$ LANGUAGE sql STABLE;
-      `;
+      await sql`CREATE INDEX IF NOT EXISTS items_description_trgm_idx ON items USING gin (description gin_trgm_ops);`;
+      // The search_items_by_name() function itself is created further down,
+      // after item_categories/item_types exist — it searches tag names too,
+      // and a SQL function's body is checked against real tables at creation.
 
       await Promise.all(
         items.map(
@@ -636,6 +636,12 @@ export async function POST(request: Request) {
           spare_toggle_6 BOOLEAN NOT NULL DEFAULT false,
           spare_toggle_7 BOOLEAN NOT NULL DEFAULT false,
           spare_toggle_8 BOOLEAN NOT NULL DEFAULT false,
+          -- 8 = use_datetime, 9 = show_datetime (see definitions.ts); 10-12
+          -- are the replenished pool (migration 0007).
+          spare_toggle_9 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_10 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_11 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_12 BOOLEAN NOT NULL DEFAULT false,
           -- Telegram/Instagram usernames and a contact email — same
           -- "spare column, claimed and renamed in place" story as
           -- show_featured_items/show_description above, just for the
@@ -773,6 +779,44 @@ export async function POST(request: Request) {
         )
       );
 
+      // Fuzzy item search: matches the item's name, its description, and the
+      // names of its categories, types and location — each by pg_trgm
+      // word_similarity (does the search term approximately match some
+      // word-sequence inside the text), ranked by the best match across
+      // those fields. Keeps the historical name search_items_by_name so the
+      // JS caller (resolveSearchItemIds in app/lib/services/items.ts) didn't
+      // have to change. KEEP IN SYNC with migration 0005 in
+      // vercel-cli-runner/lib/migrations.js, which applies the same
+      // definition to already-provisioned tenants.
+      await sql`
+        CREATE OR REPLACE FUNCTION search_items_by_name(search_term text, match_limit integer DEFAULT 300)
+        RETURNS TABLE(id integer, rank real) AS $$
+          SELECT s.id, max(s.score)::real AS rank
+          FROM (
+            SELECT i.id, word_similarity(search_term, i.name) AS score
+              FROM items i WHERE search_term <% i.name
+            UNION ALL
+            SELECT i.id, word_similarity(search_term, i.description) * 0.9
+              FROM items i WHERE search_term <% i.description
+            UNION ALL
+            SELECT ic.item_id, word_similarity(search_term, c.name) * 0.95
+              FROM item_categories ic JOIN categories c ON c.id = ic.category_id
+              WHERE search_term <% c.name
+            UNION ALL
+            SELECT it.item_id, word_similarity(search_term, t.name) * 0.95
+              FROM item_types it JOIN types t ON t.id = it.type_id
+              WHERE search_term <% t.name
+            UNION ALL
+            SELECT i.id, word_similarity(search_term, l.name) * 0.95
+              FROM items i JOIN locations l ON l.id = i.location_id
+              WHERE search_term <% l.name
+          ) s
+          GROUP BY s.id
+          ORDER BY rank DESC
+          LIMIT match_limit;
+        $$ LANGUAGE sql STABLE;
+      `;
+
       // category/type many-to-many — blueprints side. No seed data (no
       // blueprints are seeded at all — see the blueprints table above),
       // just the empty tables ready for the app to write to.
@@ -793,6 +837,18 @@ export async function POST(request: Request) {
         );
       `;
       await sql`ALTER TABLE blueprint_types ENABLE ROW LEVEL SECURITY;`;
+
+      // A blueprint's gallery — same shape as item_images. KEEP IN SYNC with
+      // migration 0006 in vercel-cli-runner/lib/migrations.js (already-
+      // provisioned tenants).
+      await sql`
+        CREATE TABLE IF NOT EXISTS blueprint_images (
+          blueprint_id INTEGER NOT NULL REFERENCES blueprints(id) ON DELETE CASCADE,
+          image_id INTEGER NOT NULL REFERENCES images(id) ON DELETE CASCADE,
+          PRIMARY KEY (blueprint_id, image_id)
+        );
+      `;
+      await sql`ALTER TABLE blueprint_images ENABLE ROW LEVEL SECURITY;`;
     });
 
     // See waitForSettingsReadable's comment above — makes sure the tenant

@@ -91,9 +91,24 @@ export function TagManagerModal({
     return copy;
   }, [pool, itemCounts, sortMode]);
 
+  // The text field doubles as a search box: the list narrows as you type, so
+  // an existing tag shows up before you create a duplicate of it.
+  const query = newName.trim().toLowerCase();
+  const visibleItems = useMemo(
+    () => (query ? sortedItems.filter((tag) => (tag.name ?? '').toLowerCase().includes(query)) : sortedItems),
+    [sortedItems, query]
+  );
+  const exactMatch = query ? pool.find((tag) => (tag.name ?? '').trim().toLowerCase() === query) : undefined;
+
   async function handleCreate() {
     const name = newName.trim();
     if (!name) return;
+    // That tag already exists: never create a twin. When assigning, "Enter"
+    // just picks the existing one; when managing there is nothing to do.
+    if (exactMatch) {
+      if (mode === 'assign') handlePick(exactMatch);
+      return;
+    }
     setIsSubmitting(true);
     try {
       const res = await fetch(apiPath, {
@@ -291,10 +306,10 @@ export function TagManagerModal({
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-            placeholder={t('newLabelName', { label })}
+            placeholder={t('searchOrCreateLabel', { label })}
             style={{ flex: 1, padding: 'var(--spacing-sm)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
           />
-          <Button onClick={handleCreate} disabled={isSubmitting || !newName.trim()}>
+          <Button onClick={handleCreate} disabled={isSubmitting || !newName.trim() || (mode === 'manage' && !!exactMatch)}>
             <PlusIcon style={{ width: '16px', height: '16px' }} />
             {mode === 'assign' ? t('assign') : t('create')}
           </Button>
@@ -336,7 +351,7 @@ export function TagManagerModal({
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)', overflowY: 'auto' }}>
-          {sortedItems.map((item) => {
+          {visibleItems.map((item) => {
             const isSelected = selection.includes(item.id);
             return (
               <div

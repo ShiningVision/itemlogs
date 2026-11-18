@@ -15,6 +15,9 @@ export const createBlueprintSchema = z.object({
   type_ids: z.array(z.number().int()).optional(),
   category_ids: z.array(z.number().int()).optional(),
   main_image: z.number().int().nullable().optional(),
+  // The blueprint's gallery — image ids, stored in the blueprint_images join
+  // table. Omitted on a partial update means "leave the gallery as it is".
+  gallery_image_ids: z.array(z.number().int()).optional(),
 });
 
 export const updateBlueprintSchema = createBlueprintSchema.partial();

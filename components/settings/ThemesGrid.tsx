@@ -129,7 +129,23 @@ export function ThemesGrid({
               <div className="theme-card-label-row">
                 <span className="theme-card-label">{t(theme.labelKey)}</span>
                 <span className="theme-card-price">
-                  {free ? t('free') : theme.owned ? t('acquired') : formatPrice(theme.priceCents)}
+                  {free ? (
+                    t('free')
+                  ) : theme.owned ? (
+                    t('acquired')
+                  ) : showTryState ? (
+                    // Not tried yet: the trial is free, so the price is shown
+                    // struck through behind a "Free trial" label. Once it's
+                    // been tried (showBuyState) the plain price returns.
+                    <>
+                      <span style={{ color: 'var(--color-success)', fontWeight: 'var(--font-weight-bold)' }}>
+                        {t('freeTrial')}
+                      </span>{' '}
+                      <s style={{ color: 'var(--color-text-muted)' }}>{formatPrice(theme.priceCents)}</s>
+                    </>
+                  ) : (
+                    formatPrice(theme.priceCents)
+                  )}
                 </span>
               </div>
             </div>

@@ -61,6 +61,22 @@ export async function getSaleItems(saleId: number): Promise<{ item_id: number; i
   }));
 }
 
+// The sale(s) an item has been sold in, for the item detail page. Normally
+// zero or one, but sales_items's primary key is (sales_id, item_id), so the
+// schema itself doesn't forbid more — an array is the honest shape.
+export async function getSalesForItem(itemId: number): Promise<{ id: number; name: string | null; date: string }[]> {
+  const { data, error } = await supabase
+    .from('sales_items')
+    .select('sales(id, name, date)')
+    .eq('item_id', itemId);
+
+  if (error) throw error;
+
+  return (data ?? [])
+    .map((row: any) => (Array.isArray(row.sales) ? row.sales[0] : row.sales))
+    .filter(Boolean);
+}
+
 // sellPrice is `undefined` when the caller isn't touching the price at all
 // (left as whatever was already on the item) vs. a real number when the
 // sell-review step (see SellReviewPanel.tsx) is confirming/overriding it —

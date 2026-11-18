@@ -319,7 +319,7 @@ export function GalleryGrid({
       {isUploading && (
         <div
           role="status"
-          style={{ marginBottom: 'var(--spacing-md)', padding: 'var(--spacing-sm) var(--spacing-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-size-sm)' }}
+          style={{ marginBottom: 'var(--spacing-md)', padding: 'var(--spacing-sm) var(--spacing-md)', border: '1px solid var(--color-warning)', background: 'color-mix(in srgb, var(--color-warning) 12%, transparent)', color: 'var(--color-warning)', fontWeight: 'var(--font-weight-bold)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-size-sm)' }}
         >
           {uploadProgress
             ? t('uploadingProgress', { done: Math.min(uploadProgress.done + 1, uploadProgress.total), total: uploadProgress.total })

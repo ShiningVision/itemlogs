@@ -8,6 +8,8 @@ import { Button } from '@/widgets/Button';
 import { ArrowDownTrayIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import type { Sale } from '@/app/lib/definitions';
 import { parseApiError } from '@/app/lib/errors/parseApiError';
+import { useExportFilter, exportHref } from '@/components/items/ExportFilterContext';
+import { UnsavedBadge, SaveDot, useUnsavedTitle, saveButtonStyle } from '@/components/ui/UnsavedIndicator';
 import { useUnsavedChangesGuard } from '@/app/lib/hooks/useUnsavedChangesGuard';
 
 export function SaleForm({
@@ -27,6 +29,9 @@ export function SaleForm({
 }) {
   const t = useTranslations('sales');
   const router = useRouter();
+  // Ids the sale's item list is currently filtered to (null = no filter),
+  // reported by SaleItemsSection — the export button exports exactly those.
+  const { ids: exportIds } = useExportFilter();
   const today = new Date().toISOString().slice(0, 10);
 
   const [name, setName] = useState(sale?.name ?? '');
@@ -57,6 +62,7 @@ export function SaleForm({
     }).catch(() => {});
   }
 
+  useUnsavedTitle(isDirty);
   const { requestLeave, guardDialog } = useUnsavedChangesGuard(isDirty, {
     onSave: handleSave,
     onBackgroundSave: backgroundSave,
@@ -138,16 +144,17 @@ export function SaleForm({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-lg)', flexWrap: 'wrap', gap: 'var(--spacing-sm)' }}>
         <h1 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)' }}>
           {mode === 'create' ? t('createSale') : t('updateSale')}
+          <UnsavedBadge show={isDirty} />
         </h1>
 
         {mode === 'update' && sale && (
           // download attribute — not a real navigation, just steers the
           // unsaved-changes guard's click listener away from mistaking
           // this for "leaving the page".
-          <a href={`/api/v1/sales/${sale.id}/export`} download>
+          <a href={exportHref(`/api/v1/sales/${sale.id}/export`, exportIds)} download>
             <Button style={{ background: 'var(--color-success)' }}>
               <ArrowDownTrayIcon style={{ width: '18px', height: '18px' }} />
-              {t('exportExcel')}
+              {exportIds ? t('exportExcelFiltered', { count: exportIds.length }) : t('exportExcel')}
             </Button>
           </a>
         )}
@@ -180,7 +187,8 @@ export function SaleForm({
           {error && <div style={{ color: 'var(--color-danger)' }}>{error}</div>}
 
           <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
-            <Button onClick={handleSave} disabled={isSaving}>
+            <Button onClick={handleSave} disabled={isSaving} style={saveButtonStyle(mode === 'update', isDirty)}>
+              <SaveDot show={isDirty && !isSaving} />
               {isSaving ? t('saving') : t('save')}
             </Button>
           </div>

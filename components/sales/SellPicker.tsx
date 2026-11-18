@@ -63,6 +63,15 @@ export function SellPicker({
     selectedCategoryIds: number[];
     selectedTypeIds: number[];
     selectedLocationIds: number[];
+    excludedCategoryIds: number[];
+    excludedTypeIds: number[];
+    excludedLocationIds: number[];
+    // Sellable statuses (Available, Reserved, 5th) — see
+    // app/lib/sellableStatuses.ts. `selectedStatuses` is the page's current
+    // (clamped) selection.
+    selectedStatuses: number[];
+    sellableStatuses: number[];
+    status5Label: string;
     categoryLabel: string;
     typeLabel: string;
     locationLabel: string;
@@ -148,10 +157,15 @@ export function SellPicker({
         showTypes={filtersBar.showTypes}
         locationItemCounts={filtersBar.locationItemCounts}
         selectedCategoryIds={filtersBar.selectedCategoryIds}
-        selectedStatuses={[1]}
+        selectedStatuses={filtersBar.selectedStatuses}
+        availableStatuses={filtersBar.sellableStatuses}
+        defaultStatuses={filtersBar.sellableStatuses}
+        status5Label={filtersBar.status5Label}
         selectedTypeIds={filtersBar.selectedTypeIds}
         selectedLocationIds={filtersBar.selectedLocationIds}
-        lockStatusToAvailable
+        excludedCategoryIds={filtersBar.excludedCategoryIds}
+        excludedTypeIds={filtersBar.excludedTypeIds}
+        excludedLocationIds={filtersBar.excludedLocationIds}
         hideManageButtons
         categoryLabel={filtersBar.categoryLabel}
         typeLabel={filtersBar.typeLabel}

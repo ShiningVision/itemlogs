@@ -19,6 +19,7 @@ const defaultTokens: ThemeTokens = {
     textMuted: '#78716c',
     border: '#e7e5e4',
     danger: '#ef4444',
+    warning: '#b45309',
     success: '#16a34a',
     successHover: '#15803d',
   },

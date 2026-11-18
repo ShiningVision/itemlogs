@@ -17,6 +17,7 @@
   --color-text-muted: #78716c;
   --color-border: #e7e5e4;
   --color-danger: #ef4444;
+  --color-warning: #b45309;
   --color-primary-hover: #b45309;
   --color-success: #16a34a;
   --color-success-hover: #15803d;
@@ -2869,6 +2870,17 @@ body {
 
 .confirm-dialog-confirm:hover:not(:disabled) {
   background: #dc2626;
+}
+
+/* Unsaved-changes dialog: Save (confirm) is a normal primary button rather
+   than the red destructive one. Discard (cancel) stays on the left. */
+.confirm-dialog-actions--save .confirm-dialog-confirm {
+  background: var(--color-primary);
+}
+
+.confirm-dialog-actions--save .confirm-dialog-confirm:hover:not(:disabled) {
+  background: var(--color-primary);
+  filter: brightness(0.92);
 }
 
 .confirm-dialog-cancel:disabled,

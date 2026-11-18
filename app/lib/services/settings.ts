@@ -103,6 +103,32 @@ export async function syncOnboardingChecklist(settings: {
   }
 }
 
+// How stale the stored "last login" may get before a dashboard request
+// refreshes it. The dashboard layout renders on every navigation, so
+// writing each time would add a database write to every click.
+const LAST_LOGIN_REFRESH_MS = 10 * 60 * 1000;
+
+// Records "someone used the dashboard just now" in spare_text_4 (see
+// Settings.spare_text_4). Called from the protected dashboard layout, which
+// only renders for a valid session — so it covers a fresh sign-in AND an
+// existing session cookie silently coming back (the "auto login"), neither
+// of which needs its own hook. Best-effort and throttled: a failure never
+// breaks the page.
+export async function recordDashboardAccess(settings: { spare_text_4: string | null }) {
+  try {
+    const last = settings.spare_text_4 ? new Date(settings.spare_text_4).getTime() : NaN;
+    if (Number.isFinite(last) && Date.now() - last < LAST_LOGIN_REFRESH_MS) return;
+
+    const { error } = await supabase
+      .from('settings')
+      .update({ spare_text_4: new Date().toISOString() })
+      .eq('id', 1);
+    if (error) throw error;
+  } catch (error) {
+    console.error('Failed to record last login:', error);
+  }
+}
+
 export async function updateSettings(input: UpdateSettingsInput) {
   const { data, error } = await supabase
     .from('settings')

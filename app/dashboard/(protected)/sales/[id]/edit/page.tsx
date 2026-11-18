@@ -5,6 +5,7 @@ import { getSettings } from '@/app/lib/services/settings';
 import { redirect } from 'next/navigation';
 import { SaleForm } from '@/components/sales/SaleForm';
 import { SaleItemsSection } from '@/components/sales/SaleItemsSection';
+import { ExportFilterProvider } from '@/components/items/ExportFilterContext';
 
 export default async function EditSalePage({
   params,
@@ -38,9 +39,9 @@ export default async function EditSalePage({
   );
 
   return (
-    <div>
+    <ExportFilterProvider>
       <SaleForm mode="update" sale={sale} revenue={items.length > 0 ? revenue : null} profit={items.length > 0 ? profit : null} currencySymbol={settings.sell_currency?.currency_symbol ?? ''} />
       <SaleItemsSection saleId={sale.id} items={items} settings={settings} />
-    </div>
+    </ExportFilterProvider>
   );
 }

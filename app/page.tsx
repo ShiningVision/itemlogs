@@ -3,6 +3,8 @@ import { getSettings } from '@/app/lib/services/settings';
 import { getCategories } from '@/app/lib/services/categories';
 import { getTypes } from '@/app/lib/services/types';
 import { typesEnabled } from '@/app/lib/typesEnabled';
+import { groupIdenticalItems } from '@/app/lib/groupIdentical';
+import { parseIdList } from '@/app/lib/idList';
 import { getLocations } from '@/app/lib/services/locations';
 import { getPublicPackages } from '@/app/lib/services/packages';
 import {
@@ -40,6 +42,10 @@ type SearchParams = {
   categories?: string;
   types?: string;
   locations?: string;
+  // Excluded tags — the tag filters' third state (see app/lib/idList.ts).
+  xcategories?: string;
+  xtypes?: string;
+  xlocations?: string;
   statuses?: string;
   package?: string;
   page?: string;
@@ -56,7 +62,7 @@ export default async function HomePage({
   searchParams: Promise<SearchParams>;
 }) {
   const rawSearchParams = await searchParams;
-  const { categories: categoriesParam, types: typesParam, locations: locationsParam, statuses: statusesParam, package: packageParam, page: pageParam, density: densityParam, sort: sortParam, search: searchParam } = rawSearchParams;
+  const { categories: categoriesParam, types: typesParam, locations: locationsParam, xcategories: xcategoriesParam, xtypes: xtypesParam, xlocations: xlocationsParam, statuses: statusesParam, package: packageParam, page: pageParam, density: densityParam, sort: sortParam, search: searchParam } = rawSearchParams;
 
   // On a freshly provisioned tenant, the database has no tables yet — the
   // Supabase Marketplace resource creates an empty Postgres instance, and
@@ -125,6 +131,11 @@ export default async function HomePage({
   // not keep filtering with no visible filter or chip to explain it.
   const selectedTypeIds = typesEnabled(settings) && typesParam ? typesParam.split(',').map(Number) : [];
   const selectedLocationIds = locationsParam ? locationsParam.split(',').map(Number) : [];
+  const excludedCategoryIds = parseIdList(xcategoriesParam);
+  const excludedTypeIds = typesEnabled(settings) ? parseIdList(xtypesParam) : [];
+  // Like the location section itself, only honored while the location
+  // filter is on (a leftover param must not filter invisibly).
+  const excludedLocationIds = settings.show_location_filter ? parseIdList(xlocationsParam) : [];
   const selectedStatuses = statusesParam ? statusesParam.split(',').map(Number) : [];
   const selectedPackageId = packageParam ? Number(packageParam) : null;
   // Trimmed here for the same "empty means no search" reason as the
@@ -145,6 +156,8 @@ export default async function HomePage({
   const page = parsePage(pageParam);
   const offset = getOffset(page, PUBLIC_ITEMS_PAGE_SIZE);
 
+  const groupIdentical = groupIdenticalItems(settings);
+
   const [{ items, totalCount }, categories, types, locations, collectionItemCount, categoryCounts, typeCounts, locationCounts, featuredItems, publicPackages] =
     await Promise.all([
       getPublicItems(
@@ -152,6 +165,9 @@ export default async function HomePage({
           categoryIds: selectedCategoryIds.length ? selectedCategoryIds : undefined,
           typeIds: selectedTypeIds.length ? selectedTypeIds : undefined,
           locationIds: selectedLocationIds.length ? selectedLocationIds : undefined,
+          excludeCategoryIds: excludedCategoryIds,
+          excludeTypeIds: excludedTypeIds,
+          excludeLocationIds: excludedLocationIds,
           statuses: selectedStatuses.length ? selectedStatuses : undefined,
           packageId: selectedPackageId ?? undefined,
           search,
@@ -159,16 +175,17 @@ export default async function HomePage({
           limit: PUBLIC_ITEMS_PAGE_SIZE,
           offset,
         },
-        allowedStatuses
+        allowedStatuses,
+        groupIdentical
       ),
       getCategories(),
       typesEnabled(settings) ? getTypes() : Promise.resolve([]),
       settings.show_location_filter ? getLocations() : Promise.resolve([]),
-      getPublicItemsCount(allowedStatuses),
-      getPublicCategoryCounts(allowedStatuses),
-      typesEnabled(settings) ? getPublicTypeCounts(allowedStatuses) : Promise.resolve({} as Record<number, number>),
-      settings.show_location_filter ? getPublicLocationCounts(allowedStatuses) : Promise.resolve({}),
-      settings.show_featured_items ? getFeaturedPublicItems(allowedStatuses) : Promise.resolve([]),
+      getPublicItemsCount(allowedStatuses, groupIdentical),
+      getPublicCategoryCounts(allowedStatuses, groupIdentical),
+      typesEnabled(settings) ? getPublicTypeCounts(allowedStatuses, groupIdentical) : Promise.resolve({} as Record<number, number>),
+      settings.show_location_filter ? getPublicLocationCounts(allowedStatuses, groupIdentical) : Promise.resolve({}),
+      settings.show_featured_items ? getFeaturedPublicItems(allowedStatuses, groupIdentical) : Promise.resolve([]),
       settings.show_package_filter ? getPublicPackages() : Promise.resolve([]),
     ]);
 
@@ -194,6 +211,9 @@ export default async function HomePage({
     selectedCategoryIds.length === 0 &&
     selectedTypeIds.length === 0 &&
     selectedLocationIds.length === 0 &&
+    excludedCategoryIds.length === 0 &&
+    excludedTypeIds.length === 0 &&
+    excludedLocationIds.length === 0 &&
     selectedStatuses.length === 0 &&
     selectedPackageId === null &&
     !search;
@@ -227,6 +247,28 @@ export default async function HomePage({
       id,
       label: statusOptionLabels[id] ?? '',
     })),
+    // Excluded tags get their own (struck-through) chips, after the
+    // included ones.
+    ...excludedCategoryIds.map((id) => ({
+      dimension: 'categories' as const,
+      id,
+      label: sortedCategories.find((c) => c.id === id)?.name ?? '',
+      excluded: true,
+    })),
+    ...excludedTypeIds.map((id) => ({
+      dimension: 'types' as const,
+      id,
+      label: sortedTypes.find((t2) => t2.id === id)?.name ?? '',
+      excluded: true,
+    })),
+    ...(settings.show_location_filter
+      ? excludedLocationIds.map((id) => ({
+          dimension: 'locations' as const,
+          id,
+          label: sortedLocations.find((l) => l.id === id)?.name ?? '',
+          excluded: true,
+        }))
+      : []),
   ];
 
   const packageFilterDropdown = settings.show_package_filter ? (
@@ -271,6 +313,9 @@ export default async function HomePage({
           selectedCategoryIds={selectedCategoryIds}
           selectedTypeIds={selectedTypeIds}
           selectedLocationIds={selectedLocationIds}
+          excludedCategoryIds={excludedCategoryIds}
+          excludedTypeIds={excludedTypeIds}
+          excludedLocationIds={excludedLocationIds}
           availableStatuses={allowedStatuses}
           selectedStatuses={selectedStatuses}
           categoryLabel={categoryLabel}

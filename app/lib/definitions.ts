@@ -178,7 +178,22 @@ export type Settings = {
   // the raw flag. Hiding never deletes stored type assignments. Kept named
   // spare_toggle_7 — do not rename (see the note above).
   spare_toggle_7: boolean;
+  // spare_toggle_8 is claimed: "use_datetime" — whether items carry an
+  // optional date (items.item_datetime, date only — no time of day) at all. Off by default; read it
+  // through datetimeEnabled() in app/lib/datetime.ts. Not renamed.
   spare_toggle_8: boolean;
+  // spare_toggle_9 is claimed: "show_datetime" — show that date on the
+  // visitor item page (only meaningful while spare_toggle_8 is on). Off by
+  // default. See datetimeShown() in app/lib/datetime.ts. Not renamed.
+  spare_toggle_9: boolean;
+  // spare_toggle_10 is claimed: INVERTED "group identical items" — false (the
+  // default) = items with the same name/description/sell_price are collapsed
+  // into one on the storefront; true = every copy shown. Read it through
+  // groupIdenticalItems() in app/lib/groupIdentical.ts. Not renamed.
+  spare_toggle_10: boolean;
+  // Replenished spare pool (migration 0007) — unclaimed.
+  spare_toggle_11: boolean;
+  spare_toggle_12: boolean;
   // Contact channels — see the comment on the same columns in
   // app/api/setup/route.ts. Each is a bare username/address (no @, no
   // https://), turned into a storefront button by app/lib/telegram.ts,
@@ -188,6 +203,12 @@ export type Settings = {
   contact_instagram: string | null;
   // Unassigned, reserved for future free-text fields — same reasoning as the
   // spare toggles above.
+  // spare_text_4 is claimed: the ISO-8601 timestamp of the last time anyone
+  // used the dashboard (fresh sign-in OR an already-signed-in session coming
+  // back — see recordDashboardAccess in services/settings.ts). Written
+  // automatically, never user-editable. Reported to the central site by
+  // /api/keepalive. Stored as text in the spare pool, not a new column, so
+  // no migration — and, like every claimed spare column, NOT renamed.
   spare_text_4: string | null;
   spare_text_5: string | null;
   spare_text_6: string | null;

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/widgets/Button';
 import { Toast, type ToastType } from '@/components/ui/notification';
+import { useBeforeUnloadWhile } from '@/app/lib/hooks/useBeforeUnloadWhile';
 import { ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 
 export function ImportExcelButton() {
@@ -14,6 +15,9 @@ export function ImportExcelButton() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [notification, setNotification] = useState<{ type: ToastType; message: string } | null>(null);
+  // Desktop: native "leave site?" prompt. Phones can't show one, hence the
+  // visible banner below as well.
+  useBeforeUnloadWhile(isImporting);
 
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -81,6 +85,17 @@ export function ImportExcelButton() {
         <ArrowUpTrayIcon style={{ width: '18px', height: '18px' }} />
         {isImporting ? t('importing') : t('importExcel')}
       </Button>
+
+      {/* Shown for the whole import: closing or leaving the app mid-import
+          cuts it off. Fixed so it doesn't disturb the toolbar layout. */}
+      {isImporting && (
+        <div
+          role="status"
+          style={{ position: 'fixed', left: '50%', bottom: 'var(--spacing-lg)', transform: 'translateX(-50%)', zIndex: 1000, width: 'max-content', maxWidth: 'calc(100vw - 2 * var(--spacing-md))', padding: 'var(--spacing-sm) var(--spacing-md)', border: '1px solid var(--color-warning)', background: 'color-mix(in srgb, var(--color-warning) 12%, var(--color-surface))', color: 'var(--color-warning)', fontWeight: 'var(--font-weight-bold)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-size-sm)', boxShadow: 'var(--shadow-md, 0 4px 12px rgba(0,0,0,.15))' }}
+        >
+          {t('importingWarning')}
+        </div>
+      )}
 
       {notification && (
         <Toast

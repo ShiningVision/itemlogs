@@ -3,6 +3,7 @@ import { getItems, getUncategorizedItemCounts, OTHER_FILTER_ID, type ItemSort } 
 import { getCategories, getCategoryItemCounts } from '@/app/lib/services/categories';
 import { getTypes, getTypeItemCounts } from '@/app/lib/services/types';
 import { typesEnabled } from '@/app/lib/typesEnabled';
+import { parseIdList } from '@/app/lib/idList';
 import { getLocations, getLocationItemCounts } from '@/app/lib/services/locations';
 import { getSettings } from '@/app/lib/services/settings';
 import { resolveLabel } from '@/app/lib/labels';
@@ -25,6 +26,10 @@ type SearchParams = {
   statuses?: string;
   types?: string;
   locations?: string;
+  // Excluded tags (third state of the tag filters) — see app/lib/idList.ts.
+  xcategories?: string;
+  xtypes?: string;
+  xlocations?: string;
   page?: string;
   density?: string;
   sort?: string;
@@ -44,6 +49,9 @@ export default async function ItemsPage({
     statuses: statusesParam,
     types: typesParam,
     locations: locationsParam,
+    xcategories: xcategoriesParam,
+    xtypes: xtypesParam,
+    xlocations: xlocationsParam,
     page: pageParam,
     density: densityParam,
     sort: sortParam,
@@ -72,6 +80,9 @@ export default async function ItemsPage({
   // must not keep filtering with no visible filter to explain it.
   const typeIds = typesEnabled(settings) && typesParam ? typesParam.split(',').map(Number) : undefined;
   const locationIds = locationsParam ? locationsParam.split(',').map(Number) : undefined;
+  const excludedCategoryIds = parseIdList(xcategoriesParam);
+  const excludedTypeIds = typesEnabled(settings) ? parseIdList(xtypesParam) : [];
+  const excludedLocationIds = parseIdList(xlocationsParam);
   const search = searchParam?.trim() || undefined;
 
   const page = parsePage(pageParam);
@@ -84,6 +95,9 @@ export default async function ItemsPage({
   if (statuses?.length) exportParams.set('statuses', statuses.join(','));
   if (typeIds?.length) exportParams.set('types', typeIds.join(','));
   if (locationIds?.length) exportParams.set('locations', locationIds.join(','));
+  if (excludedCategoryIds.length) exportParams.set('xcategories', excludedCategoryIds.join(','));
+  if (excludedTypeIds.length) exportParams.set('xtypes', excludedTypeIds.join(','));
+  if (excludedLocationIds.length) exportParams.set('xlocations', excludedLocationIds.join(','));
   if (search) exportParams.set('search', search);
   const exportHref = `/api/v1/items/export${exportParams.toString() ? `?${exportParams.toString()}` : ''}`;
 
@@ -93,6 +107,9 @@ export default async function ItemsPage({
       statuses,
       typeIds,
       locationIds,
+      excludeCategoryIds: excludedCategoryIds,
+      excludeTypeIds: excludedTypeIds,
+      excludeLocationIds: excludedLocationIds,
       search,
       sort,
       limit: ITEMS_PAGE_SIZE,
@@ -181,6 +198,9 @@ export default async function ItemsPage({
         selectedStatuses={statuses ?? []}
         selectedTypeIds={typeIds ?? []}
         selectedLocationIds={locationIds ?? []}
+        excludedCategoryIds={excludedCategoryIds}
+        excludedTypeIds={excludedTypeIds}
+        excludedLocationIds={excludedLocationIds}
         categoryLabel={categoryLabel}
         typeLabel={typeLabel}
         locationLabel={locationLabel}

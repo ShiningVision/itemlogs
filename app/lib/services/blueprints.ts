@@ -45,7 +45,8 @@ const BLUEPRINT_SELECT: string = `
   main_image_ref:main_image(url),
   location_ref:location_id(name),
   blueprint_categories(category:categories(id, name)),
-  blueprint_types(type:types(id, name))
+  blueprint_types(type:types(id, name)),
+  blueprint_images(image:images(id, url))
 `;
 
 function flattenBlueprintJoins<T extends Record<string, any>>(row: T): T {
@@ -56,8 +57,26 @@ function flattenBlueprintJoins<T extends Record<string, any>>(row: T): T {
   const types = ((row as any).blueprint_types ?? [])
     .map((r: any) => r.type)
     .filter(Boolean);
-  const { blueprint_categories, blueprint_types, ...rest } = row as any;
-  return { ...rest, categories, types } as T;
+  // The blueprint's gallery — same shape ItemForm keeps its own gallery in
+  // ({ id, url }[]), so applying a blueprint can drop it straight in.
+  const gallery = ((row as any).blueprint_images ?? [])
+    .map((r: any) => r.image)
+    .filter(Boolean);
+  const { blueprint_categories, blueprint_types, blueprint_images, ...rest } = row as any;
+  return { ...rest, categories, types, gallery } as T;
+}
+
+async function replaceBlueprintImages(blueprintId: number, imageIds: number[]) {
+  const { error: deleteError } = await supabase.from('blueprint_images').delete().eq('blueprint_id', blueprintId);
+  if (deleteError) throw deleteError;
+
+  const uniqueIds = Array.from(new Set(imageIds));
+  if (uniqueIds.length === 0) return;
+
+  const { error: insertError } = await supabase
+    .from('blueprint_images')
+    .insert(uniqueIds.map((image_id) => ({ blueprint_id: blueprintId, image_id })));
+  if (insertError) throw insertError;
 }
 
 async function replaceBlueprintCategories(blueprintId: number, categoryIds: number[]) {
@@ -124,7 +143,7 @@ export async function getBlueprintByBarcode(barcode: string) {
 export async function createBlueprint(input: CreateBlueprintInput) {
   await assertBarcodeAvailable(input.barcode);
 
-  const { category_ids, type_ids, ...blueprintFields } = input;
+  const { category_ids, type_ids, gallery_image_ids, ...blueprintFields } = input;
 
   const { data, error } = await supabase
     .from('blueprints')
@@ -137,6 +156,7 @@ export async function createBlueprint(input: CreateBlueprintInput) {
   await Promise.all([
     replaceBlueprintCategories(data.id, category_ids ?? []),
     replaceBlueprintTypes(data.id, type_ids ?? []),
+    replaceBlueprintImages(data.id, gallery_image_ids ?? []),
   ]);
 
   return getBlueprintById(data.id);
@@ -145,7 +165,7 @@ export async function createBlueprint(input: CreateBlueprintInput) {
 export async function updateBlueprint(id: number, input: UpdateBlueprintInput) {
   await assertBarcodeAvailable(input.barcode, id);
 
-  const { category_ids, type_ids, ...blueprintFields } = input;
+  const { category_ids, type_ids, gallery_image_ids, ...blueprintFields } = input;
 
   const { data, error } = await supabase
     .from('blueprints')
@@ -159,6 +179,7 @@ export async function updateBlueprint(id: number, input: UpdateBlueprintInput) {
   await Promise.all([
     category_ids !== undefined ? replaceBlueprintCategories(id, category_ids) : Promise.resolve(),
     type_ids !== undefined ? replaceBlueprintTypes(id, type_ids) : Promise.resolve(),
+    gallery_image_ids !== undefined ? replaceBlueprintImages(id, gallery_image_ids) : Promise.resolve(),
   ]);
 
   return getBlueprintById(id);

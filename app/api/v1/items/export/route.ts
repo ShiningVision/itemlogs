@@ -4,6 +4,7 @@ import { getItems } from '@/app/lib/services/items';
 import { getSettings } from '@/app/lib/services/settings';
 import { buildItemsWorkbook } from '@/app/lib/items/exportItems';
 import { typesEnabled } from '@/app/lib/typesEnabled';
+import { parseIdList } from '@/app/lib/idList';
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,7 +27,21 @@ export async function GET(request: NextRequest) {
     // A leftover `types` param is ignored with types turned off
     // (typesEnabled), same as the items page itself.
     const typeIds = typesEnabled(settings) && typesParam ? typesParam.split(',').map(Number) : undefined;
-    const { items } = await getItems({ categoryIds, statuses, typeIds, locationIds, search });
+    // Excluded tags (xcategories/xtypes/xlocations) — the tag filters'
+    // third state, so the export matches exactly what the grid shows.
+    const excludeCategoryIds = parseIdList(searchParams.get('xcategories'));
+    const excludeTypeIds = typesEnabled(settings) ? parseIdList(searchParams.get('xtypes')) : [];
+    const excludeLocationIds = parseIdList(searchParams.get('xlocations'));
+    const { items } = await getItems({
+      categoryIds,
+      statuses,
+      typeIds,
+      locationIds,
+      excludeCategoryIds,
+      excludeTypeIds,
+      excludeLocationIds,
+      search,
+    });
     const buffer = await buildItemsWorkbook(items, settings);
 
     return new NextResponse(buffer, {

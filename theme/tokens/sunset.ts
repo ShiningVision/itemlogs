@@ -14,6 +14,7 @@ const sunsetTokens: ThemeTokens = {
     textMuted: '#9a5b3a',
     border: '#fdba74',
     danger: '#dc2626',
+    warning: '#a16207',
     success: '#16a34a',
     successHover: '#15803d',
   },

@@ -1,5 +1,7 @@
 // lib/services/items.ts
 import { supabase } from '@/app/lib/db/client';
+import { SELLABLE_STATUSES } from '@/app/lib/sellableStatuses';
+import { groupIdenticalRows } from '@/app/lib/groupIdentical';
 import type { CreateItemInput, UpdateItemInput } from '@/app/lib/validation/items';
 
 export type ItemSort = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc';
@@ -9,6 +11,13 @@ type ItemFilters = {
   typeIds?: number[];     // multi-select, join-table backed (item_types)
   statuses?: number[];
   locationIds?: number[]; // multi-select, used by both dashboard + storefront
+  // Excluded tags — items having ANY of these are left out. Same id
+  // semantics as the include lists above (0 = the synthetic "Other" bucket:
+  // no categories/types, or no location). Applied on top of the include
+  // filters, so "category A but not category B" works.
+  excludeCategoryIds?: number[];
+  excludeTypeIds?: number[];
+  excludeLocationIds?: number[];
   packageId?: number;  // single-select, used by storefront package filter
   // Fuzzy, typo-tolerant name search — used by both the dashboard items page
   // and the public storefront (see getPublicItems). See resolveSearchItemIds
@@ -25,7 +34,28 @@ type ItemFilters = {
   // query that can reach the public storefront, rather than relying on it
   // just happening not to be rendered.
   public?: boolean;
+  // Storefront only (see app/lib/groupIdentical.ts): collapse items with the
+  // same name/description/sell_price into one, and count/paginate the groups.
+  groupIdentical?: boolean;
 };
+
+// Every row of a (possibly >1000-row) query — PostgREST caps one response, so
+// this pages through until a short page comes back. `build` must return a
+// fresh query each call.
+async function fetchAllRows(build: () => Promise<any>): Promise<any[]> {
+  const BATCH = 1000;
+  const rows: any[] = [];
+  for (let from = 0; ; from += BATCH) {
+    const query = await build();
+    const { data, error } = await query.range(from, from + BATCH - 1);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < BATCH) break;
+  }
+  return rows;
+}
+
+const GROUPING_COLUMNS = 'id, name, description, sell_price, status';
 
 // No real category/type/location row is 0 (all are SERIAL PRIMARY KEY,
 // starting at 1), so 0 is a safe sentinel for "Other"/"no location" in
@@ -44,6 +74,23 @@ function applyNullableInFilter(query: any, column: 'location_id', ids: number[])
     return query.is(column, null);
   }
   return query.in(column, realIds);
+}
+
+// The exclude counterpart of applyNullableInFilter. SQL's NOT IN drops NULL
+// rows (NULL NOT IN (1,2) is NULL, not true), so "everything except
+// location 1" has to explicitly keep items with no location — unless
+// "Other" (the null bucket) is itself being excluded.
+function applyNullableNotInFilter(query: any, column: 'location_id', ids: number[]) {
+  const realIds = ids.filter((id) => id !== OTHER_FILTER_ID);
+  const excludesOther = ids.includes(OTHER_FILTER_ID);
+
+  if (excludesOther) query = query.not(column, 'is', null);
+  if (realIds.length > 0) {
+    query = excludesOther
+      ? query.not(column, 'in', `(${realIds.join(',')})`)
+      : query.or(`${column}.is.null,${column}.not.in.(${realIds.join(',')})`);
+  }
+  return query;
 }
 
 // Category and type are many-to-many with items (item_categories/item_types
@@ -119,7 +166,7 @@ const ITEM_SELECT: string = `
 const PUBLIC_ITEM_SELECT: string = `
   id, name, description, location_id, barcode, status,
   cost_price, purchase_price, purchase_price_currency, sell_price,
-  main_image, package_id, is_featured,
+  main_image, package_id, is_featured, item_datetime,
   main_image_ref:main_image(url),
   location_ref:location_id(name),
   item_categories(category:categories(id, name)),
@@ -188,13 +235,24 @@ async function applyCommonItemFilters(query: any, filters: ItemFilters) {
     const ids = await resolveJoinFilterItemIds('item_types', 'type_id', filters.typeIds);
     query = query.in('id', ids.length > 0 ? ids : [-1]);
   }
+  if (filters.excludeCategoryIds?.length) {
+    const ids = await resolveJoinFilterItemIds('item_categories', 'category_id', filters.excludeCategoryIds);
+    if (ids.length > 0) query = query.not('id', 'in', `(${ids.join(',')})`);
+  }
+  if (filters.excludeTypeIds?.length) {
+    const ids = await resolveJoinFilterItemIds('item_types', 'type_id', filters.excludeTypeIds);
+    if (ids.length > 0) query = query.not('id', 'in', `(${ids.join(',')})`);
+  }
   if (filters.statuses !== undefined) query = query.in('status', filters.statuses);
   if (filters.locationIds !== undefined) query = applyNullableInFilter(query, 'location_id', filters.locationIds);
+  if (filters.excludeLocationIds?.length) query = applyNullableNotInFilter(query, 'location_id', filters.excludeLocationIds);
   if (filters.packageId !== undefined) query = query.eq('package_id', filters.packageId);
   return { query };
 }
 
-// Fuzzy, typo-tolerant name search — calls the search_items_by_name()
+// Fuzzy, typo-tolerant search — matches an item's name, description and its
+// category/type/location names (the function keeps its historical
+// search_items_by_name name). Calls the search_items_by_name()
 // Postgres function (pg_trgm word_similarity under the hood; see the
 // CREATE EXTENSION/CREATE INDEX/CREATE FUNCTION block in
 // app/api/setup/route.ts for what it actually runs). Already ordered
@@ -246,7 +304,8 @@ export async function getItems(filters: ItemFilters = {}): Promise<{ items: any[
     const { data, error } = await query;
     if (error) throw error;
     const rowsById = new Map(((data ?? []) as any[]).map((row) => [row.id, flattenItemJoins(row)]));
-    const ordered = rankedIds.map((id) => rowsById.get(id)).filter((row: any): row is any => row !== undefined);
+    let ordered = rankedIds.map((id) => rowsById.get(id)).filter((row: any): row is any => row !== undefined);
+    if (filters.public && filters.groupIdentical) ordered = groupIdenticalRows(ordered);
 
     const totalCount = ordered.length;
     const page =
@@ -255,6 +314,35 @@ export async function getItems(filters: ItemFilters = {}): Promise<{ items: any[
         : ordered;
 
     return { items: page, totalCount };
+  }
+
+  if (filters.public && filters.groupIdentical) {
+    // Grouping can't be paginated in SQL: load every matching row's few
+    // grouping columns (in the requested order), collapse, then page the
+    // groups and fetch full rows for just that page.
+    const light = await fetchAllRows(async () => {
+      let q: any = supabase.from('items').select(GROUPING_COLUMNS);
+      q = applySort(q, filters.sort);
+      ({ query: q } = await applyCommonItemFilters(q, filters));
+      return q;
+    });
+    const groups = groupIdenticalRows(light);
+    const pageGroups =
+      filters.limit !== undefined && filters.offset !== undefined
+        ? groups.slice(filters.offset, filters.offset + filters.limit)
+        : groups;
+    if (pageGroups.length === 0) return { items: [], totalCount: groups.length };
+
+    const { data, error } = await supabase
+      .from('items')
+      .select(PUBLIC_ITEM_SELECT)
+      .in('id', pageGroups.map((g) => g.id));
+    if (error) throw error;
+    const byId = new Map(((data ?? []) as any[]).map((row) => [row.id, flattenItemJoins(row)]));
+    return {
+      items: pageGroups.map((g) => byId.get(g.id)).filter((row: any): row is any => row !== undefined),
+      totalCount: groups.length,
+    };
   }
 
   let query = supabase
@@ -383,7 +471,8 @@ export async function createItem(input: CreateItemInput) {
 
   // category_ids/type_ids aren't real items columns — pulled out before the
   // insert and applied to the join tables once the item (and its id) exists.
-  const { category_ids, type_ids, ...itemFields } = input;
+  const { category_ids, type_ids, ...rawItemFields } = input;
+  const itemFields = normalizeEmptyText(rawItemFields);
 
   const { data, error } = await supabase.from('items').insert(itemFields).select().single();
   if (error) throw error;
@@ -396,6 +485,17 @@ export async function createItem(input: CreateItemInput) {
   return getItemById(data.id);
 }
 
+// The form always sends description/barcode (so clearing one actually
+// clears it), which means an empty box arrives as ''. Stored as NULL, like
+// an item created without them always was — an empty string would otherwise
+// become a second, different way of saying "none" in the database.
+function normalizeEmptyText<T extends { description?: string | null; barcode?: string | null }>(fields: T): T {
+  const out: any = { ...fields };
+  if (out.description === '') out.description = null;
+  if (out.barcode === '') out.barcode = null;
+  return out as T;
+}
+
 export async function updateItem(id: number, input: UpdateItemInput) {
   if (input.is_featured) {
     const count = await getFeaturedItemCount(id);
@@ -404,7 +504,8 @@ export async function updateItem(id: number, input: UpdateItemInput) {
     }
   }
 
-  const { category_ids, type_ids, ...itemFields } = input;
+  const { category_ids, type_ids, ...rawItemFields } = input;
+  const itemFields = normalizeEmptyText(rawItemFields);
 
   const { data, error } = await supabase.from('items').update(itemFields).eq('id', id).select().single();
   if (error) throw error;
@@ -525,8 +626,18 @@ export async function getRecentItems(limit = 5): Promise<{ id: number; name: str
   return data ?? [];
 }
 
-export async function getPublicItemsCount(allowedStatuses: number[]): Promise<number> {
+// Ids that stand for their group when identical items are collapsed — what
+// the storefront's counts should count so they don't reveal stock either.
+async function getPublicGroupRepIds(allowedStatuses: number[]): Promise<Set<number>> {
+  const rows = await fetchAllRows(async () =>
+    supabase.from('items').select(GROUPING_COLUMNS).in('status', allowedStatuses).order('id', { ascending: false })
+  );
+  return new Set(groupIdenticalRows(rows).map((row: any) => row.id as number));
+}
+
+export async function getPublicItemsCount(allowedStatuses: number[], groupIdentical = false): Promise<number> {
   if (allowedStatuses.length === 0) return 0;
+  if (groupIdentical) return (await getPublicGroupRepIds(allowedStatuses)).size;
   const { count, error } = await supabase
     .from('items')
     .select('id', { count: 'exact', head: true })
@@ -551,9 +662,11 @@ export async function getPublicItemsCount(allowedStatuses: number[]): Promise<nu
 async function getPublicJoinCounts(
   joinTable: 'item_categories' | 'item_types',
   idColumn: 'category_id' | 'type_id',
-  allowedStatuses: number[]
+  allowedStatuses: number[],
+  groupIdentical = false
 ): Promise<Record<number, number>> {
   if (allowedStatuses.length === 0) return {};
+  const repIds = groupIdentical ? await getPublicGroupRepIds(allowedStatuses) : null;
 
   const [{ data: statusItems, error: statusError }, { data: joinRows, error: joinError }] = await Promise.all([
     supabase.from('items').select('id').in('status', allowedStatuses),
@@ -562,7 +675,9 @@ async function getPublicJoinCounts(
   if (statusError) throw statusError;
   if (joinError) throw joinError;
 
-  const visibleItemIds = new Set((statusItems ?? []).map((row) => row.id as number));
+  const visibleItemIds = new Set(
+    (statusItems ?? []).map((row) => row.id as number).filter((id) => !repIds || repIds.has(id))
+  );
   const assignedItemIds = new Set<number>();
   const counts: Record<number, number> = {};
 
@@ -584,21 +699,25 @@ async function getPublicJoinCounts(
   return counts;
 }
 
-export async function getPublicCategoryCounts(allowedStatuses: number[]): Promise<Record<number, number>> {
-  return getPublicJoinCounts('item_categories', 'category_id', allowedStatuses);
+export async function getPublicCategoryCounts(allowedStatuses: number[], groupIdentical = false): Promise<Record<number, number>> {
+  return getPublicJoinCounts('item_categories', 'category_id', allowedStatuses, groupIdentical);
 }
 
-export async function getPublicTypeCounts(allowedStatuses: number[]): Promise<Record<number, number>> {
-  return getPublicJoinCounts('item_types', 'type_id', allowedStatuses);
+export async function getPublicTypeCounts(allowedStatuses: number[], groupIdentical = false): Promise<Record<number, number>> {
+  return getPublicJoinCounts('item_types', 'type_id', allowedStatuses, groupIdentical);
 }
 
-export async function getPublicLocationCounts(allowedStatuses: number[]): Promise<Record<number, number>> {
+export async function getPublicLocationCounts(allowedStatuses: number[], groupIdentical = false): Promise<Record<number, number>> {
   if (allowedStatuses.length === 0) return {};
-  const { data, error } = await supabase.from('items').select('location_id').in('status', allowedStatuses);
+  const [{ data, error }, repIds] = await Promise.all([
+    supabase.from('items').select('id, location_id').in('status', allowedStatuses),
+    groupIdentical ? getPublicGroupRepIds(allowedStatuses) : Promise.resolve(null),
+  ]);
   if (error) throw error;
 
   const counts: Record<number, number> = {};
   for (const row of data ?? []) {
+    if (repIds && !repIds.has(row.id as number)) continue;
     const key = row.location_id ?? OTHER_FILTER_ID;
     counts[key] = (counts[key] ?? 0) + 1;
   }
@@ -638,7 +757,7 @@ export async function getUnfeaturedItems() {
   return (data ?? []) as any[];
 }
 
-export async function getFeaturedPublicItems(allowedStatuses: number[]) {
+export async function getFeaturedPublicItems(allowedStatuses: number[], groupIdentical = false) {
   if (allowedStatuses.length === 0) return [];
 
   const { data, error } = await supabase
@@ -651,7 +770,8 @@ export async function getFeaturedPublicItems(allowedStatuses: number[]) {
 
   if (error) throw error;
   // Cast to `any[]` — see the comment in getItems above.
-  return ((data ?? []) as any[]).map(flattenItemJoins);
+  const featured = ((data ?? []) as any[]).map(flattenItemJoins);
+  return groupIdentical ? groupIdenticalRows(featured) : featured;
 }
 
 export async function deleteItem(id: number) {
@@ -702,8 +822,9 @@ export async function getAvailableItems() {
 
 // Barcode-to-item lookup for the "scan to sell" flow (see
 // components/items/BarcodeSellScanner.tsx) — only ever needs to consider
-// available (status=1) items, since scanning an already-sold/reserved/lost
-// item to sell it doesn't make sense. Exact match; barcode has no unique
+// sellable items (Available, Reserved, 5th status — see SELLABLE_STATUSES),
+// since scanning an already-sold or not-yet-arrived (Soon) item to sell it
+// doesn't make sense. Exact match; barcode has no unique
 // constraint in the schema, so this takes the first match (lowest id) if a
 // barcode is somehow duplicated across multiple available items.
 export async function getAvailableItemByBarcode(
@@ -716,7 +837,7 @@ export async function getAvailableItemByBarcode(
     // for one picked by hand from the grid, instead of always starting
     // scanned items at an empty price.
     .select('id, name, sell_price')
-    .eq('status', 1)
+    .in('status', SELLABLE_STATUSES)
     .eq('barcode', barcode)
     .order('id', { ascending: true })
     .limit(1)
@@ -732,17 +853,21 @@ export async function getPublicItems(
     statuses?: number[];
     typeIds?: number[];
     locationIds?: number[];
+    excludeCategoryIds?: number[];
+    excludeTypeIds?: number[];
+    excludeLocationIds?: number[];
     packageId?: number;
     search?: string;
     sort?: ItemSort;
     limit?: number;
     offset?: number;
   },
-  allowedStatuses: number[]
+  allowedStatuses: number[],
+  groupIdentical = false
 ) {
   const statuses = filters.statuses?.length
     ? filters.statuses.filter((s) => allowedStatuses.includes(s))
     : allowedStatuses;
 
-  return getItems({ ...filters, statuses, public: true });
+  return getItems({ ...filters, statuses, public: true, groupIdentical });
 }

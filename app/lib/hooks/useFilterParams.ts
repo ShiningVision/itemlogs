@@ -4,6 +4,7 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useTransition } from 'react';
 import { buildUrl } from '@/app/lib/url';
+import { FILTER_EXCLUDE_PREFIX } from '@/app/lib/idList';
 
 /**
  * Shared logic for filter UIs that drive their state through the URL's
@@ -80,6 +81,46 @@ export function useFilterParams() {
     setParam(key, next.length ? next.join(',') : null);
   }
 
+  function readIdList(key: string): number[] {
+    const raw = pendingParamsRef.current.get(key);
+    return raw ? raw.split(',').filter(Boolean).map(Number) : [];
+  }
+
+  /**
+   * Three-state tag filter click: not filtered -> INCLUDED -> EXCLUDED ->
+   * not filtered. Included ids live in `key` (categories=1,3), excluded ids
+   * in the same name prefixed with FILTER_EXCLUDE_PREFIX (xcategories=2).
+   * Both params are updated in one navigation, and (like toggleInList) read
+   * off the pending ref so quick successive clicks compose correctly.
+   */
+  function cycleTriState(key: string, id: number) {
+    const excludeKey = `${FILTER_EXCLUDE_PREFIX}${key}`;
+    const included = readIdList(key);
+    const excluded = readIdList(excludeKey);
+
+    let nextIncluded = included;
+    let nextExcluded = excluded;
+    if (included.includes(id)) {
+      nextIncluded = included.filter((x) => x !== id);
+      nextExcluded = [...excluded, id];
+    } else if (excluded.includes(id)) {
+      nextExcluded = excluded.filter((x) => x !== id);
+    } else {
+      nextIncluded = [...included, id];
+    }
+
+    setParams({
+      [key]: nextIncluded.length ? nextIncluded.join(',') : null,
+      [excludeKey]: nextExcluded.length ? nextExcluded.join(',') : null,
+    });
+  }
+
+  /** Drop `id` from the list stored in `key` (used to remove an excluded chip). */
+  function removeFromList(key: string, id: number) {
+    const next = readIdList(key).filter((x) => x !== id);
+    setParam(key, next.length ? next.join(',') : null);
+  }
+
   // Read the pending-aware raw value of a param, for callers with custom
   // toggle logic that can't just use toggleInList (e.g. a param with a
   // sentinel value alongside its normal comma-list values — see
@@ -89,5 +130,5 @@ export function useFilterParams() {
     return pendingParamsRef.current.get(key);
   }
 
-  return { searchParams, pathname, isPending, setParam, setParams, toggleInList, getParam };
+  return { searchParams, pathname, isPending, setParam, setParams, toggleInList, cycleTriState, removeFromList, getParam };
 }

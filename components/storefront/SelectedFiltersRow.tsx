@@ -4,6 +4,7 @@
 import { useTranslations } from 'next-intl';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useFilterParams } from '@/app/lib/hooks/useFilterParams';
+import { FILTER_EXCLUDE_PREFIX } from '@/app/lib/idList';
 
 export type SelectedFilterChip = {
   // Matches the URL param key each dimension is stored under (see
@@ -11,6 +12,9 @@ export type SelectedFilterChip = {
   dimension: 'categories' | 'types' | 'locations' | 'statuses';
   id: number;
   label: string;
+  // An EXCLUDED tag (third state of the tag filters): shown struck through,
+  // and removing it clears the x-prefixed exclude param instead.
+  excluded?: boolean;
 };
 
 // Booking.com-style row of removable chips, one per currently active
@@ -23,17 +27,29 @@ export type SelectedFilterChip = {
 // current id list without needing it passed down separately.
 export function SelectedFiltersRow({ chips }: { chips: SelectedFilterChip[] }) {
   const t = useTranslations('storefront');
-  const { toggleInList, setParams } = useFilterParams();
+  const { toggleInList, removeFromList, setParams } = useFilterParams();
 
   if (chips.length === 0) return null;
 
   function remove(chip: SelectedFilterChip) {
-    const currentIds = chips.filter((c) => c.dimension === chip.dimension).map((c) => c.id);
+    if (chip.excluded) {
+      removeFromList(`${FILTER_EXCLUDE_PREFIX}${chip.dimension}`, chip.id);
+      return;
+    }
+    const currentIds = chips.filter((c) => c.dimension === chip.dimension && !c.excluded).map((c) => c.id);
     toggleInList(chip.dimension, currentIds, chip.id);
   }
 
   function clearAll() {
-    setParams({ categories: null, types: null, locations: null, statuses: null });
+    setParams({
+      categories: null,
+      types: null,
+      locations: null,
+      xcategories: null,
+      xtypes: null,
+      xlocations: null,
+      statuses: null,
+    });
   }
 
   return (
@@ -43,13 +59,15 @@ export function SelectedFiltersRow({ chips }: { chips: SelectedFilterChip[] }) {
       </button>
       {chips.map((chip) => (
         <button
-          key={`${chip.dimension}-${chip.id}`}
+          key={`${chip.excluded ? 'x' : ''}${chip.dimension}-${chip.id}`}
           type="button"
           className="storefront-selected-filter-chip"
           aria-label={t('removeFilterChip', { label: chip.label })}
           onClick={() => remove(chip)}
         >
-          <span>{chip.label}</span>
+          <span style={chip.excluded ? { textDecoration: 'line-through', color: 'var(--color-text-muted)' } : undefined}>
+            {chip.label}
+          </span>
           <XMarkIcon aria-hidden="true" />
         </button>
       ))}

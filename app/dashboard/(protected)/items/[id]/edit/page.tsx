@@ -6,6 +6,8 @@ import { getTypes } from '@/app/lib/services/types';
 import { getLocations, getLocationItemCounts } from '@/app/lib/services/locations';
 import { getCurrencies } from '@/app/lib/services/currencies';
 import { getSettings } from '@/app/lib/services/settings';
+import { getSalesForItem } from '@/app/lib/services/sales-items';
+import { getPackageSummary } from '@/app/lib/services/packages';
 import { ItemForm } from '@/components/items/ItemForm';
 
 export default async function EditItemPage({
@@ -15,7 +17,7 @@ export default async function EditItemPage({
 }) {
   const { id } = await params;
 
-  const [item, galleryImages, categories, types, locations, locationItemCounts, currencies, settings] = await Promise.all([
+  const [item, galleryImages, categories, types, locations, locationItemCounts, currencies, settings, linkedSales] = await Promise.all([
     getItemById(Number(id)),
     getItemImages(Number(id)),
     getCategories(),
@@ -24,12 +26,19 @@ export default async function EditItemPage({
     getLocationItemCounts(),
     getCurrencies(),
     getSettings(),
+    getSalesForItem(Number(id)),
   ]);
+
+  // The package the item belongs to, if any — shown on the dashboard
+  // regardless of whether that package is published on the visitor page.
+  const linkedPackage = item.package_id != null ? await getPackageSummary(item.package_id) : null;
 
   return (
     <ItemForm
       mode="update"
       item={item}
+      linkedPackage={linkedPackage ? { id: linkedPackage.id, name: linkedPackage.name } : null}
+      linkedSales={linkedSales}
       initialGalleryImages={galleryImages}
       categories={categories}
       types={types}

@@ -366,6 +366,41 @@ export function SettingsForm({
         <div className="settings-section-title">{t('sectionItemDetails')}</div>
         <div className="settings-group">
           {toggleRows(ITEM_DETAIL_FIELDS)}
+          {/* show_datetime (spare_toggle_9) — only offered once the owner has
+              turned on "Use date and time" in the general settings
+              (spare_toggle_8); with that off there is no date to show. */}
+          {settings.spare_toggle_8 && (
+            <div className="settings-row">
+              <Tooltip text={t('showDatetimeHint')}>
+                <span>{t('showDatetime')}</span>
+              </Tooltip>
+              <div className="settings-row-controls">
+                {statusFor('spare_toggle_9')}
+                <Toggle
+                  name="spare_toggle_9"
+                  defaultChecked={Boolean(settings.spare_toggle_9)}
+                  label={t('showDatetime')}
+                  onChange={(e) => autoSave('spare_toggle_9', e.target.checked)}
+                />
+              </div>
+            </div>
+          )}
+          {/* Group identical items — INVERTED spare_toggle_10 (checked here =
+              false in the DB, the default), see app/lib/groupIdentical.ts. */}
+          <div className="settings-row">
+            <Tooltip text={t('groupIdenticalItemsHint')}>
+              <span>{t('groupIdenticalItems')}</span>
+            </Tooltip>
+            <div className="settings-row-controls">
+              {statusFor('spare_toggle_10')}
+              <Toggle
+                name="spare_toggle_10"
+                defaultChecked={!settings.spare_toggle_10}
+                label={t('groupIdenticalItems')}
+                onChange={(e) => autoSave('spare_toggle_10', !e.target.checked)}
+              />
+            </div>
+          </div>
           {/* Filter by location — the on/off switch for the storefront
               filter built on show_location just above, so it sits directly
               beneath it rather than living off in the Visibility Filter

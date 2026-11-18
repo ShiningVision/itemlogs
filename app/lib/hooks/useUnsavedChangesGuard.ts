@@ -163,6 +163,7 @@ export function useUnsavedChangesGuard(
           if (!isSaving) setPendingProceed(null);
         },
         isConfirming: isSaving,
+        saveLayout: true,
       })
     : null;
 

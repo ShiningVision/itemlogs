@@ -22,6 +22,7 @@ const blossomTokens: ThemeTokens = {
     textMuted: '#a15a7c',
     border: '#fbcfe8',
     danger: '#dc2626',
+    warning: '#b45309',
     success: '#16a34a',
     successHover: '#15803d',
   },

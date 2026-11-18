@@ -58,6 +58,9 @@ export function ItemFiltersBar({
   selectedStatuses,
   selectedTypeIds,
   selectedLocationIds,
+  excludedCategoryIds = [],
+  excludedTypeIds = [],
+  excludedLocationIds = [],
   lockStatusToAvailable = false,
   hideManageButtons = false,
   showTypes = true,
@@ -67,6 +70,7 @@ export function ItemFiltersBar({
   statusLabel,
   status5Label,
   availableStatuses = [1, 2, 3, 4, 5],
+  defaultStatuses = [1],
   search = '',
 }: {
   categories: FilterOption[];
@@ -79,6 +83,12 @@ export function ItemFiltersBar({
   selectedStatuses: number[];
   selectedTypeIds: number[];
   selectedLocationIds: number[];
+  // Tags in the "excluded" state of the three-state tag filter (click once
+  // to include, again to exclude, again to clear) — kept in the `x`-prefixed
+  // URL params (xcategories/xtypes/xlocations).
+  excludedCategoryIds?: number[];
+  excludedTypeIds?: number[];
+  excludedLocationIds?: number[];
   // Used by the sell-items picker page (/dashboard/sales/[id]/sell), which
   // only ever shows Available items (the data it's given is pre-filtered
   // server-side to status=1) — the status row still renders, showing just
@@ -103,10 +113,15 @@ export function ItemFiltersBar({
   // resolveLabel(settings.name_status, ...) call).
   status5Label?: string;
   availableStatuses?: number[];
+  // The status selection the page falls back to when it has no `statuses`
+  // URL param (Available-only on the items page; every sellable status on
+  // the sell page). Selecting exactly this set isn't counted as an active
+  // filter, and toggling pills starts from it.
+  defaultStatuses?: number[];
   search?: string;
 }) {
   const t = useTranslations('items');
-  const { isPending, setParam, setParams, toggleInList, getParam } = useFilterParams();
+  const { isPending, setParam, setParams, cycleTriState, getParam } = useFilterParams();
 
   // Fuzzy name search — debounced so typing doesn't fire a navigation (and
   // a full server re-render) on every keystroke. Local state mirrors the
@@ -189,11 +204,16 @@ export function ItemFiltersBar({
   // it as an "active filter" here would make the summary claim something's
   // filtered on every single visit, which isn't useful. Only a status
   // selection that actually differs from that default counts.
-  const statusIsDefault = selectedStatuses.length === 1 && selectedStatuses[0] === 1;
+  const statusIsDefault =
+    selectedStatuses.length === defaultStatuses.length &&
+    defaultStatuses.every((s) => selectedStatuses.includes(s));
   const activeCount =
     selectedCategoryIds.length +
     (showTypes ? selectedTypeIds.length : 0) +
     selectedLocationIds.length +
+    excludedCategoryIds.length +
+    (showTypes ? excludedTypeIds.length : 0) +
+    excludedLocationIds.length +
     (statusIsDefault || lockStatusToAvailable ? 0 : selectedStatuses.length);
 
   function clearAll() {
@@ -202,7 +222,15 @@ export function ItemFiltersBar({
     // items/page.tsx), which stays selected rather than being wiped too.
     // `types` is cleared even when the section is hidden, so a stale URL
     // param can't keep filtering invisibly.
-    setParams({ categories: null, types: null, locations: null, statuses: null });
+    setParams({
+      categories: null,
+      types: null,
+      locations: null,
+      xcategories: null,
+      xtypes: null,
+      xlocations: null,
+      statuses: null,
+    });
   }
 
   // Deselecting the last status pill needs to mean "show every status" —
@@ -222,7 +250,7 @@ export function ItemFiltersBar({
   // stale snapshot and the second click would silently undo the first.
   function toggleStatus(id: number) {
     const raw = getParam('statuses');
-    const current = raw === null ? [1] : raw === 'all' ? [] : raw.split(',').filter(Boolean).map(Number);
+    const current = raw === null ? defaultStatuses : raw === 'all' ? [] : raw.split(',').filter(Boolean).map(Number);
     const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
     setParam('statuses', next.length ? next.join(',') : 'all');
   }
@@ -236,6 +264,7 @@ export function ItemFiltersBar({
     label: string,
     options: FilterOption[],
     selected: number[],
+    excluded: number[],
   ) {
     return (
       <div className="filter-section">
@@ -248,7 +277,8 @@ export function ItemFiltersBar({
         <FilterPillRow
           pills={options.map((opt) => ({ id: opt.id, label: opt.name ?? '' }))}
           selectedIds={selected}
-          onToggle={(id) => toggleInList(paramKeyFor(key), selected, id)}
+          excludedIds={excluded}
+          onToggle={(id) => cycleTriState(paramKeyFor(key), id)}
           moreLabel={t('more')}
           onMore={() => setOpenMore(key)}
         />
@@ -360,11 +390,11 @@ export function ItemFiltersBar({
             </div>
           </div>
 
-          {renderPillFilterSection('category', categoryLabel, categories, selectedCategoryIds)}
+          {renderPillFilterSection('category', categoryLabel, categories, selectedCategoryIds, excludedCategoryIds)}
 
-          {showTypes && renderPillFilterSection('type', typeLabel, types, selectedTypeIds)}
+          {showTypes && renderPillFilterSection('type', typeLabel, types, selectedTypeIds, excludedTypeIds)}
 
-          {renderPillFilterSection('location', locationLabel, locations, selectedLocationIds)}
+          {renderPillFilterSection('location', locationLabel, locations, selectedLocationIds, excludedLocationIds)}
         </>
       )}
 
@@ -397,7 +427,10 @@ export function ItemFiltersBar({
           items={categories}
           itemCounts={categoryItemCounts}
           selectedIds={selectedCategoryIds}
-          onApply={(ids) => setParam('categories', ids.length ? ids.join(',') : null)}
+          excludedIds={excludedCategoryIds}
+          onApply={(ids, excl) =>
+            setParams({ categories: ids.length ? ids.join(',') : null, xcategories: excl.length ? excl.join(',') : null })
+          }
           onClose={() => setOpenMore(null)}
         />
       )}
@@ -407,7 +440,10 @@ export function ItemFiltersBar({
           items={types}
           itemCounts={typeItemCounts}
           selectedIds={selectedTypeIds}
-          onApply={(ids) => setParam('types', ids.length ? ids.join(',') : null)}
+          excludedIds={excludedTypeIds}
+          onApply={(ids, excl) =>
+            setParams({ types: ids.length ? ids.join(',') : null, xtypes: excl.length ? excl.join(',') : null })
+          }
           onClose={() => setOpenMore(null)}
         />
       )}
@@ -417,7 +453,10 @@ export function ItemFiltersBar({
           items={locations.filter((loc) => loc.id !== 0)}
           itemCounts={locationItemCounts}
           selectedIds={selectedLocationIds}
-          onApply={(ids) => setParam('locations', ids.length ? ids.join(',') : null)}
+          excludedIds={excludedLocationIds}
+          onApply={(ids, excl) =>
+            setParams({ locations: ids.length ? ids.join(',') : null, xlocations: excl.length ? excl.join(',') : null })
+          }
           onClose={() => setOpenMore(null)}
         />
       )}

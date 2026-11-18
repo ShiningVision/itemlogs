@@ -4,8 +4,9 @@ import { getSaleById } from '@/app/lib/services/sales';
 import { getSaleItems } from '@/app/lib/services/sales-items';
 import { getSettings } from '@/app/lib/services/settings';
 import { buildItemsWorkbook, buildExportFilename } from '@/app/lib/items/exportItems';
+import { parseIdList } from '@/app/lib/idList';
 
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const saleId = Number(id);
@@ -16,7 +17,15 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       getSettings(),
     ]);
 
-    const buffer = await buildItemsWorkbook(saleItems.map((si) => si.items), settings);
+    // `ids` (when present, even empty) narrows the export to the items the
+    // page's filter is currently showing — only ever a subset of this
+    // sale's own items, never anything outside it.
+    const idsParam = new URL(request.url).searchParams.get('ids');
+    const wanted = idsParam === null ? null : new Set(parseIdList(idsParam));
+    const allItems = saleItems.map((si) => si.items);
+    const exportItems = wanted ? allItems.filter((item: any) => wanted.has(item.id)) : allItems;
+
+    const buffer = await buildItemsWorkbook(exportItems, settings);
     const filename = buildExportFilename(sale.date, sale.name);
 
     return new NextResponse(buffer, {

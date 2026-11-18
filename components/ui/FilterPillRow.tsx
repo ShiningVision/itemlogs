@@ -6,6 +6,10 @@ import { FilterPill } from './FilterPill';
 
 export type PillOption = { id: number; label: string };
 
+// Stable default for `excludedIds` — a fresh `[]` per render would change the
+// measuring effect's dependencies on every render.
+const NO_IDS: number[] = [];
+
 // Caps a FilterPill row at `rowLimit` visual rows (2 by default). When the
 // full list doesn't fit, a "more" tag (same FilterPill component, different
 // color — see FilterPill's 'more' variant) takes the last visible slot in
@@ -21,6 +25,7 @@ export type PillOption = { id: number; label: string };
 export function FilterPillRow({
   pills,
   selectedIds,
+  excludedIds = NO_IDS,
   onToggle,
   moreLabel,
   onMore,
@@ -28,6 +33,9 @@ export function FilterPillRow({
 }: {
   pills: PillOption[];
   selectedIds: number[];
+  // Tags in the "excluded" state of the three-state filter (rendered
+  // struck through — see FilterPill).
+  excludedIds?: number[];
   onToggle: (id: number) => void;
   moreLabel: string;
   onMore: () => void;
@@ -89,7 +97,7 @@ export function FilterPillRow({
     // Re-measure on selection change too — a selected pill renders bold,
     // which is wider than the same label unselected, and can shift where
     // things wrap.
-  }, [pills, selectedIds, rowLimit]);
+  }, [pills, selectedIds, excludedIds, rowLimit]);
 
   const hasOverflow = visibleCount < pills.length;
   const shown = pills.slice(0, visibleCount);
@@ -124,6 +132,7 @@ export function FilterPillRow({
             key={pill.id}
             label={pill.label}
             selected={selectedIds.includes(pill.id)}
+            excluded={excludedIds.includes(pill.id)}
             onClick={() => {}}
           />
         ))}
@@ -141,6 +150,7 @@ export function FilterPillRow({
             key={pill.id}
             label={pill.label}
             selected={selectedIds.includes(pill.id)}
+            excluded={excludedIds.includes(pill.id)}
             onClick={() => onToggle(pill.id)}
           />
         ))}

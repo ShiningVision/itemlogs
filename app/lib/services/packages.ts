@@ -84,6 +84,24 @@ export async function getPackagesForVisibility(): Promise<
   return data ?? [];
 }
 
+// A package's name and whether it's published on the visitor page, for the
+// "which package is this item in" line on item detail pages. Null when the
+// package doesn't exist. Callers decide who may see it: the dashboard shows
+// it always, the visitor page only when show_on_storefront (see
+// app/items/[id]/page.tsx).
+export async function getPackageSummary(
+  id: number
+): Promise<{ id: number; name: string; show_on_storefront: boolean } | null> {
+  const { data, error } = await supabase
+    .from('packages')
+    .select('id, name, show_on_storefront')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
 // Only the packages the owner has explicitly opted into showing publicly —
 // used to populate the storefront's single-select package filter dropdown.
 export async function getPublicPackages(): Promise<{ id: number; name: string }[]> {

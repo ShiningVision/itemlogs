@@ -30,6 +30,13 @@ export const createItemSchema = z.object({
   // never included in any public storefront select (see PUBLIC_ITEM_SELECT
   // in app/lib/services/items.ts).
   notes: z.string().nullable().optional(),
+  // Optional date ("2026-11-14", no time of day), gated by the use_datetime
+  // setting — see app/lib/datetime.ts. Null clears it.
+  item_datetime: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date.')
+    .nullable()
+    .optional(),
 });
 
 export const updateItemSchema = createItemSchema.partial();

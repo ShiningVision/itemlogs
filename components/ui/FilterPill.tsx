@@ -9,6 +9,11 @@ export const FilterPill = forwardRef<
     label: string;
     selected: boolean;
     disabled?: boolean;
+    // Third state of the tag filters (see useFilterParams.cycleTriState):
+    // the tag is EXCLUDED. Deliberately decolored — muted text on the plain
+    // surface, struck through — rather than red, so it reads as "crossed
+    // out" without shouting. `selected` and `excluded` are never both true.
+    excluded?: boolean;
     onClick: () => void;
     // 'status' reads as a visually separate group from Category/Type/Location
     // (which are otherwise identically styled, on purpose — see
@@ -21,15 +26,17 @@ export const FilterPill = forwardRef<
     // variant's rendered width for its overflow calculation.
     variant?: 'default' | 'status' | 'more';
   }
->(function FilterPill({ label, selected, disabled, onClick, variant = 'default' }, ref) {
+>(function FilterPill({ label, selected, disabled, excluded = false, onClick, variant = 'default' }, ref) {
   const background = variant === 'more' ? 'var(--color-secondary)' : selected ? 'var(--color-primary)' : 'var(--color-surface)';
-  const color = variant === 'more' || selected ? '#fff' : 'var(--color-text)';
+  const color =
+    variant === 'more' || selected ? '#fff' : excluded ? 'var(--color-text-muted)' : 'var(--color-text)';
   return (
     <button
       ref={ref}
       type="button"
       onClick={onClick}
       disabled={disabled}
+      aria-pressed={excluded ? 'mixed' : selected}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -41,6 +48,7 @@ export const FilterPill = forwardRef<
         fontWeight: selected || variant === 'more' ? 'var(--font-weight-bold)' : 'var(--font-weight-normal)',
         background,
         color,
+        textDecoration: excluded ? 'line-through' : 'none',
         opacity: disabled ? 0.5 : 1,
         cursor: disabled ? 'not-allowed' : 'pointer',
         transition: 'background var(--motion-duration) var(--motion-easing)',

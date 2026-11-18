@@ -7,13 +7,15 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/widgets/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AddItemsToPackageModal } from './AddItemsToPackageModal';
-import { ItemGrid } from '@/components/items/ItemGrid';
+import { FilteredItemGrid } from '@/components/items/FilteredItemGrid';
+import { exportHref } from '@/components/items/ExportFilterContext';
 import { DocumentListEditor, type DocumentRow } from './DocumentListEditor';
 import { ArrowDownTrayIcon, ArrowsRightLeftIcon, PaperAirplaneIcon, FlagIcon, PaperClipIcon, ArchiveBoxIcon, ArrowLeftIcon, ClockIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { Toast, type ToastType } from '@/components/ui/notification';
 import { getPackageStatus } from '@/app/lib/packageStatus';
 import type { Package, Settings } from '@/app/lib/definitions';
 import { parseApiError } from '@/app/lib/errors/parseApiError';
+import { UnsavedBadge, SaveDot, useUnsavedTitle, saveButtonStyle } from '@/components/ui/UnsavedIndicator';
 import { useUnsavedChangesGuard } from '@/app/lib/hooks/useUnsavedChangesGuard';
 
 type Currency = { id: number; currency_code: string };
@@ -82,6 +84,9 @@ export function PackageForm({
     const [distributeConfirmOpen, setDistributeConfirmOpen] = useState(false);
     const [isDistributing, setIsDistributing] = useState(false);
     const [isMarking, setIsMarking] = useState(false);
+    // Ids the item list below is currently filtered to (null = no filter) —
+    // the export button exports exactly those.
+    const [exportIds, setExportIds] = useState<number[] | null>(null);
     const [markNotification, setMarkNotification] = useState<{ type: ToastType; message: string } | null>(null);
 
     // Which bulk action the package's shipment status offers, from the SAVED
@@ -153,6 +158,7 @@ export function PackageForm({
         }).catch(() => {});
     }
 
+    useUnsavedTitle(isDirty);
     const { requestLeave, guardDialog } = useUnsavedChangesGuard(isDirty, {
         onSave: handleSave,
         onBackgroundSave: backgroundSave,
@@ -273,16 +279,17 @@ export function PackageForm({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-lg)' }}>
                 <h1 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)' }}>
                     {mode === 'create' ? t('createPackage') : t('updatePackage')}
+                    <UnsavedBadge show={isDirty} />
                 </h1>
 
                 {mode === 'update' ? (
                     // download attribute — not a real navigation, just steers
                     // the unsaved-changes guard's click listener away from
                     // mistaking this for "leaving the page".
-                    <a href={`/api/v1/packages/${pkg!.id}/export`} download>
+                    <a href={exportHref(`/api/v1/packages/${pkg!.id}/export`, exportIds)} download>
                         <Button style={{ background: 'var(--color-success)' }}>
                             <ArrowDownTrayIcon style={{ width: '18px', height: '18px' }} />
-                            {t('exportExcel')}
+                            {exportIds ? t('exportExcelFiltered', { count: exportIds.length }) : t('exportExcel')}
                         </Button>
                     </a>
                 ) : (
@@ -378,7 +385,8 @@ export function PackageForm({
                     {error && <div style={{ color: 'var(--color-danger)' }}>{error}</div>}
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-sm)' }}>
-                        <Button onClick={handleSave} disabled={isSaving}>
+                        <Button onClick={handleSave} disabled={isSaving} style={saveButtonStyle(mode === 'update', isDirty)}>
+                            <SaveDot show={isDirty && !isSaving} />
                             {isSaving ? t('saving') : t('save')}
                         </Button>
                     </div>
@@ -430,8 +438,9 @@ export function PackageForm({
                                 </div>
                             </div>
 
-                            <ItemGrid
+                            <FilteredItemGrid
                                 items={packageItems}
+                                onFilteredIdsChange={setExportIds}
                                 settings={settings}
                                 removeFromPackageButton
                                 onItemRemovedFromPackage={() => router.refresh()}

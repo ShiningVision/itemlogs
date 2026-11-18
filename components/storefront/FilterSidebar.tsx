@@ -22,6 +22,9 @@ export function FilterSidebar({
   selectedCategoryIds,
   selectedTypeIds,
   selectedLocationIds,
+  excludedCategoryIds = [],
+  excludedTypeIds = [],
+  excludedLocationIds = [],
   availableStatuses,
   selectedStatuses,
   categoryLabel,
@@ -45,6 +48,12 @@ export function FilterSidebar({
   selectedCategoryIds: number[];
   selectedTypeIds: number[];
   selectedLocationIds?: number[];
+  // Excluded tags — the third state of the tag filters (click a tag once to
+  // include it, again to exclude it, again to clear it). Statuses stay
+  // plain on/off.
+  excludedCategoryIds?: number[];
+  excludedTypeIds?: number[];
+  excludedLocationIds?: number[];
   availableStatuses: number[];
   selectedStatuses: number[];
   categoryLabel: string;
@@ -70,7 +79,12 @@ export function FilterSidebar({
   searchBar?: React.ReactNode;
 }) {
   const t = useTranslations('storefront');
-  const { toggleInList } = useFilterParams();
+  const { toggleInList, cycleTriState } = useFilterParams();
+
+  // `excluded` undefined = a plain on/off list (statuses); an array = a tag
+  // filter with the include -> exclude -> off cycle.
+  const clickOption = (key: string, selected: number[], excluded: number[] | undefined, id: number) =>
+    excluded === undefined ? toggleInList(key, selected, id) : cycleTriState(key, id);
   const { isOpen: drawerOpen, close: closeDrawer } = useFilterDrawer();
 
   // Category and type lists can get long, so their sections collapse —
@@ -112,7 +126,8 @@ export function FilterSidebar({
     selected: number[],
     key: string,
     open: boolean = true,
-    onToggle?: () => void
+    onToggle?: () => void,
+    excluded?: number[]
   ) => (
     <div className="storefront-filter-section">
       {sectionHeader(title, open, onToggle)}
@@ -123,7 +138,8 @@ export function FilterSidebar({
               key={opt.id}
               label={opt.label}
               selected={selected.includes(opt.id)}
-              onClick={() => toggleInList(key, selected, opt.id)}
+              excluded={excluded?.includes(opt.id) ?? false}
+              onClick={() => clickOption(key, selected, excluded, opt.id)}
             />
           ))}
         </div>
@@ -138,25 +154,36 @@ export function FilterSidebar({
     key: string,
     counts: Record<number, number>,
     open: boolean,
-    onToggle: () => void
+    onToggle: () => void,
+    excluded: number[]
   ) => (
     <div className="storefront-filter-section">
       {sectionHeader(title, open, onToggle)}
       {open && (
         <div className="storefront-filter-checkbox-list">
-          {options.map((opt) => (
+          {options.map((opt) => {
+            const isExcluded = excluded.includes(opt.id);
+            return (
             <label key={opt.id} className="storefront-filter-checkbox-row">
               <span className="storefront-filter-checkbox-label">
+                {/* Excluded shows as the checkbox's native "indeterminate"
+                    dash, with the label struck through and muted. */}
                 <input
                   type="checkbox"
                   checked={selected.includes(opt.id)}
-                  onChange={() => toggleInList(key, selected, opt.id)}
+                  ref={(el) => {
+                    if (el) el.indeterminate = isExcluded;
+                  }}
+                  onChange={() => cycleTriState(key, opt.id)}
                 />
-                {opt.label}
+                <span style={isExcluded ? { textDecoration: 'line-through', color: 'var(--color-text-muted)' } : undefined}>
+                  {opt.label}
+                </span>
               </span>
               <span className="storefront-filter-count">{counts[opt.id] ?? 0}</span>
             </label>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -175,18 +202,18 @@ export function FilterSidebar({
       )}
 
       {categoryOptions.length > ADAPTIVE_THRESHOLD
-        ? checkboxSection(categoryLabel, categoryOptions, selectedCategoryIds, 'categories', categoryCounts, categoriesOpen, () => setCategoriesOpen((v) => !v))
-        : pillSection(categoryLabel, categoryOptions, selectedCategoryIds, 'categories', categoriesOpen, () => setCategoriesOpen((v) => !v))}
+        ? checkboxSection(categoryLabel, categoryOptions, selectedCategoryIds, 'categories', categoryCounts, categoriesOpen, () => setCategoriesOpen((v) => !v), excludedCategoryIds)
+        : pillSection(categoryLabel, categoryOptions, selectedCategoryIds, 'categories', categoriesOpen, () => setCategoriesOpen((v) => !v), excludedCategoryIds)}
 
       {showTypes &&
         (typeOptions.length > ADAPTIVE_THRESHOLD
-          ? checkboxSection(typeLabel, typeOptions, selectedTypeIds, 'types', typeCounts, typesOpen, () => setTypesOpen((v) => !v))
-          : pillSection(typeLabel, typeOptions, selectedTypeIds, 'types', typesOpen, () => setTypesOpen((v) => !v)))}
+          ? checkboxSection(typeLabel, typeOptions, selectedTypeIds, 'types', typeCounts, typesOpen, () => setTypesOpen((v) => !v), excludedTypeIds)
+          : pillSection(typeLabel, typeOptions, selectedTypeIds, 'types', typesOpen, () => setTypesOpen((v) => !v), excludedTypeIds))}
 
       {locationFilter && locationOptions.length > 0 &&
         (locationOptions.length > ADAPTIVE_THRESHOLD
-          ? checkboxSection(locationLabel ?? '', locationOptions, selectedLocationIds ?? [], 'locations', locationCounts, locationsOpen, () => setLocationsOpen((v) => !v))
-          : pillSection(locationLabel ?? '', locationOptions, selectedLocationIds ?? [], 'locations', locationsOpen, () => setLocationsOpen((v) => !v)))}
+          ? checkboxSection(locationLabel ?? '', locationOptions, selectedLocationIds ?? [], 'locations', locationCounts, locationsOpen, () => setLocationsOpen((v) => !v), excludedLocationIds)
+          : pillSection(locationLabel ?? '', locationOptions, selectedLocationIds ?? [], 'locations', locationsOpen, () => setLocationsOpen((v) => !v), excludedLocationIds))}
 
       {/* Status filter is omitted entirely when there's only one (or zero) selectable status — ticking a single option is meaningless */}
       {availableStatuses.length > 1 &&

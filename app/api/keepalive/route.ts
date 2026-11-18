@@ -11,14 +11,38 @@
 //
 // Kept intentionally cheap and boring: a single-row select by primary key
 // on `settings` (there's always exactly one row, id=1), no joins, nothing
-// derived from the request, nothing sensitive returned. Not rate-limited on
-// purpose — the query costs nothing meaningful and a plain GET endpoint
-// with no side effects doesn't need one.
+// derived from the request. Not rate-limited on purpose — the query costs
+// nothing meaningful and a plain GET endpoint with no side effects doesn't
+// need one.
+//
+// ONE addition: when the caller proves it's the central site (the
+// x-keepalive-token header equals this deployment's AUTH_SECRET — the
+// central site stores every tenant's AUTH_SECRET, see tenants.auth_secret),
+// the response also carries `lastLogin`, the ISO timestamp of the owner's
+// last dashboard use (settings.spare_text_4, see Settings.spare_text_4).
+// Anyone else gets only { ok } — when the owner was last active isn't
+// something to hand to the public internet.
 import { NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { supabase } from '@/app/lib/db/client';
 
-export async function GET() {
-  const { error } = await supabase.from('settings').select('id').eq('id', 1).limit(1);
+function isCentralSite(request: Request): boolean {
+  const secret = process.env.AUTH_SECRET;
+  const provided = request.headers.get('x-keepalive-token');
+  if (!secret || !provided) return false;
+
+  const a = Buffer.from(provided);
+  const b = Buffer.from(secret);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+export async function GET(request: Request) {
+  const { data, error } = await supabase
+    .from('settings')
+    .select('id, spare_text_4')
+    .eq('id', 1)
+    .limit(1)
+    .maybeSingle();
 
   // Even on failure, respond 200 — this endpoint exists to ping Supabase,
   // not to report tenant health. A real outage will surface elsewhere
@@ -26,5 +50,10 @@ export async function GET() {
   // quiet just means a keep-alive cron sees a normal response either way
   // instead of retry/alerting noise for something it isn't meant to
   // monitor.
-  return NextResponse.json({ ok: !error }, { status: 200 });
+  const body: { ok: boolean; lastLogin?: string | null } = { ok: !error };
+  if (!error && isCentralSite(request)) {
+    body.lastLogin = data?.spare_text_4 ?? null;
+  }
+
+  return NextResponse.json(body, { status: 200 });
 }

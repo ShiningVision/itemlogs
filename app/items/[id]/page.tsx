@@ -1,10 +1,13 @@
 // app/items/[id]/page.tsx
 import { getItemById } from '@/app/lib/services/items';
 import { getItemImages } from '@/app/lib/services/item-images';
+import { getPackageSummary } from '@/app/lib/services/packages';
 import { getSettings } from '@/app/lib/services/settings';
 import { resolveLabel } from '@/app/lib/labels';
 import { typesEnabled } from '@/app/lib/typesEnabled';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
+import { CalendarDaysIcon } from '@heroicons/react/24/outline';
+import { datetimeShown, formatDate } from '@/app/lib/datetime';
 import { notFound, redirect } from 'next/navigation';
 import { BackToStorefrontButton } from '@/components/storefront/BackToStorefrontButton';
 import { StorefrontHeader } from '@/components/storefront/StorefrontHeader';
@@ -52,8 +55,22 @@ export default async function PublicItemPage({
   }
 
   const galleryImages = await getItemImages(Number(id));
+
+  // Which package the item belongs to is only public when the owner chose to
+  // publish that package: the "Filter by packages" setting is on AND this
+  // package is in the visitor-page package list (show_on_storefront) — the
+  // same condition that makes it appear in the storefront's package filter.
+  // Otherwise nothing about the package is shown or even fetched into the
+  // page.
+  const publicPackage =
+    settings.show_package_filter && item.package_id != null
+      ? await getPackageSummary(item.package_id)
+      : null;
+  const publicPackageName = publicPackage?.show_on_storefront ? publicPackage.name : null;
+
   const t = await getTranslations('storefront');
   const itemsT = await getTranslations('items');
+  const locale = await getLocale();
 
   const categoryLabel = resolveLabel(settings.name_category, itemsT('category'));
   const typeLabel = resolveLabel(settings.name_type, itemsT('type'));
@@ -114,11 +131,39 @@ export default async function PublicItemPage({
               <div className="sheet-title-block">
                 <h1 className="sheet-name">{item.name}</h1>
 
+                {/* Date (the optional "vacation item" field) sits right
+                    under the name, ahead of the badges: it's part of the
+                    item's identity — when/where it was from — rather than a
+                    price or tag, and a single muted line there reads like
+                    a caption without competing with the status/category
+                    badges below. Only when the owner turned the feature AND
+                    its visitor-page switch on, and the item has one. */}
+                {datetimeShown(settings) && item.item_datetime && (
+                  <p
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 'var(--spacing-xs)',
+                      margin: 0,
+                      color: 'var(--color-text-muted)',
+                      fontSize: 'var(--font-size-sm)',
+                    }}
+                  >
+                    <CalendarDaysIcon aria-hidden="true" style={{ width: '16px', height: '16px', flexShrink: 0 }} />
+                    <time dateTime={String(item.item_datetime).slice(0, 10)}>
+                      {formatDate(item.item_datetime, locale)}
+                    </time>
+                  </p>
+                )}
+
                 <div className="sheet-badges">
                   <Badge tone="primary">{statusBadgeLabel}</Badge>
                   <Badge>{categoryLabel}: {item.categories?.length ? item.categories.map((c: { name: string | null }) => c.name).join(', ') : itemsT('other')}</Badge>
                   {typesEnabled(settings) && (
                     <Badge>{typeLabel}: {item.types?.length ? item.types.map((t: { name: string | null }) => t.name).join(', ') : itemsT('other')}</Badge>
+                  )}
+                  {publicPackageName && (
+                    <Badge>{resolveLabel(settings.name_package, itemsT('package'))}: {publicPackageName}</Badge>
                   )}
                 </div>
 

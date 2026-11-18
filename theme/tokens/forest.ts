@@ -14,6 +14,7 @@ const forestTokens: ThemeTokens = {
     textMuted: '#5b6f56',
     border: '#c3d4b8',
     danger: '#b91c1c',
+    warning: '#b45309',
     success: '#16a34a',
     successHover: '#15803d',
   },

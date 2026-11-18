@@ -19,6 +19,9 @@ export interface ThemeTokens {
     textMuted: string;
     border: string;
     danger: string;
+    // Caution color (amber) — used as text/border with a tinted background
+    // (color-mix), so pick a shade readable as text on the theme's surface.
+    warning: string;
     success: string;
     successHover: string;
   };

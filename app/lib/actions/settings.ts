@@ -48,6 +48,10 @@ const STOREFRONT_AUTOSAVE_FIELDS = [
   'contact_instagram',
   'show_featured_items',
   'show_description',
+  // show_datetime (see Settings.spare_toggle_9 in definitions.ts).
+  'spare_toggle_9',
+  // group_identical_items, inverted (spare_toggle_10 — see app/lib/groupIdentical.ts).
+  'spare_toggle_10',
 ] as const;
 
 type StorefrontAutosaveField = (typeof STOREFRONT_AUTOSAVE_FIELDS)[number];
@@ -103,6 +107,8 @@ const GENERAL_SETTINGS_AUTOSAVE_FIELDS = [
   'use_barcode',
   // Inverted "hide types" (see Settings.spare_toggle_7 in definitions.ts).
   'spare_toggle_7',
+  // use_datetime (see Settings.spare_toggle_8 in definitions.ts).
+  'spare_toggle_8',
   'use_package_fees',
   'use_secret_notes',
   'display_profit',

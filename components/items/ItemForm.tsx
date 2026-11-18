@@ -1,8 +1,9 @@
 // components/items/ItemForm.tsx
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { ArrowLeftIcon, QrCodeIcon, InformationCircleIcon, MapPinIcon, DocumentDuplicateIcon, BookmarkSquareIcon } from '@heroicons/react/24/outline';
 import { MainImagePicker } from './MainImagePicker';
@@ -18,8 +19,10 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import type { Settings } from '@/app/lib/definitions';
 import { resolveLabel } from '@/app/lib/labels';
 import { parseApiError } from '@/app/lib/errors/parseApiError';
+import { UnsavedBadge, SaveDot, useUnsavedTitle, saveButtonStyle } from '@/components/ui/UnsavedIndicator';
 import { useUnsavedChangesGuard } from '@/app/lib/hooks/useUnsavedChangesGuard';
 import { typesEnabled } from '@/app/lib/typesEnabled';
+import { datetimeEnabled, todayAsLocalDateInput, toDateInputValue } from '@/app/lib/datetime';
 
 type Option = { id: number; name: string | null };
 type Currency = { id: number; currency_code: string; currency_name: string };
@@ -49,6 +52,9 @@ type ItemFormData = {
   // Private, owner-only — only rendered/sent when settings.use_secret_notes
   // is on. Never present on blueprints (see applyBlueprint below).
   notes: string;
+  // Optional date ("YYYY-MM-DD", no time of day) — only used while settings
+  // use_datetime is on (see app/lib/datetime.ts). Never on blueprints.
+  item_datetime: string;
 };
 
 const STATUSES = [1, 2, 3, 4, 5];
@@ -56,6 +62,8 @@ const STATUSES = [1, 2, 3, 4, 5];
 export function ItemForm({
   mode,
   item,
+  linkedPackage = null,
+  linkedSales = [],
   initialGalleryImages = [],
   categories,
   types,
@@ -66,6 +74,10 @@ export function ItemForm({
 }: {
   mode: 'create' | 'update';
   item?: any;
+  // Update mode only: the package this item belongs to and the sale(s) it
+  // was sold in, shown as links under the item name.
+  linkedPackage?: { id: number; name: string } | null;
+  linkedSales?: { id: number; name: string | null; date: string }[];
   initialGalleryImages?: Array<{ image_id: number; images: ImageRow }>;
   categories: Option[];
   types: Option[];
@@ -91,6 +103,10 @@ export function ItemForm({
     purchase_price_currency: item?.purchase_price_currency ?? settings.default_purchase_price_currency,
     sell_price: item?.sell_price?.toString() ?? '',
     notes: item?.notes ?? '',
+    // Create mode starts empty here and is filled with today's date after
+    // mount (see the effect below) — the browser's clock/time zone isn't
+    // known during server rendering, and filling it here would mismatch.
+    item_datetime: toDateInputValue(item?.item_datetime),
   });
 
   // Sell price is always in the shop's single sell_price_currency — no
@@ -106,6 +122,18 @@ export function ItemForm({
   // saveItem / buildPayload).
   const formRef = useRef(form);
   formRef.current = form;
+
+  // A new item's date defaults to the day it's created. Set once,
+  // after mount, and written into the dirty-tracking baseline too — it's a
+  // default, not something the person typed, so it must not count as an
+  // unsaved change.
+  useEffect(() => {
+    if (mode !== 'create' || !datetimeEnabled(settings) || formRef.current.item_datetime) return;
+    const next = { ...formRef.current, item_datetime: todayAsLocalDateInput() };
+    initialFormSnapshotRef.current = JSON.stringify(next);
+    setForm(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Set once a save-and-leave has succeeded, so the page counts as clean
   // for the unsaved-changes guard while the browser navigates away.
   const leavingAfterSaveRef = useRef(false);
@@ -161,6 +189,7 @@ export function ItemForm({
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [typeModalOpen, setTypeModalOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
+  useUnsavedTitle(isDirty);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSavingBlueprint, setIsSavingBlueprint] = useState(false);
@@ -194,7 +223,14 @@ export function ItemForm({
       // Blueprints have no notes field (see app/api/setup/route.ts's items
       // table comment) — nothing to carry over.
       notes: '',
+      // Not part of a blueprint — keep whatever this form already has.
+      item_datetime: formRef.current.item_datetime,
     });
+    // The blueprint's gallery replaces whatever was picked so far. Create
+    // mode only: an existing item's gallery saves itself immediately (see
+    // ImageGalleryEditor), so swapping it locally here would desync it from
+    // what's actually stored.
+    if (mode === 'create') setGallery(bp.gallery ?? []);
   }
 
   // Invalid/empty input and anything below 1 becomes 1; anything above 99
@@ -214,9 +250,13 @@ export function ItemForm({
   function buildPayload(f: ItemFormData = formRef.current) {
     return {
       name: f.name,
-      description: f.description || undefined,
+      // Always sent, even when empty: omitting an empty value meant a
+      // cleared description/barcode/notes was simply left out of the PATCH,
+      // so the old value stayed. The server turns '' into NULL (see
+      // normalizeEmptyText in services/items.ts).
+      description: f.description,
       location_id: f.location?.id ?? null,
-      barcode: settings.use_barcode && f.barcode ? f.barcode.trim() : undefined,
+      barcode: settings.use_barcode ? f.barcode.trim() : undefined,
       status: f.status,
       category_ids: f.categories.map((c) => c.id),
       // Left out entirely when types are turned off (typesEnabled), so
@@ -229,7 +269,10 @@ export function ItemForm({
       purchase_price: f.purchase_price ? Number(f.purchase_price) : 0,
       purchase_price_currency: f.purchase_price_currency,
       sell_price: settings.use_sell_price && f.sell_price ? Number(f.sell_price) : Number(f.sell_price || 0),
-      notes: settings.use_secret_notes ? f.notes || undefined : undefined,
+      notes: settings.use_secret_notes ? f.notes || null : undefined,
+      // Date only. Only sent while the feature is on (so a tenant that never enabled it
+      // — or whose database predates the column — is never touched).
+      item_datetime: datetimeEnabled(settings) ? f.item_datetime || null : undefined,
     };
   }
 
@@ -314,9 +357,17 @@ export function ItemForm({
         // snapshot above; this flag also forces "clean" for the re-render
         // that follows, regardless of any last-instant form change.)
         leavingAfterSaveRef.current = true;
+        // UPDATE: the hard reload above landed on the right scroll position
+        // and then reloaded AGAIN (Next soft-renders the previous page on
+        // popstate first, then the reload fired on top of it). Instead of
+        // reloading, refresh the router once the back-navigation has
+        // happened: this listener is added after Next's own popstate
+        // handler, so Next's traversal is queued first and this refresh
+        // runs against the page we landed on (not the edit page) — it
+        // re-fetches that page's data in place, keeping the scroll position.
         window.addEventListener(
           'popstate',
-          () => window.location.reload(),
+          () => router.refresh(),
           { once: true }
         );
         window.history.back();
@@ -374,7 +425,13 @@ export function ItemForm({
     setErrorMessage(null);
     setIsSavingBlueprint(true);
     try {
-      const payload = buildPayload();
+      // The gallery goes along too, so a blueprint can reproduce the whole
+      // item (create mode: the images picked so far; update mode: the
+      // item's gallery).
+      // item_datetime is deliberately left out — a blueprint is a reusable
+      // template, not a dated item.
+      const { item_datetime: _omitDatetime, ...itemPayload } = buildPayload();
+      const payload = { ...itemPayload, gallery_image_ids: gallery.map((g) => g.id) };
       const res = await fetch('/api/v1/blueprints', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -426,6 +483,7 @@ export function ItemForm({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-lg)' }}>
         <h1 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)' }}>
           {mode === 'create' ? t('createItem') : t('updateItem')}
+          <UnsavedBadge show={mode === 'update' && isDirty} />
         </h1>
         {mode === 'create' && (
           <Button onClick={() => setBlueprintModalOpen(true)} title={t('createFromBlueprintHint')}>
@@ -479,6 +537,40 @@ export function ItemForm({
                 />
                 <span className="required-mark" aria-hidden="true">*</span>
               </div>
+
+              {/* Where this item lives: the package it belongs to and/or the
+                  sale it was sold in, each linking to that record. Read-only
+                  here — a package is assigned from the package page, a sale
+                  from selling the item. Absent when neither applies. */}
+              {mode === 'update' && (linkedPackage || linkedSales.length > 0) && (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 'var(--spacing-xs) var(--spacing-md)',
+                    marginTop: 'var(--spacing-sm)',
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-muted)',
+                  }}
+                >
+                  {linkedPackage && (
+                    <span>
+                      {resolveLabel(settings.name_package, t('package'))}:{' '}
+                      <Link href={`/dashboard/packages/${linkedPackage.id}/edit`} style={{ color: 'var(--color-primary)' }}>
+                        {linkedPackage.name}
+                      </Link>
+                    </span>
+                  )}
+                  {linkedSales.map((sale) => (
+                    <span key={sale.id}>
+                      {t('saleLabel')}:{' '}
+                      <Link href={`/dashboard/sales/${sale.id}/edit`} style={{ color: 'var(--color-primary)' }}>
+                        {sale.name ?? sale.date}
+                      </Link>
+                    </span>
+                  ))}
+                </div>
+              )}
 
               <div className="sheet-field-grid" style={{ marginTop: 'var(--spacing-sm)' }}>
                 <div className="sheet-field">
@@ -643,6 +735,25 @@ export function ItemForm({
             </div>
           )}
 
+          {datetimeEnabled(settings) && (
+            <div className="sheet-field-grid">
+              <div className="sheet-field">
+                <span className="sheet-label" style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}>
+                  {t('datetime')}
+                  <Tooltip text={t('datetimeHint')}>
+                    <InformationCircleIcon style={{ width: '16px', height: '16px', opacity: 0.6 }} />
+                  </Tooltip>
+                </span>
+                <input
+                  type="date"
+                  className="sheet-input"
+                  value={form.item_datetime}
+                  onChange={(e) => update('item_datetime', e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="sheet-field-grid">
             <div className="sheet-field">
               <span className="sheet-label">{t('location')}</span>
@@ -713,7 +824,8 @@ export function ItemForm({
           {errorMessage && <div style={{ color: 'var(--color-danger)' }}>{errorMessage}</div>}
 
           <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
-            <Button onClick={handleSave} disabled={isSaving}>
+            <Button onClick={handleSave} disabled={isSaving} style={saveButtonStyle(mode === 'update', isDirty)}>
+              <SaveDot show={mode === 'update' && isDirty && !isSaving} />
               {isSaving ? t('saving') : t('save')}
             </Button>
             {/* Available in update mode too, for when you forgot to save a

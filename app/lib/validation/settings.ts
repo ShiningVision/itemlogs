@@ -80,7 +80,11 @@ export const updateSettingsSchema = z.object({
   // app/lib/definitions.ts's Settings.spare_toggle_7 comment). Kept named
   // spare_toggle_7 here too — do not rename.
   spare_toggle_7: z.boolean().optional(),
-  spare_toggle_8: z.boolean().optional(),
+  spare_toggle_8: z.boolean().optional(), // use_datetime — see Settings.spare_toggle_8
+  spare_toggle_9: z.boolean().optional(), // show_datetime — see Settings.spare_toggle_9
+  spare_toggle_10: z.boolean().optional(), // inverted group-identical-items — see app/lib/groupIdentical.ts
+  spare_toggle_11: z.boolean().optional(),
+  spare_toggle_12: z.boolean().optional(),
   // Same looseness reasoning as contact_whatsapp above — a real Telegram
   // username check needs the Telegram API to know for sure it exists, so
   // this only rejects obviously-wrong input. Stored without a leading @
