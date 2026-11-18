@@ -41,12 +41,14 @@ type ItemFilters = {
 
 // Every row of a (possibly >1000-row) query — PostgREST caps one response, so
 // this pages through until a short page comes back. `build` must return a
-// fresh query each call.
-async function fetchAllRows(build: () => Promise<any>): Promise<any[]> {
+// fresh query each call, wrapped as `{ query }` — an async function must never
+// return a Supabase builder directly (it's thenable, so awaiting it would run
+// the query early; see applyCommonItemFilters).
+async function fetchAllRows(build: () => Promise<{ query: any }>): Promise<any[]> {
   const BATCH = 1000;
   const rows: any[] = [];
   for (let from = 0; ; from += BATCH) {
-    const query = await build();
+    const { query } = await build();
     const { data, error } = await query.range(from, from + BATCH - 1);
     if (error) throw error;
     rows.push(...(data ?? []));
@@ -324,7 +326,7 @@ export async function getItems(filters: ItemFilters = {}): Promise<{ items: any[
       let q: any = supabase.from('items').select(GROUPING_COLUMNS);
       q = applySort(q, filters.sort);
       ({ query: q } = await applyCommonItemFilters(q, filters));
-      return q;
+      return { query: q };
     });
     const groups = groupIdenticalRows(light);
     const pageGroups =
@@ -629,9 +631,9 @@ export async function getRecentItems(limit = 5): Promise<{ id: number; name: str
 // Ids that stand for their group when identical items are collapsed — what
 // the storefront's counts should count so they don't reveal stock either.
 async function getPublicGroupRepIds(allowedStatuses: number[]): Promise<Set<number>> {
-  const rows = await fetchAllRows(async () =>
-    supabase.from('items').select(GROUPING_COLUMNS).in('status', allowedStatuses).order('id', { ascending: false })
-  );
+  const rows = await fetchAllRows(async () => ({
+    query: supabase.from('items').select(GROUPING_COLUMNS).in('status', allowedStatuses).order('id', { ascending: false }),
+  }));
   return new Set(groupIdenticalRows(rows).map((row: any) => row.id as number));
 }
 
