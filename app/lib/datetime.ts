@@ -4,9 +4,9 @@
 // settings/columns for historical reasons — it is date-only: no time of day
 // is stored or shown.
 //
-//  - use_datetime  = settings.spare_toggle_8 — items can carry a date at
+//  - settings.use_datetime — items can carry a date at
 //    all (dashboard item form field). Off by default.
-//  - show_datetime = settings.spare_toggle_9 — also show it on the visitor
+//  - settings.show_datetime — also show it on the visitor
 //    item page. Off by default, and only meaningful while use_datetime is
 //    on.
 //
@@ -16,12 +16,12 @@
 // dashboard form it travels as a `date` input string ("2026-11-14"), the
 // same shape the database returns — no conversion between input and column.
 
-export function datetimeEnabled(settings: { spare_toggle_8: boolean }): boolean {
-  return settings.spare_toggle_8;
+export function datetimeEnabled(settings: { use_datetime: boolean }): boolean {
+  return settings.use_datetime;
 }
 
-export function datetimeShown(settings: { spare_toggle_8: boolean; spare_toggle_9: boolean }): boolean {
-  return settings.spare_toggle_8 && settings.spare_toggle_9;
+export function datetimeShown(settings: { use_datetime: boolean; show_datetime: boolean }): boolean {
+  return settings.use_datetime && settings.show_datetime;
 }
 
 // Today as "YYYY-MM-DD" in the browser's own local time, to default a new

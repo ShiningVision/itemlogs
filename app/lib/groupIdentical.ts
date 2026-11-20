@@ -5,16 +5,14 @@
 // visitors can't tell how many of something the owner has in stock. On by
 // default.
 //
-// Stored as settings.spare_toggle_10, INVERTED on purpose (same trick as
-// spare_toggle_7 / typesEnabled): spare toggles default to false and existing
-// tenants must get the new default (grouping on) with zero migration, so
-// true = "show every copy separately" and false (the default) = grouped. The
-// settings UI presents it as a normal "Group identical items" switch. Read it
-// through groupIdenticalItems() rather than testing the raw flag. Kept named
-// spare_toggle_10 — do not rename.
+// Stored as settings.ungroup_identical_items, INVERTED like hide_types (see
+// typesEnabled.ts): true = "show every copy separately", false (the column
+// default) = grouped. The settings UI presents it as a normal "Group
+// identical items" switch. Read it through groupIdenticalItems() rather than
+// testing the raw flag.
 
-export function groupIdenticalItems(settings: { spare_toggle_10: boolean }): boolean {
-  return !settings.spare_toggle_10;
+export function groupIdenticalItems(settings: { ungroup_identical_items: boolean }): boolean {
+  return !settings.ungroup_identical_items;
 }
 
 type Groupable = {

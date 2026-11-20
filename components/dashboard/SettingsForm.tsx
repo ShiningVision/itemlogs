@@ -12,6 +12,7 @@ import { resolveLabel } from '@/app/lib/labels';
 import { Squares2X2Icon, ViewColumnsIcon } from '@heroicons/react/24/outline';
 import { FeaturedItemsSection } from './FeaturedItemsSection';
 import type { FeaturedItem } from './AddFeaturedItemsModal';
+import { locationsEnabled } from '@/app/lib/locationsEnabled';
 import { PackageVisibilitySection, type VisibilityPackage } from './PackageVisibilitySection';
 import { WhatsAppIcon } from '@/components/storefront/WhatsAppIcon';
 import { TelegramIcon } from '@/components/storefront/TelegramIcon';
@@ -27,9 +28,8 @@ const VISIBILITY_FIELDS: Array<{ key: keyof Settings; labelKey: string; hintKey:
   { key: 'show_status_2', labelKey: 'showStatus2', hintKey: 'showStatus2Hint' },
   { key: 'show_status_3', labelKey: 'showStatus3', hintKey: 'showStatus3Hint' },
   { key: 'show_status_4', labelKey: 'showStatus4', hintKey: 'showStatus4Hint' },
-  // spare_toggle_6 is rendered as its own custom row below instead of an
-  // entry here — see app/lib/definitions.ts's Settings.spare_toggle_6
-  // comment (kept named spare_toggle_6, not renamed) and the row itself,
+  // show_status_5 is rendered as its own custom row below instead of an
+  // entry here — see the row itself,
   // which needs an interpolated label (the tenant's own name for their 5th
   // status, e.g. "Show Reserved") the same way show_package_filter does.
 ];
@@ -339,23 +339,39 @@ export function SettingsForm({
         <div className="settings-section-title">{t('sectionVisibility')}</div>
         <div className="settings-group">
           {toggleRows(VISIBILITY_FIELDS)}
-          {/* spare_toggle_6 — a custom row instead of a VISIBILITY_FIELDS
+          {/* show_status_5 — a custom row instead of a VISIBILITY_FIELDS
               entry so the label can be interpolated with the tenant's own
               5th-status name (status5Label above), same reasoning as
               show_location_filter/show_package_filter elsewhere on this
-              page. Kept named spare_toggle_6, not renamed — see
-              app/lib/definitions.ts's Settings.spare_toggle_6 comment. */}
+              page. */}
           <div className="settings-row">
             <Tooltip text={t('showStatus5Hint')}>
               <span>{t('showStatus5', { label: status5Label })}</span>
             </Tooltip>
             <div className="settings-row-controls">
-              {statusFor('spare_toggle_6')}
+              {statusFor('show_status_5')}
               <Toggle
-                name="spare_toggle_6"
-                defaultChecked={Boolean(settings.spare_toggle_6)}
+                name="show_status_5"
+                defaultChecked={Boolean(settings.show_status_5)}
                 label={t('showStatus5', { label: status5Label })}
-                onChange={(e) => autoSave('spare_toggle_6', e.target.checked)}
+                onChange={(e) => autoSave('show_status_5', e.target.checked)}
+              />
+            </div>
+          </div>
+          {/* Group identical items — INVERTED ungroup_identical_items (checked
+              here = false in the DB, the default), see
+              app/lib/groupIdentical.ts. */}
+          <div className="settings-row">
+            <Tooltip text={t('groupIdenticalItemsHint')}>
+              <span>{t('groupIdenticalItems')}</span>
+            </Tooltip>
+            <div className="settings-row-controls">
+              {statusFor('ungroup_identical_items')}
+              <Toggle
+                name="ungroup_identical_items"
+                defaultChecked={!settings.ungroup_identical_items}
+                label={t('groupIdenticalItems')}
+                onChange={(e) => autoSave('ungroup_identical_items', !e.target.checked)}
               />
             </div>
           </div>
@@ -365,46 +381,33 @@ export function SettingsForm({
       <div className="settings-section">
         <div className="settings-section-title">{t('sectionItemDetails')}</div>
         <div className="settings-group">
-          {toggleRows(ITEM_DETAIL_FIELDS)}
-          {/* show_datetime (spare_toggle_9) — only offered once the owner has
+          {/* Both location switches are meaningless with locations turned off
+              (General Settings -> Use locations), so they're left out. */}
+          {toggleRows(locationsEnabled(settings) ? ITEM_DETAIL_FIELDS : ITEM_DETAIL_FIELDS.filter((f) => f.key !== 'show_location'))}
+          {/* show_datetime (show_datetime) — only offered once the owner has
               turned on "Use date and time" in the general settings
-              (spare_toggle_8); with that off there is no date to show. */}
-          {settings.spare_toggle_8 && (
+              (use_datetime); with that off there is no date to show. */}
+          {settings.use_datetime && (
             <div className="settings-row">
               <Tooltip text={t('showDatetimeHint')}>
                 <span>{t('showDatetime')}</span>
               </Tooltip>
               <div className="settings-row-controls">
-                {statusFor('spare_toggle_9')}
+                {statusFor('show_datetime')}
                 <Toggle
-                  name="spare_toggle_9"
-                  defaultChecked={Boolean(settings.spare_toggle_9)}
+                  name="show_datetime"
+                  defaultChecked={Boolean(settings.show_datetime)}
                   label={t('showDatetime')}
-                  onChange={(e) => autoSave('spare_toggle_9', e.target.checked)}
+                  onChange={(e) => autoSave('show_datetime', e.target.checked)}
                 />
               </div>
             </div>
           )}
-          {/* Group identical items — INVERTED spare_toggle_10 (checked here =
-              false in the DB, the default), see app/lib/groupIdentical.ts. */}
-          <div className="settings-row">
-            <Tooltip text={t('groupIdenticalItemsHint')}>
-              <span>{t('groupIdenticalItems')}</span>
-            </Tooltip>
-            <div className="settings-row-controls">
-              {statusFor('spare_toggle_10')}
-              <Toggle
-                name="spare_toggle_10"
-                defaultChecked={!settings.spare_toggle_10}
-                label={t('groupIdenticalItems')}
-                onChange={(e) => autoSave('spare_toggle_10', !e.target.checked)}
-              />
-            </div>
-          </div>
           {/* Filter by location — the on/off switch for the storefront
               filter built on show_location just above, so it sits directly
               beneath it rather than living off in the Visibility Filter
               section it used to be part of. */}
+          {locationsEnabled(settings) && (
           <div className="settings-row">
             <Tooltip text={t('showLocationFilterHint')}>
               <span>{t('showLocationFilter')}</span>
@@ -419,6 +422,7 @@ export function SettingsForm({
               />
             </div>
           </div>
+          )}
         </div>
       </div>
 

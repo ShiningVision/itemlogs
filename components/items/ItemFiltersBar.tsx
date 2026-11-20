@@ -64,6 +64,7 @@ export function ItemFiltersBar({
   lockStatusToAvailable = false,
   hideManageButtons = false,
   showTypes = true,
+  showLocations = true,
   categoryLabel,
   typeLabel,
   locationLabel,
@@ -104,6 +105,8 @@ export function ItemFiltersBar({
   // False when the tenant has turned types off (see typesEnabled) — the
   // whole type section (pill row, manage button, "more" picker) disappears.
   showTypes?: boolean;
+  // False when the tenant has turned locations off (see locationsEnabled).
+  showLocations?: boolean;
   categoryLabel: string;
   typeLabel: string;
   locationLabel: string;
@@ -210,10 +213,10 @@ export function ItemFiltersBar({
   const activeCount =
     selectedCategoryIds.length +
     (showTypes ? selectedTypeIds.length : 0) +
-    selectedLocationIds.length +
+    (showLocations ? selectedLocationIds.length : 0) +
     excludedCategoryIds.length +
     (showTypes ? excludedTypeIds.length : 0) +
-    excludedLocationIds.length +
+    (showLocations ? excludedLocationIds.length : 0) +
     (statusIsDefault || lockStatusToAvailable ? 0 : selectedStatuses.length);
 
   function clearAll() {
@@ -394,7 +397,7 @@ export function ItemFiltersBar({
 
           {showTypes && renderPillFilterSection('type', typeLabel, types, selectedTypeIds, excludedTypeIds)}
 
-          {renderPillFilterSection('location', locationLabel, locations, selectedLocationIds, excludedLocationIds)}
+          {showLocations && renderPillFilterSection('location', locationLabel, locations, selectedLocationIds, excludedLocationIds)}
         </>
       )}
 
@@ -414,7 +417,9 @@ export function ItemFiltersBar({
             ...(showTypes
               ? [{ key: 'type' as const, apiPath: '/api/v1/types', label: typeLabel, items: types.filter((tp) => tp.id !== 0), itemCounts: typeItemCounts }]
               : []),
-            { key: 'location', apiPath: '/api/v1/locations', label: locationLabel, items: locations.filter((loc) => loc.id !== 0), itemCounts: locationItemCounts },
+            ...(showLocations
+              ? [{ key: 'location' as const, apiPath: '/api/v1/locations', label: locationLabel, items: locations.filter((loc) => loc.id !== 0), itemCounts: locationItemCounts }]
+              : []),
           ]}
           initialResource={openManager}
           onClose={() => setOpenManager(null)}
@@ -447,7 +452,7 @@ export function ItemFiltersBar({
           onClose={() => setOpenMore(null)}
         />
       )}
-      {openMore === 'location' && (
+      {showLocations && openMore === 'location' && (
         <FilterTagPickerModal
           label={locationLabel}
           items={locations.filter((loc) => loc.id !== 0)}

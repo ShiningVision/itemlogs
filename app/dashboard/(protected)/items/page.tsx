@@ -3,6 +3,7 @@ import { getItems, getUncategorizedItemCounts, OTHER_FILTER_ID, type ItemSort } 
 import { getCategories, getCategoryItemCounts } from '@/app/lib/services/categories';
 import { getTypes, getTypeItemCounts } from '@/app/lib/services/types';
 import { typesEnabled } from '@/app/lib/typesEnabled';
+import { locationsEnabled } from '@/app/lib/locationsEnabled';
 import { parseIdList } from '@/app/lib/idList';
 import { getLocations, getLocationItemCounts } from '@/app/lib/services/locations';
 import { getSettings } from '@/app/lib/services/settings';
@@ -11,6 +12,7 @@ import { ItemFiltersBar } from '@/components/items/ItemFiltersBar';
 import { ItemGrid } from '@/components/items/ItemGrid';
 import { ItemDensityToggle, type ItemDensity } from '@/components/items/ItemDensityToggle';
 import { ImportExcelButton } from '@/components/items/ImportExcelButton';
+import { FlavourTicker } from '@/components/dashboard/FlavourTicker';
 import { SortSelect } from '@/components/ui/SortSelect';
 import { Pagination } from '@/components/ui/Pagination';
 import { parsePage, getOffset, getTotalPages, buildPageHref } from '@/app/lib/pagination';
@@ -20,6 +22,17 @@ import { Button } from '@/widgets/Button';
 import { PlusIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
 const ITEMS_PAGE_SIZE = 24;
+
+// The flavour-text ticker's line-up is shuffled per request (this page is
+// dynamic anyway — it reads searchParams).
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
 
 type SearchParams = {
   categories?: string;
@@ -79,10 +92,11 @@ export default async function ItemsPage({
   // With types turned off (see typesEnabled) a leftover `types` URL param
   // must not keep filtering with no visible filter to explain it.
   const typeIds = typesEnabled(settings) && typesParam ? typesParam.split(',').map(Number) : undefined;
-  const locationIds = locationsParam ? locationsParam.split(',').map(Number) : undefined;
+  // Same for locations (see locationsEnabled).
+  const locationIds = locationsEnabled(settings) && locationsParam ? locationsParam.split(',').map(Number) : undefined;
   const excludedCategoryIds = parseIdList(xcategoriesParam);
   const excludedTypeIds = typesEnabled(settings) ? parseIdList(xtypesParam) : [];
-  const excludedLocationIds = parseIdList(xlocationsParam);
+  const excludedLocationIds = locationsEnabled(settings) ? parseIdList(xlocationsParam) : [];
   const search = searchParam?.trim() || undefined;
 
   const page = parsePage(pageParam);
@@ -117,11 +131,11 @@ export default async function ItemsPage({
     }),
     getCategories(),
     typesEnabled(settings) ? getTypes() : Promise.resolve([]),
-    getLocations(),
+    locationsEnabled(settings) ? getLocations() : Promise.resolve([]),
     getUncategorizedItemCounts(),
     getCategoryItemCounts(),
     typesEnabled(settings) ? getTypeItemCounts() : Promise.resolve({} as Record<number, number>),
-    getLocationItemCounts(),
+    locationsEnabled(settings) ? getLocationItemCounts() : Promise.resolve({} as Record<number, number>),
   ]);
 
   const totalPages = getTotalPages(totalCount, ITEMS_PAGE_SIZE);
@@ -141,6 +155,7 @@ export default async function ItemsPage({
   const sortedLocations = [...locations].sort(byUsageThenAlpha(locationItemCounts));
 
   const t = await getTranslations('items');
+  const flavourTexts = shuffle((await getTranslations('dashboard')).raw('flavourTexts') as string[]);
   const categoryLabel = resolveLabel(settings.name_category, t('category'));
   const typeLabel = resolveLabel(settings.name_type, t('type'));
   const locationLabel = resolveLabel(settings.name_location, t('location'));
@@ -163,6 +178,10 @@ export default async function ItemsPage({
   }
 
   return (
+    <>
+    {/* Outside the padded container so it spans the full width of the content
+        column next to the sidebar (see .flavour-ticker in globals.css). */}
+    <FlavourTicker texts={flavourTexts} />
     <div className="page-container-wide" style={{ padding: 'var(--spacing-lg)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)', flexWrap: 'wrap', gap: 'var(--spacing-sm)' }}>
         <h1 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)' }}>{t('title')}</h1>
@@ -193,6 +212,7 @@ export default async function ItemsPage({
         categoryItemCounts={categoryItemCounts}
         typeItemCounts={typeItemCounts}
         showTypes={typesEnabled(settings)}
+        showLocations={locationsEnabled(settings)}
         locationItemCounts={locationItemCounts}
         selectedCategoryIds={categoryIds ?? []}
         selectedStatuses={statuses ?? []}
@@ -230,5 +250,6 @@ export default async function ItemsPage({
 
       <Pagination page={page} totalPages={totalPages} buildHref={(p) => buildPageHref('/dashboard/items', rawSearchParams, p)} />
     </div>
+    </>
   );
 }

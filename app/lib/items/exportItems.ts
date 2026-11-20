@@ -1,18 +1,24 @@
 // app/lib/items/exportItems.ts
 import ExcelJS from 'exceljs';
 import { typesEnabled } from '@/app/lib/typesEnabled';
+import { locationsEnabled } from '@/app/lib/locationsEnabled';
+import { supabase } from '@/app/lib/db/client';
 
 // Columns are deliberately explicit (not a raw dump of the items table) —
-// package_id, gallery images, and is_featured are internal/organizational
-// concerns, not part of an item's portable record. Shared between the
+// gallery images and is_featured are internal/organizational concerns, not
+// part of an item's portable record. (The package NAME is exported for
+// reference — see the `package` column — but import ignores it.) Shared between the
 // items-list export and the per-sale export so both stay in sync.
 export const ITEM_EXPORT_COLUMNS: { header: string; key: string; width?: number }[] = [
   { header: 'id', key: 'id', width: 8 },
   { header: 'name', key: 'name', width: 28 },
   { header: 'status', key: 'status', width: 10 },
-  { header: 'type', key: 'type', width: 18 },
   { header: 'category', key: 'category', width: 18 },
+  { header: 'type', key: 'type', width: 18 },
   { header: 'location', key: 'location', width: 18 },
+  // Reference only — import ignores it. Left out of the file entirely when
+  // none of the exported items belongs to a package (see buildItemsWorkbook).
+  { header: 'package', key: 'package', width: 22 },
   { header: 'description', key: 'description', width: 40 },
   { header: 'barcode', key: 'barcode', width: 16 },
   { header: 'main_image', key: 'main_image', width: 40 },
@@ -31,13 +37,15 @@ export const ITEM_EXPORT_COLUMNS: { header: string; key: string; width?: number 
 // export any more than it shows up in the UI. Owner-triggered exports are
 // private (not the storefront), so the columns that ARE included are shown
 // in full, unredacted; this only controls which columns exist at all.
-type ExportGateSettings = { use_sell_price: boolean; use_barcode: boolean; use_secret_notes: boolean; spare_toggle_7: boolean };
+type ExportGateSettings = { use_sell_price: boolean; use_barcode: boolean; use_secret_notes: boolean; hide_types: boolean; hide_locations: boolean };
 
 export function getItemExportColumns(settings: ExportGateSettings) {
   return ITEM_EXPORT_COLUMNS.filter((column) => {
     if (column.key === 'sell_price') return settings.use_sell_price;
-    // spare_toggle_7 is the inverted "hide types" flag (see typesEnabled).
+    // hide_types is the inverted "use types" flag (see typesEnabled).
     if (column.key === 'type') return typesEnabled(settings);
+    // hide_locations is the inverted "use locations" flag (see locationsEnabled).
+    if (column.key === 'location') return locationsEnabled(settings);
     if (column.key === 'barcode') return settings.use_barcode;
     if (column.key === 'notes') return settings.use_secret_notes;
     return true;
@@ -52,6 +60,7 @@ export type ExportableItem = {
   status: number;
   description?: string | null;
   barcode?: string | null;
+  package_id?: number | null;
   // Many-to-many now — see app/lib/services/items.ts's flattenItemJoins.
   types?: { id: number; name: string | null }[];
   categories?: { id: number; name: string | null }[];
@@ -70,7 +79,18 @@ export async function buildItemsWorkbook(
 ): Promise<ExcelJS.Buffer> {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Items');
-  const columns = getItemExportColumns(settings);
+  // Package names for the items that belong to one — one extra query for all
+  // of them. No package anywhere in the export = no package column at all.
+  const packageIds = [...new Set(items.map((item) => item.package_id).filter((id): id is number => id != null))];
+  const packageNames = new Map<number, string>();
+  if (packageIds.length > 0) {
+    const { data, error } = await supabase.from('packages').select('id, name').in('id', packageIds);
+    if (error) throw error;
+    for (const row of data ?? []) packageNames.set(row.id as number, (row.name as string | null) ?? '');
+  }
+  const columns = getItemExportColumns(settings).filter(
+    (column) => column.key !== 'package' || packageNames.size > 0
+  );
   sheet.columns = columns;
   sheet.getRow(1).font = { bold: true };
   // Barcodes are stored as text (leading zeros, non-numeric formats) —
@@ -102,6 +122,7 @@ export async function buildItemsWorkbook(
       // placeholder-data.ts) — it just means "no location", so a blank
       // cell round-trips correctly instead of a literal string.
       location: item.location_ref?.name ?? '',
+      package: item.package_id != null ? (packageNames.get(item.package_id) ?? '') : '',
       description: item.description,
       barcode: item.barcode,
       main_image: item.main_image_ref?.url ?? '',

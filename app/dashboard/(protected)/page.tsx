@@ -9,24 +9,12 @@ import { StorefrontLiveStatus } from '@/components/dashboard/StorefrontLiveStatu
 import { EarningsExpensesChart } from '@/components/dashboard/EarningsExpensesChart';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { QuickActions } from '@/components/dashboard/QuickActions';
-import { FlavourTicker } from '@/components/dashboard/FlavourTicker';
 import { StillFinishingSetup } from '@/components/dashboard/StillFinishingSetup';
 import { isUnprovisionedTenantError } from '@/app/lib/errors/isUnprovisionedTenantError';
 import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 
-// Flavour text is randomized per request, so this page must never be
-// statically cached.
 export const dynamic = 'force-dynamic';
-
-function shuffle<T>(items: T[]): T[] {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
 
 export default async function DashboardPage() {
   // A tenant can reach this page moments after /setup — SetupForm.tsx's own
@@ -57,20 +45,8 @@ export default async function DashboardPage() {
   }
   const t = await getTranslations('dashboard');
 
-  // Shuffled per request (see force-dynamic above) so the ticker's line-up
-  // order isn't identical on every visit.
-  const flavourTexts = shuffle(t.raw('flavourTexts') as string[]);
-
   return (
     <>
-      {/* Rendered outside the padded/inset content below so it spans the
-          full width of the content column next to the sidebar (see
-          .flavour-ticker in globals.css) — sitting inside .dashboard-shell
-          used to cap it to the same 80%-of-available-width column as
-          everything else, which left it looking cramped for what's meant
-          to be an eye-catching full-bleed strip. */}
-      <FlavourTicker texts={flavourTexts} />
-
       <div style={{ padding: 'var(--spacing-lg)' }}>
         {/* Wide control-panel shell — replaces the old 680px-capped
             settings-page-container, which forced this entire page (including

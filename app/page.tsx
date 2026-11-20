@@ -3,6 +3,7 @@ import { getSettings } from '@/app/lib/services/settings';
 import { getCategories } from '@/app/lib/services/categories';
 import { getTypes } from '@/app/lib/services/types';
 import { typesEnabled } from '@/app/lib/typesEnabled';
+import { locationsEnabled } from '@/app/lib/locationsEnabled';
 import { groupIdenticalItems } from '@/app/lib/groupIdentical';
 import { parseIdList } from '@/app/lib/idList';
 import { getLocations } from '@/app/lib/services/locations';
@@ -111,9 +112,7 @@ export default async function HomePage({
     2: settings.show_status_2,
     3: settings.show_status_3,
     4: settings.show_status_4,
-    // spare_toggle_6 — see app/lib/definitions.ts's Settings.spare_toggle_6
-    // comment. Kept named spare_toggle_6, not renamed.
-    5: settings.spare_toggle_6,
+    5: settings.show_status_5,
   };
   const allowedStatuses = [1, 2, 3, 4, 5].filter((s) => statusFlags[s]);
   const statusOptionLabels = Object.fromEntries(
@@ -130,12 +129,16 @@ export default async function HomePage({
   // Types turned off (see typesEnabled): a leftover `types` URL param must
   // not keep filtering with no visible filter or chip to explain it.
   const selectedTypeIds = typesEnabled(settings) && typesParam ? typesParam.split(',').map(Number) : [];
-  const selectedLocationIds = locationsParam ? locationsParam.split(',').map(Number) : [];
+  // The location filter is off with locations turned off (locationsEnabled)
+  // or its own visitor toggle off — leftover URL params must not filter
+  // invisibly.
+  const locationFilterOn = locationsEnabled(settings) && settings.show_location_filter;
+  const selectedLocationIds = locationFilterOn && locationsParam ? locationsParam.split(',').map(Number) : [];
   const excludedCategoryIds = parseIdList(xcategoriesParam);
   const excludedTypeIds = typesEnabled(settings) ? parseIdList(xtypesParam) : [];
   // Like the location section itself, only honored while the location
   // filter is on (a leftover param must not filter invisibly).
-  const excludedLocationIds = settings.show_location_filter ? parseIdList(xlocationsParam) : [];
+  const excludedLocationIds = locationFilterOn ? parseIdList(xlocationsParam) : [];
   const selectedStatuses = statusesParam ? statusesParam.split(',').map(Number) : [];
   const selectedPackageId = packageParam ? Number(packageParam) : null;
   // Trimmed here for the same "empty means no search" reason as the
@@ -180,11 +183,11 @@ export default async function HomePage({
       ),
       getCategories(),
       typesEnabled(settings) ? getTypes() : Promise.resolve([]),
-      settings.show_location_filter ? getLocations() : Promise.resolve([]),
+      locationFilterOn ? getLocations() : Promise.resolve([]),
       getPublicItemsCount(allowedStatuses, groupIdentical),
       getPublicCategoryCounts(allowedStatuses, groupIdentical),
       typesEnabled(settings) ? getPublicTypeCounts(allowedStatuses, groupIdentical) : Promise.resolve({} as Record<number, number>),
-      settings.show_location_filter ? getPublicLocationCounts(allowedStatuses, groupIdentical) : Promise.resolve({}),
+      locationFilterOn ? getPublicLocationCounts(allowedStatuses, groupIdentical) : Promise.resolve({}),
       settings.show_featured_items ? getFeaturedPublicItems(allowedStatuses, groupIdentical) : Promise.resolve([]),
       settings.show_package_filter ? getPublicPackages() : Promise.resolve([]),
     ]);
@@ -235,7 +238,7 @@ export default async function HomePage({
       id,
       label: sortedTypes.find((t2) => t2.id === id)?.name ?? '',
     })),
-    ...(settings.show_location_filter
+    ...(locationFilterOn
       ? selectedLocationIds.map((id) => ({
           dimension: 'locations' as const,
           id,
@@ -261,7 +264,7 @@ export default async function HomePage({
       label: sortedTypes.find((t2) => t2.id === id)?.name ?? '',
       excluded: true,
     })),
-    ...(settings.show_location_filter
+    ...(locationFilterOn
       ? excludedLocationIds.map((id) => ({
           dimension: 'locations' as const,
           id,
@@ -328,7 +331,7 @@ export default async function HomePage({
           showTypes={typesEnabled(settings)}
           locationCounts={locationCounts}
           packageFilter={packageFilterDropdown}
-          locationFilter={settings.show_location_filter}
+          locationFilter={locationFilterOn}
         />
 
         <main className="storefront-main" style={{ flex: 1, minWidth: 0 }}>

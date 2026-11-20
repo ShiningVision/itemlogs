@@ -108,20 +108,20 @@ export async function syncOnboardingChecklist(settings: {
 // writing each time would add a database write to every click.
 const LAST_LOGIN_REFRESH_MS = 10 * 60 * 1000;
 
-// Records "someone used the dashboard just now" in spare_text_4 (see
-// Settings.spare_text_4). Called from the protected dashboard layout, which
+// Records "someone used the dashboard just now" in last_login_at (see
+// Settings.last_login_at). Called from the protected dashboard layout, which
 // only renders for a valid session — so it covers a fresh sign-in AND an
 // existing session cookie silently coming back (the "auto login"), neither
 // of which needs its own hook. Best-effort and throttled: a failure never
 // breaks the page.
-export async function recordDashboardAccess(settings: { spare_text_4: string | null }) {
+export async function recordDashboardAccess(settings: { last_login_at: string | null }) {
   try {
-    const last = settings.spare_text_4 ? new Date(settings.spare_text_4).getTime() : NaN;
+    const last = settings.last_login_at ? new Date(settings.last_login_at).getTime() : NaN;
     if (Number.isFinite(last) && Date.now() - last < LAST_LOGIN_REFRESH_MS) return;
 
     const { error } = await supabase
       .from('settings')
-      .update({ spare_text_4: new Date().toISOString() })
+      .update({ last_login_at: new Date().toISOString() })
       .eq('id', 1);
     if (error) throw error;
   } catch (error) {

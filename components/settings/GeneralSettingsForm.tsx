@@ -8,21 +8,21 @@ import { Toggle } from '@/components/ui/Toggle';
 import { Tooltip } from '@/components/ui/Tooltip';
 import type { Settings } from '@/app/lib/definitions';
 import { typesEnabled } from '@/app/lib/typesEnabled';
+import { locationsEnabled } from '@/app/lib/locationsEnabled';
 
 type Currency = { id: number; currency_code: string; currency_name: string };
 type Language = { id: number; name: string };
 
 // `inverted`: the stored column means the OPPOSITE of what the switch shows
-// (checked = false in the database). Used for "Use types", which lives on the
-// pre-provisioned spare_toggle_7 as "hide types" so existing tenants keep
-// types visible with no migration — see Settings.spare_toggle_7 in
-// app/lib/definitions.ts.
+// (checked = false in the database). Used for "Use types" / "Use locations",
+// which are stored as hide_types / hide_locations (see app/lib/definitions.ts).
 const FUNCTIONALITY_FIELDS: Array<{ key: keyof Settings; labelKey: string; hintKey: string; inverted?: boolean }> = [
   { key: 'use_sell_price', labelKey: 'useSellPrice', hintKey: 'useSellPriceHint' },
   { key: 'use_barcode', labelKey: 'useBarcode', hintKey: 'useBarcodeHint' },
-  { key: 'spare_toggle_7', labelKey: 'useType', hintKey: 'useTypeHint', inverted: true },
-  // spare_toggle_8 = use_datetime (see Settings.spare_toggle_8).
-  { key: 'spare_toggle_8', labelKey: 'useDatetime', hintKey: 'useDatetimeHint' },
+  { key: 'hide_types', labelKey: 'useType', hintKey: 'useTypeHint', inverted: true },
+  // hide_locations: inverted, see locationsEnabled.
+  { key: 'hide_locations', labelKey: 'useLocation', hintKey: 'useLocationHint', inverted: true },
+  { key: 'use_datetime', labelKey: 'useDatetime', hintKey: 'useDatetimeHint' },
   { key: 'use_package_fees', labelKey: 'usePackageFees', hintKey: 'usePackageFeesHint' },
   { key: 'use_secret_notes', labelKey: 'useSecretNotes', hintKey: 'useSecretNotesHint' },
 ];
@@ -69,6 +69,7 @@ export function GeneralSettingsForm({
   const [, startAutosaveTransition] = useTransition();
   const [fieldStatus, setFieldStatus] = useState<Record<string, FieldStatus>>({});
   const [typesOn, setTypesOn] = useState(typesEnabled(settings));
+  const [locationsOn, setLocationsOn] = useState(locationsEnabled(settings));
   // Local values for the free-text name-override fields — needed so onBlur
   // has something to read (unlike the toggles/selects above, whose native
   // onChange event already carries the new value). Initialized from
@@ -106,6 +107,39 @@ export function GeneralSettingsForm({
 
   return (
     <div>
+      <div className="settings-section" id="settings-custom-terminology">
+        <div className="settings-section-title">{t('sectionCustomTerminology')}</div>
+        <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', margin: '0 0 var(--spacing-sm)' }}>
+          {t('customTerminologyIntro')}
+        </p>
+
+        <div className="settings-group">
+          {/* No point renaming "type" while types are turned off. */}
+          {PREFERENCE_NAME_FIELDS.filter(({ key }) => (key !== 'name_type' || typesOn) && (key !== 'name_location' || locationsOn)).map(({ key, labelKey, hintKey }) => (
+            <div key={key} className="settings-row">
+              <Tooltip text={t(hintKey)}>
+                <span>{t(labelKey)}</span>
+              </Tooltip>
+              <div className="settings-row-controls">
+                {statusFor(key)}
+                <input
+                  type="text"
+                  name={key}
+                  value={nameValues[key] ?? ''}
+                  onChange={(e) => setNameValues((v) => ({ ...v, [key]: e.target.value }))}
+                  onBlur={(e) => {
+                    if (e.target.value === ((settings[key] as string) ?? '')) return;
+                    autoSave(key, e.target.value);
+                  }}
+                  placeholder={t(`${labelKey}Placeholder`)}
+                  className="sheet-input settings-row-control"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="settings-section">
         <div className="settings-section-title">{t('sectionDefaults')}</div>
         <div className="settings-group">
@@ -181,7 +215,8 @@ export function GeneralSettingsForm({
                     // Mirrored locally so the type rename field below
                     // appears/disappears immediately instead of after the
                     // next page load.
-                    if (key === 'spare_toggle_7') setTypesOn(e.target.checked);
+                    if (key === 'hide_types') setTypesOn(e.target.checked);
+                    if (key === 'hide_locations') setLocationsOn(e.target.checked);
                     autoSave(key, inverted ? !e.target.checked : e.target.checked);
                   }}
                 />
@@ -207,39 +242,6 @@ export function GeneralSettingsForm({
                   defaultChecked={Boolean(settings[key])}
                   label={t(labelKey)}
                   onChange={(e) => autoSave(key, e.target.checked)}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="settings-section" id="settings-custom-terminology">
-        <div className="settings-section-title">{t('sectionCustomTerminology')}</div>
-        <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', margin: '0 0 var(--spacing-sm)' }}>
-          {t('customTerminologyIntro')}
-        </p>
-
-        <div className="settings-group">
-          {/* No point renaming "type" while types are turned off. */}
-          {PREFERENCE_NAME_FIELDS.filter(({ key }) => key !== 'name_type' || typesOn).map(({ key, labelKey, hintKey }) => (
-            <div key={key} className="settings-row">
-              <Tooltip text={t(hintKey)}>
-                <span>{t(labelKey)}</span>
-              </Tooltip>
-              <div className="settings-row-controls">
-                {statusFor(key)}
-                <input
-                  type="text"
-                  name={key}
-                  value={nameValues[key] ?? ''}
-                  onChange={(e) => setNameValues((v) => ({ ...v, [key]: e.target.value }))}
-                  onBlur={(e) => {
-                    if (e.target.value === ((settings[key] as string) ?? '')) return;
-                    autoSave(key, e.target.value);
-                  }}
-                  placeholder={t(`${labelKey}Placeholder`)}
-                  className="sheet-input settings-row-control"
                 />
               </div>
             </div>

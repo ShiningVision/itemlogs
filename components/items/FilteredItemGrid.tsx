@@ -10,6 +10,7 @@ import { FilterPillRow } from '@/components/ui/FilterPillRow';
 import { FilterTagPickerModal } from './FilterTagPickerModal';
 import { resolveLabel } from '@/app/lib/labels';
 import { typesEnabled } from '@/app/lib/typesEnabled';
+import { locationsEnabled } from '@/app/lib/locationsEnabled';
 import type { Settings } from '@/app/lib/definitions';
 
 type Tag = { id: number; name: string | null };
@@ -71,6 +72,7 @@ export function FilteredItemGrid({
 } & Omit<React.ComponentProps<typeof ItemGrid>, 'items' | 'settings'>) {
   const t = useTranslations('items');
   const showTypes = typesEnabled(settings);
+  const showLocations = locationsEnabled(settings);
 
   const [search, setSearch] = useState('');
   const [statuses, setStatuses] = useState<number[]>([]);
@@ -125,7 +127,7 @@ export function FilteredItemGrid({
           item.description,
           ...(item.categories ?? []).map((c: Tag) => c.name),
           ...(showTypes ? (item.types ?? []).map((tp: Tag) => tp.name) : []),
-          item.location_ref?.name,
+          ...(showLocations ? [item.location_ref?.name] : []),
         ]
           .filter(Boolean)
           .join(' ')
@@ -135,15 +137,15 @@ export function FilteredItemGrid({
       if (statuses.length > 0 && !statuses.includes(item.status)) return false;
       if (!matchesTagFilter(item, 'categories', filters.categories)) return false;
       if (showTypes && !matchesTagFilter(item, 'types', filters.types)) return false;
-      if (!matchesTagFilter(item, 'locations', filters.locations)) return false;
+      if (showLocations && !matchesTagFilter(item, 'locations', filters.locations)) return false;
       return true;
     });
-  }, [items, search, statuses, filters, showTypes]);
+  }, [items, search, statuses, filters, showTypes, showLocations]);
 
   const activeCount =
     statuses.length +
     (Object.keys(filters) as Dimension[])
-      .filter((d) => d !== 'types' || showTypes)
+      .filter((d) => (d !== 'types' || showTypes) && (d !== 'locations' || showLocations))
       .reduce((sum, d) => sum + filters[d].included.length + filters[d].excluded.length, 0) +
     (search.trim() ? 1 : 0);
 
@@ -289,7 +291,7 @@ export function FilteredItemGrid({
 
         {renderSection('categories')}
         {showTypes && renderSection('types')}
-        {renderSection('locations')}
+        {showLocations && renderSection('locations')}
 
         </div>
         )}

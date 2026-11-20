@@ -4,6 +4,7 @@ import { getItems, getUncategorizedItemCounts, OTHER_FILTER_ID, type ItemSort } 
 import { getCategories, getCategoryItemCounts } from '@/app/lib/services/categories';
 import { getTypes, getTypeItemCounts } from '@/app/lib/services/types';
 import { typesEnabled } from '@/app/lib/typesEnabled';
+import { locationsEnabled } from '@/app/lib/locationsEnabled';
 import { getLocations, getLocationItemCounts } from '@/app/lib/services/locations';
 import { getSettings } from '@/app/lib/services/settings';
 import { getSaleById } from '@/app/lib/services/sales';
@@ -54,10 +55,10 @@ export default async function SellIntoSalePage({
   // Ignored with types turned off (see typesEnabled) — see the dashboard
   // items page.
   const typeIds = typesEnabled(settings) && typesParam ? typesParam.split(',').map(Number) : undefined;
-  const locationIds = locationsParam ? locationsParam.split(',').map(Number) : undefined;
+  const locationIds = locationsEnabled(settings) && locationsParam ? locationsParam.split(',').map(Number) : undefined;
   const excludedCategoryIds = parseIdList(xcategoriesParam);
   const excludedTypeIds = typesEnabled(settings) ? parseIdList(xtypesParam) : [];
-  const excludedLocationIds = parseIdList(xlocationsParam);
+  const excludedLocationIds = locationsEnabled(settings) ? parseIdList(xlocationsParam) : [];
   const search = searchParam?.trim() || undefined;
 
   // Defaults to every sellable status (Available, Reserved, status 5). A
@@ -93,11 +94,11 @@ export default async function SellIntoSalePage({
       }),
       getCategories(),
       typesEnabled(settings) ? getTypes() : Promise.resolve([]),
-      getLocations(),
+      locationsEnabled(settings) ? getLocations() : Promise.resolve([]),
       getUncategorizedItemCounts(),
       getCategoryItemCounts(),
       typesEnabled(settings) ? getTypeItemCounts() : Promise.resolve({} as Record<number, number>),
-      getLocationItemCounts(),
+      locationsEnabled(settings) ? getLocationItemCounts() : Promise.resolve({} as Record<number, number>),
     ]);
 
   const totalPages = getTotalPages(totalCount, SELL_PAGE_SIZE);
@@ -145,6 +146,7 @@ export default async function SellIntoSalePage({
           categoryItemCounts,
           typeItemCounts,
           showTypes: typesEnabled(settings),
+          showLocations: locationsEnabled(settings),
           locationItemCounts,
           selectedCategoryIds: categoryIds ?? [],
           selectedTypeIds: typeIds ?? [],

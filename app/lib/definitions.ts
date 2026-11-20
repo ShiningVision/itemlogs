@@ -71,7 +71,7 @@ export type Settings = {
   name_category: string | null;
   // No longer a generic "rename the word Status" field — "Status" itself
   // is not tenant-renameable. Repurposed to hold the tenant-chosen name for
-  // a 5th status option (gated by spare_toggle_6 below), defaulting to the
+  // a 5th status option (gated by show_status_5 below), defaulting to the
   // "status5" translation ("Undefined") when null/blank.
   name_status: string | null;
   name_type: string | null;
@@ -89,10 +89,6 @@ export type Settings = {
   storefront_tagline: string | null;
   storefront_density: string;
   show_contact: boolean;
-  // Legacy free-text contact field — no longer editable in the UI, kept
-  // only so already-provisioned tenants don't lose data they'd already
-  // entered. See contact_whatsapp below, which replaced it.
-  contact_info: string | null;
   contact_whatsapp: string | null;
   show_location: boolean;
   show_package_filter: boolean;
@@ -126,74 +122,51 @@ export type Settings = {
   // free; see app/api/setup/route.ts's comment on the same columns.
   checklist_added_contact: boolean;
   checklist_organized: boolean;
-  // Was spare_toggle_3 — set once `theme` is ever set to anything other
-  // than null/'default'.
+  // Set once `theme` is ever set to anything other than null/'default'.
   checklist_picked_theme: boolean;
-  // Was spare_toggle_5 — set once the tenant has given the category/type/
-  // location fields a custom label of their own (see hasRenamedTaxonomy in
+  // Set once the tenant has given the category/type/location fields a
+  // custom label of their own (see hasRenamedTaxonomy in
   // app/lib/services/items.ts, checked against name_category/name_type/
   // name_location below).
   checklist_renamed_taxonomy: boolean;
   // "Show featured items" (see components/dashboard/FeaturedItemsSection.tsx).
-  // Used to live on a reused spare_toggle_1 column; renamed to a dedicated
-  // column now that all pre-rename tenants are on the legacy code path.
   show_featured_items: boolean;
-  // "Show description" on the storefront item detail page. Was
-  // spare_toggle_2 — same story as show_featured_items above.
+  // "Show description" on the storefront item detail page.
   show_description: boolean;
   // Gates the dashboard's Blob storage donut widget (see
   // StorageDonutWidget.tsx) — off by default, persisted once a tenant
-  // opts in. Was spare_toggle_4.
+  // opts in.
   show_dashboard_storage_widget: boolean;
-  // NOTE TO SELF (and any future agent touching this file): the comments on
-  // show_featured_items/show_description/show_dashboard_storage_widget/
-  // checklist_picked_theme/checklist_renamed_taxonomy above describe an
-  // *older* pattern — actually renaming a spare_toggle_N column (via
-  // ALTER TABLE ... RENAME COLUMN, rolled out per-tenant with
-  // scripts/add-spare-toggles.sql) once it got claimed. Do NOT do that
-  // anymore. The entire point of pre-provisioning this spare pool is so a
-  // new toggle-shaped feature ships by reading/writing an existing generic
-  // column as-is — zero DB changes on any already-provisioned tenant.
-  // Renaming the column defeats that: it turns a zero-migration feature
-  // back into "every tenant needs a migration," which is exactly the cost
-  // this pool exists to avoid. So: when claiming one of these, keep the
-  // column/type-field name exactly as `spare_toggle_N` and just document
-  // what it's being used for in a comment (see spare_toggle_6 below for the
-  // current example) — never rename it in the DB or in this type.
-  //
-  // spare_toggle_6 is claimed: gates a 5th, tenant-named status option (the
-  // tenant's chosen name for it lives in name_status above, defaulting to
-  // the "status5" translation, "Undefined", when blank). See
-  // components/dashboard/SettingsForm.tsx, app/page.tsx, and
-  // app/items/[id]/page.tsx for where it's read.
-  spare_toggle_6: boolean;
-  // spare_toggle_7 is claimed: INVERTED "hide types" — true means the whole
-  // "type" tag pool is hidden (filters on the dashboard and visitor page,
-  // the item form's type picker, the item page's type badge, the Excel type
-  // column/import). Inverted on purpose: spare toggles default to false, and
-  // existing tenants must keep types visible with zero migration, so "off"
-  // (false) has to mean "types shown". The settings UI presents it as a
-  // normal "Use types" switch (checked = false here); code should read it
-  // through typesEnabled() in app/lib/typesEnabled.ts rather than testing
-  // the raw flag. Hiding never deletes stored type assignments. Kept named
-  // spare_toggle_7 — do not rename (see the note above).
-  spare_toggle_7: boolean;
-  // spare_toggle_8 is claimed: "use_datetime" — whether items carry an
-  // optional date (items.item_datetime, date only — no time of day) at all. Off by default; read it
-  // through datetimeEnabled() in app/lib/datetime.ts. Not renamed.
-  spare_toggle_8: boolean;
-  // spare_toggle_9 is claimed: "show_datetime" — show that date on the
-  // visitor item page (only meaningful while spare_toggle_8 is on). Off by
-  // default. See datetimeShown() in app/lib/datetime.ts. Not renamed.
-  spare_toggle_9: boolean;
-  // spare_toggle_10 is claimed: INVERTED "group identical items" — false (the
-  // default) = items with the same name/description/sell_price are collapsed
-  // into one on the storefront; true = every copy shown. Read it through
-  // groupIdenticalItems() in app/lib/groupIdentical.ts. Not renamed.
-  spare_toggle_10: boolean;
-  // Replenished spare pool (migration 0007) — unclaimed.
-  spare_toggle_11: boolean;
-  spare_toggle_12: boolean;
+  // 5th, tenant-named status option: whether it exists / is offered to
+  // visitors. Its name lives in name_status above (defaulting to the
+  // "status5" translation, "Undefined", when blank). See
+  // components/dashboard/SettingsForm.tsx, app/page.tsx and
+  // app/items/[id]/page.tsx.
+  show_status_5: boolean;
+  // INVERTED on purpose: true hides the whole "type" tag pool (filters on the
+  // dashboard and visitor page, the item form's type picker, the item page's
+  // type badge, the Excel type column/import). Inverted so that the column
+  // default (false) means "types shown" — existing tenants kept types
+  // visible with zero data changes. The settings UI presents it as a normal
+  // "Use types" switch; code reads it through typesEnabled() in
+  // app/lib/typesEnabled.ts. Hiding never deletes stored type assignments.
+  hide_types: boolean;
+  // INVERTED, same idea as hide_types: true hides the whole location feature.
+  // Read it through locationsEnabled() in app/lib/locationsEnabled.ts.
+  hide_locations: boolean;
+  // Whether items carry an optional date (items.item_datetime, date only — no
+  // time of day) at all. Off by default; read through datetimeEnabled() in
+  // app/lib/datetime.ts.
+  use_datetime: boolean;
+  // Show that date on the visitor item page (only meaningful while
+  // use_datetime is on). Off by default. See datetimeShown() in
+  // app/lib/datetime.ts.
+  show_datetime: boolean;
+  // INVERTED: false (the default) = items with the same name, description and
+  // sell price are collapsed into one card on the storefront; true = every
+  // copy is shown. Read through groupIdenticalItems() in
+  // app/lib/groupIdentical.ts.
+  ungroup_identical_items: boolean;
   // Contact channels — see the comment on the same columns in
   // app/api/setup/route.ts. Each is a bare username/address (no @, no
   // https://), turned into a storefront button by app/lib/telegram.ts,
@@ -201,14 +174,46 @@ export type Settings = {
   contact_telegram: string | null;
   contact_email: string | null;
   contact_instagram: string | null;
-  // Unassigned, reserved for future free-text fields — same reasoning as the
-  // spare toggles above.
-  // spare_text_4 is claimed: the ISO-8601 timestamp of the last time anyone
-  // used the dashboard (fresh sign-in OR an already-signed-in session coming
-  // back — see recordDashboardAccess in services/settings.ts). Written
-  // automatically, never user-editable. Reported to the central site by
-  // /api/keepalive. Stored as text in the spare pool, not a new column, so
-  // no migration — and, like every claimed spare column, NOT renamed.
+  // ISO-8601 timestamp of the last time anyone used the dashboard (fresh
+  // sign-in OR an already-signed-in session coming back — see
+  // recordDashboardAccess in services/settings.ts). Written automatically,
+  // never user-editable. Reported to the central site by /api/keepalive.
+  last_login_at: string | null;
+  // SPARE POOL — unclaimed columns kept ready so a new toggle-shaped or
+  // text-shaped feature ships with ZERO database changes on any tenant.
+  // To claim one: just start reading/writing spare_toggle_N / spare_text_N
+  // under that exact name, and document what it means in a comment right
+  // here (e.g. "// spare_toggle_13: INVERTED 'hide X' — read via xEnabled()")
+  // and in the validation schema. Do NOT rename it or write a migration for
+  // it. Toggles default to false, so claim one as an inverted flag whenever
+  // a feature should default to ON.
+  // Renaming claimed columns to proper names is an occasional batch
+  // cleanup (a migration doing RENAME COLUMN plus a top-up of the pool back
+  // to 20 toggles / 10 texts — see migration 0009 in
+  // vercel-cli-runner/lib/migrations.js), never part of shipping a feature.
+  spare_toggle_1: boolean;
+  spare_toggle_2: boolean;
+  spare_toggle_3: boolean;
+  spare_toggle_4: boolean;
+  spare_toggle_5: boolean;
+  spare_toggle_6: boolean;
+  spare_toggle_7: boolean;
+  spare_toggle_8: boolean;
+  spare_toggle_9: boolean;
+  spare_toggle_10: boolean;
+  spare_toggle_11: boolean;
+  spare_toggle_12: boolean;
+  spare_toggle_13: boolean;
+  spare_toggle_14: boolean;
+  spare_toggle_15: boolean;
+  spare_toggle_16: boolean;
+  spare_toggle_17: boolean;
+  spare_toggle_18: boolean;
+  spare_toggle_19: boolean;
+  spare_toggle_20: boolean;
+  spare_text_1: string | null;
+  spare_text_2: string | null;
+  spare_text_3: string | null;
   spare_text_4: string | null;
   spare_text_5: string | null;
   spare_text_6: string | null;

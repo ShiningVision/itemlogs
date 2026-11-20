@@ -4,6 +4,7 @@ import { getItems } from '@/app/lib/services/items';
 import { getSettings } from '@/app/lib/services/settings';
 import { buildItemsWorkbook } from '@/app/lib/items/exportItems';
 import { typesEnabled } from '@/app/lib/typesEnabled';
+import { locationsEnabled } from '@/app/lib/locationsEnabled';
 import { parseIdList } from '@/app/lib/idList';
 
 export async function GET(request: NextRequest) {
@@ -20,10 +21,10 @@ export async function GET(request: NextRequest) {
     // page of the (paginated) grid the user is currently looking at.
     const categoryIds = categoriesParam ? categoriesParam.split(',').map(Number) : undefined;
     const statuses = statusesParam ? statusesParam.split(',').map(Number) : undefined;
-    const locationIds = locationsParam ? locationsParam.split(',').map(Number) : undefined;
     const search = searchParam || undefined;
 
     const settings = await getSettings();
+    const locationIds = locationsEnabled(settings) && locationsParam ? locationsParam.split(',').map(Number) : undefined;
     // A leftover `types` param is ignored with types turned off
     // (typesEnabled), same as the items page itself.
     const typeIds = typesEnabled(settings) && typesParam ? typesParam.split(',').map(Number) : undefined;
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
     // third state, so the export matches exactly what the grid shows.
     const excludeCategoryIds = parseIdList(searchParams.get('xcategories'));
     const excludeTypeIds = typesEnabled(settings) ? parseIdList(searchParams.get('xtypes')) : [];
-    const excludeLocationIds = parseIdList(searchParams.get('xlocations'));
+    const excludeLocationIds = locationsEnabled(settings) ? parseIdList(searchParams.get('xlocations')) : [];
     const { items } = await getItems({
       categoryIds,
       statuses,

@@ -19,7 +19,7 @@
 // x-keepalive-token header equals this deployment's AUTH_SECRET — the
 // central site stores every tenant's AUTH_SECRET, see tenants.auth_secret),
 // the response also carries `lastLogin`, the ISO timestamp of the owner's
-// last dashboard use (settings.spare_text_4, see Settings.spare_text_4).
+// last dashboard use (settings.last_login_at, see Settings.last_login_at).
 // Anyone else gets only { ok } — when the owner was last active isn't
 // something to hand to the public internet.
 import { NextResponse } from 'next/server';
@@ -39,7 +39,7 @@ function isCentralSite(request: Request): boolean {
 export async function GET(request: Request) {
   const { data, error } = await supabase
     .from('settings')
-    .select('id, spare_text_4')
+    .select('id, last_login_at')
     .eq('id', 1)
     .limit(1)
     .maybeSingle();
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
   // monitor.
   const body: { ok: boolean; lastLogin?: string | null } = { ok: !error };
   if (!error && isCentralSite(request)) {
-    body.lastLogin = data?.spare_text_4 ?? null;
+    body.lastLogin = data?.last_login_at ?? null;
   }
 
   return NextResponse.json(body, { status: 200 });

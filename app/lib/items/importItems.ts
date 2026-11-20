@@ -13,7 +13,7 @@
 //      on update or defaults to null/DB-default on create (see the
 //      payload construction in the mutation pass below).
 //   2. Parse every data row and run a full validation scan (status must be
-//      1-4, purchase/cost/sell price must be numeric, purchase_price_currency
+//      1-5 when given — blank is fine, see ParsedRow.status — purchase/cost/sell price must be numeric, purchase_price_currency
 //      must exist, ids — if given — must reference an existing item). Nothing
 //      is written to the database yet. If ANY row fails ANY of these
 //      checks, the whole import is aborted and every problem found is
@@ -33,13 +33,14 @@
 // rows already written.
 
 import ExcelJS from 'exceljs';
-import { getItemsByIds, createItem, updateItem } from '@/app/lib/services/items';
+import { getItemsByIds, createItem, updateItem, deleteItem } from '@/app/lib/services/items';
 import { getCategories, createCategory } from '@/app/lib/services/categories';
 import { getTypes, createType } from '@/app/lib/services/types';
 import { getLocations, createLocation } from '@/app/lib/services/locations';
 import { getCurrencies } from '@/app/lib/services/currencies';
 import { getSettings } from '@/app/lib/services/settings';
 import { typesEnabled } from '@/app/lib/typesEnabled';
+import { locationsEnabled } from '@/app/lib/locationsEnabled';
 import { getImageByUrl, createImage } from '@/app/lib/services/images';
 import { uploadImageBuffer } from '@/app/lib/storage/images';
 
@@ -50,7 +51,6 @@ const MANDATORY_HEADERS = [
   'name',
   'status',
   'category',
-  'location',
   'description',
   'main_image',
   'purchase_price',
@@ -67,12 +67,18 @@ const MANDATORY_HEADERS = [
 // resolveOptionalNumber/row construction).
 //
 // 'type' is optional for the same reason (types can be turned off — see
-// typesEnabled / Settings.spare_toggle_7): an export from
+// typesEnabled / Settings.hide_types): an export from
 // a tenant with types turned off has no type column, and that file must
 // import cleanly. A missing type column leaves every item's existing type
 // assignments untouched — it does NOT mean "clear them" the way a present
 // but blank/"Other" cell does.
-const OPTIONAL_HEADERS = ['barcode', 'sell_price', 'notes', 'type'];
+//
+// 'package' is export-only reference data (the package's name) — accepted so
+// an exported file can be reimported, but never read or applied.
+// 'location' is optional too: an export from a tenant with locations turned
+// off has no location column (see locationsEnabled), and a missing column
+// leaves every item's location untouched.
+const OPTIONAL_HEADERS = ['barcode', 'sell_price', 'notes', 'type', 'location', 'package'];
 
 const ALL_KNOWN_HEADERS = new Set([...MANDATORY_HEADERS, ...OPTIONAL_HEADERS]);
 
@@ -81,6 +87,7 @@ export type ImportResult =
       success: true;
       created: number;
       updated: number;
+      deleted: number;
       categoriesCreated: number;
       typesCreated: number;
       locationsCreated: number;
@@ -88,13 +95,17 @@ export type ImportResult =
       imagesSkipped: number;
       rowErrors: string[];
     }
-  | { success: false; error: string; details?: string[] };
+  // `needsDeleteConfirmation` — the file is valid but contains delete rows
+  // (see below) and the caller hasn't confirmed them yet; nothing was written.
+  | { success: false; error: string; details?: string[]; needsDeleteConfirmation?: { deleteCount: number } };
 
 type ParsedRow = {
   rowNumber: number;
   id: number | null;
   name: string;
-  status: number;
+  // null = blank cell (or no status column): a new item gets status 1
+  // (Available), an existing item keeps the status it has.
+  status: number | null;
   type: string | null;
   category: string | null;
   location: string | null;
@@ -129,7 +140,16 @@ function cellToString(value: ExcelJS.CellValue): string | null {
   return str === '' ? null : str;
 }
 
-export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult> {
+// DELETE ROWS: a row whose `id` is filled in and EVERY other cell is blank
+// deletes that item (exports always fill in purchase_price_currency etc., so
+// a real item row is never mistaken for one). Because that is destructive,
+// the first call only reports how many items would be deleted
+// (needsDeleteConfirmation) and writes nothing; the caller asks the person and
+// calls again with { confirmDeletes: true }.
+export async function importItemsFromExcel(
+  buffer: Buffer,
+  options: { confirmDeletes?: boolean } = {}
+): Promise<ImportResult> {
   const workbook = new ExcelJS.Workbook();
   try {
     await workbook.xlsx.load(buffer as any);
@@ -178,12 +198,15 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
   // were on can still be imported.
   const settings = await getSettings();
   const importTypes = typesEnabled(settings) && headerIndex.has('type');
+  // Same for locations: only applied when they're on AND the file has the column.
+  const importLocations = locationsEnabled(settings) && headerIndex.has('location');
 
   // ---- 2. Parse rows + full validation scan (nothing written yet) ----
   const currencies = await getCurrencies();
   const currencyCodes = new Set(currencies.map((c) => c.currency_code));
 
   const rows: ParsedRow[] = [];
+  const deleteRows: { rowNumber: number; id: number }[] = [];
   const statusErrors: string[] = [];
   const priceErrors: string[] = [];
   const currencyErrors: string[] = [];
@@ -222,6 +245,17 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
     ].every((v) => v === null);
     if (allBlank) return;
 
+    // Id and nothing else: a delete row.
+    if (idStr !== null && [name, statusStr, type, category, location, description, barcode, main_image, purchasePriceStr, purchase_price_currency, costPriceStr, sellPriceStr, notes].every((v) => v === null)) {
+      const n = Number(idStr);
+      if (!Number.isInteger(n)) {
+        idFormatErrors.push(`Row ${rowNumber}: "id" is not a valid whole number ("${idStr}").`);
+      } else {
+        deleteRows.push({ rowNumber, id: n });
+      }
+      return;
+    }
+
     let id: number | null = null;
     if (idStr !== null) {
       const n = Number(idStr);
@@ -241,9 +275,11 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
       nameErrors.push(`Row ${rowNumber}: "name" is required when creating a new item (id is empty).`);
     }
 
-    const statusNum = statusStr !== null ? Number(statusStr) : NaN;
-    if (!Number.isFinite(statusNum) || ![1, 2, 3, 4, 5].includes(statusNum)) {
-      statusErrors.push(`Row ${rowNumber}: "status" must be 1, 2, 3, 4, or 5 (found "${statusStr ?? '(empty)'}").`);
+    // Blank is allowed (see ParsedRow.status); only a filled-in cell has to
+    // be a valid status.
+    const statusNum = statusStr !== null ? Number(statusStr) : null;
+    if (statusNum !== null && ![1, 2, 3, 4, 5].includes(statusNum)) {
+      statusErrors.push(`Row ${rowNumber}: "status" must be 1, 2, 3, 4, or 5 (found "${statusStr}").`);
     }
 
     function parsePrice(label: string, str: string | null): number {
@@ -270,7 +306,7 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
       rowNumber,
       id,
       name: name ?? '',
-      status: Number.isFinite(statusNum) ? statusNum : 0,
+      status: statusNum,
       type,
       category,
       location,
@@ -286,13 +322,32 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
   });
 
   // id existence check (batched)
-  const idsToCheck = rows.map((r) => r.id).filter((id): id is number => id !== null);
+  const idsToCheck = [
+    ...rows.map((r) => r.id).filter((id): id is number => id !== null),
+    ...deleteRows.map((r) => r.id),
+  ];
   const existingIds = await getItemsByIds(idsToCheck);
   const missingIdErrors: string[] = [];
   for (const row of rows) {
     if (row.id !== null && !existingIds.has(row.id)) {
       missingIdErrors.push(`Row ${row.rowNumber}: item id ${row.id} does not exist.`);
     }
+  }
+
+  for (const del of deleteRows) {
+    if (!existingIds.has(del.id)) missingIdErrors.push(`Row ${del.rowNumber}: item id ${del.id} does not exist.`);
+  }
+  // The same id both deleted and edited/deleted twice is a mistake, not a
+  // plan — refuse rather than guess which row wins.
+  const updateIds = new Set(rows.map((r) => r.id).filter((id): id is number => id !== null));
+  const seenDeletes = new Set<number>();
+  for (const del of deleteRows) {
+    if (updateIds.has(del.id)) {
+      missingIdErrors.push(`Row ${del.rowNumber}: item id ${del.id} is both deleted here and edited in another row.`);
+    } else if (seenDeletes.has(del.id)) {
+      missingIdErrors.push(`Row ${del.rowNumber}: item id ${del.id} is listed for deletion more than once.`);
+    }
+    seenDeletes.add(del.id);
   }
 
   const allErrors = [...idFormatErrors, ...nameErrors, ...statusErrors, ...priceErrors, ...currencyErrors, ...missingIdErrors];
@@ -304,8 +359,16 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
     };
   }
 
-  if (rows.length === 0) {
-    return { success: true, created: 0, updated: 0, categoriesCreated: 0, typesCreated: 0, locationsCreated: 0, imagesFetched: 0, imagesSkipped: 0, rowErrors: [] };
+  if (deleteRows.length > 0 && !options.confirmDeletes) {
+    return {
+      success: false,
+      error: 'This file deletes items — confirmation needed.',
+      needsDeleteConfirmation: { deleteCount: deleteRows.length },
+    };
+  }
+
+  if (rows.length === 0 && deleteRows.length === 0) {
+    return { success: true, created: 0, updated: 0, deleted: 0, categoriesCreated: 0, typesCreated: 0, locationsCreated: 0, imagesFetched: 0, imagesSkipped: 0, rowErrors: [] };
   }
 
   // ---- 3. Mutation pass ----
@@ -497,7 +560,9 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
     try {
       const categoryIds = await resolveCategories(row.category, row.rowNumber);
       const typeIds = importTypes ? await resolveTypes(row.type, row.rowNumber) : undefined;
-      const locationId = await resolveLocation(row.location);
+      // Locations turned off: the column is ignored, an update leaves the
+      // item's stored location alone (undefined, not null).
+      const locationId = importLocations ? await resolveLocation(row.location) : undefined;
       const mainImageId = await resolveMainImage(row.main_image);
 
       const payload = {
@@ -511,7 +576,6 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
         description: row.description ?? undefined,
         barcode: row.barcode ?? undefined,
         notes: row.notes ?? undefined,
-        status: row.status,
         category_ids: categoryIds,
         // undefined (not []) when types aren't being imported, so an update
         // leaves existing assignments alone (see updateItem).
@@ -532,10 +596,12 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
       };
 
       if (row.id !== null) {
-        await updateItem(row.id, payload);
+        // Blank status leaves an existing item's status alone.
+        await updateItem(row.id, { ...payload, status: row.status ?? undefined });
         updated++;
       } else {
-        await createItem(payload);
+        // Blank status on a new item = Available.
+        await createItem({ ...payload, status: row.status ?? 1 });
         created++;
       }
     } catch (err) {
@@ -544,10 +610,25 @@ export async function importItemsFromExcel(buffer: Buffer): Promise<ImportResult
     }
   }
 
+  // Deletes last, so a failure above can't leave things half-deleted before
+  // the edits were even attempted. Each is independent; failures are reported
+  // per row like any other save failure.
+  let deleted = 0;
+  for (const del of deleteRows) {
+    try {
+      await deleteItem(del.id);
+      deleted++;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'unknown error';
+      rowErrors.push(`Row ${del.rowNumber}: failed to delete — ${message}.`);
+    }
+  }
+
   return {
     success: true,
     created,
     updated,
+    deleted,
     categoriesCreated,
     typesCreated,
     locationsCreated,

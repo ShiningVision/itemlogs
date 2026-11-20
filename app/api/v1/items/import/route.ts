@@ -11,9 +11,15 @@ export async function POST(request: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const result = await importItemsFromExcel(buffer);
+    const result = await importItemsFromExcel(buffer, { confirmDeletes: formData.get('confirmDeletes') === 'true' });
 
     if (!result.success) {
+      if (result.needsDeleteConfirmation) {
+        return NextResponse.json(
+          { error: result.error, needsDeleteConfirmation: result.needsDeleteConfirmation },
+          { status: 409 }
+        );
+      }
       return NextResponse.json({ error: result.error, details: result.details }, { status: 400 });
     }
 

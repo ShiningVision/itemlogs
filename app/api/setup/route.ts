@@ -431,8 +431,8 @@ export async function POST(request: Request) {
           -- doesn't apply to it.
           notes TEXT,
           -- Optional DATE (no time of day) shown on the visitor item page (a
-          -- "vacation item" feature, gated by settings.spare_toggle_8 =
-          -- use_datetime and spare_toggle_9 = show_datetime). Not on
+          -- "vacation item" feature, gated by settings.use_datetime; shown to
+          -- visitors when settings.show_datetime is on too). Not on
           -- blueprints. KEEP IN SYNC with migrations 0007 + 0008 in
           -- vercel-cli-runner/lib/migrations.js.
           item_datetime DATE
@@ -517,7 +517,7 @@ export async function POST(request: Request) {
           name_category VARCHAR(255),
           -- Not a generic "Status" rename (that word isn't tenant-renameable)
           -- — holds the tenant-chosen name for a 5th status option gated by
-          -- spare_toggle_6 below, defaulting to the "status5" translation
+          -- show_status_5 below, defaulting to the "status5" translation
           -- ("Undefined") when null.
           name_status VARCHAR(255),
           name_type VARCHAR(255),
@@ -535,12 +535,6 @@ export async function POST(request: Request) {
           storefront_tagline VARCHAR(255),
           storefront_density VARCHAR(20) NOT NULL DEFAULT 'dense',
           show_contact BOOLEAN NOT NULL DEFAULT false,
-          -- contact_info (free-text — email, Discord handle, whatever the
-          -- tenant typed) is kept only so already-provisioned tenants who
-          -- filled it in before contact_whatsapp existed don't lose that
-          -- data — nothing in the UI reads or writes it anymore. New
-          -- tenants only ever get contact_whatsapp populated.
-          contact_info VARCHAR(255),
           -- WhatsApp click-to-chat number (see app/lib/whatsapp.ts) — kept
           -- as entered (may include spaces/dashes/a leading +) since that's
           -- more readable for the tenant to edit; sanitized down to digits
@@ -577,85 +571,86 @@ export async function POST(request: Request) {
           -- No longer read by any onboarding-checklist code — the "add a
           -- contact channel" and "organize categories/types/locations" steps
           -- were dropped from the checklist. Left in place rather than
-          -- dropped from the schema (see the spare-column comment below for
-          -- why an ALTER TABLE isn't free); harmless dead columns going
-          -- forward. Was spare_toggle_1/spare_toggle_2 respectively before
-          -- they were themselves claimed for these two now-removed steps.
+          -- dropped; harmless dead columns.
           checklist_added_contact BOOLEAN NOT NULL DEFAULT false,
           checklist_organized BOOLEAN NOT NULL DEFAULT false,
           -- Set once theme is ever set to anything other than
-          -- null/'default' — was spare_toggle_3.
+          -- null/'default'.
           checklist_picked_theme BOOLEAN NOT NULL DEFAULT false,
           -- Set once the tenant has given the category/type/location fields
           -- a custom label of their own (name_category/name_type/
           -- name_location — see hasRenamedTaxonomy in
-          -- app/lib/services/items.ts) — was spare_toggle_5.
+          -- app/lib/services/items.ts).
           checklist_renamed_taxonomy BOOLEAN NOT NULL DEFAULT false,
           -- "Show featured items" — gates the storefront's spotlight strip
-          -- (see StorefrontSpotlight / FeaturedItemsSection). Used to live on
-          -- a reused spare_toggle_1 column to avoid an ALTER TABLE on every
-          -- already-provisioned tenant database; all tenants provisioned
-          -- before this rename are now on the legacy code path and won't
-          -- pick up this schema, so the rename is safe going forward.
+          -- (see StorefrontSpotlight / FeaturedItemsSection).
           show_featured_items BOOLEAN NOT NULL DEFAULT false,
           -- "Show description" on the storefront item detail page (see the
-          -- Toggle in SettingsForm.tsx and app/items/[id]/page.tsx). Same
-          -- history as show_featured_items above — was spare_toggle_2.
+          -- Toggle in SettingsForm.tsx and app/items/[id]/page.tsx).
           show_description BOOLEAN NOT NULL DEFAULT false,
           -- Gates the dashboard's Blob storage donut widget (see
           -- StorageDonutWidget.tsx) — off by default since, like the
           -- Gallery's own usage bar, computing it means walking every blob
           -- via list(), not a cheap query. A tenant opts in, and the choice
           -- persists here rather than resetting on every dashboard visit.
-          -- Was spare_toggle_4.
           show_dashboard_storage_widget BOOLEAN NOT NULL DEFAULT false,
-          -- Unassigned, reserved for future features. Once a tenant's
-          -- database is provisioned there's no way to bulk-ALTER it later
-          -- (see scripts/add-spare-toggles.sql for the one-time migration
-          -- needed on already-existing tenants) — having these ready ahead
-          -- of time means a new toggle-shaped feature can ship by just
-          -- claiming one of these instead of needing a fresh migration
-          -- rolled out to every tenant.
-          --
-          -- NOTE: the comments above (show_featured_items/show_description/
-          -- show_dashboard_storage_widget/checklist_picked_theme/
-          -- checklist_renamed_taxonomy) describe an *older, now-abandoned*
-          -- pattern of renaming the column via ALTER TABLE ... RENAME COLUMN
-          -- once claimed. Don't do that for new claims — it defeats the
-          -- whole point of this pool, which is that claiming one requires
-          -- ZERO database changes on any already-provisioned tenant. Just
-          -- start reading/writing the existing spare_toggle_N column as-is
-          -- and document what it means in a comment (see spare_toggle_6
-          -- below for the current example).
-          --
-          -- spare_toggle_6 is claimed: gates a 5th, tenant-named status
-          -- option (its name lives in name_status above, defaulting to the
-          -- "status5" translation, "Undefined", when blank). See
-          -- components/dashboard/SettingsForm.tsx, app/page.tsx, and
-          -- app/items/[id]/page.tsx.
-          spare_toggle_6 BOOLEAN NOT NULL DEFAULT false,
-          spare_toggle_7 BOOLEAN NOT NULL DEFAULT false,
-          spare_toggle_8 BOOLEAN NOT NULL DEFAULT false,
-          -- 8 = use_datetime, 9 = show_datetime (see definitions.ts); 10-12
-          -- are the replenished pool (migration 0007).
-          spare_toggle_9 BOOLEAN NOT NULL DEFAULT false,
-          spare_toggle_10 BOOLEAN NOT NULL DEFAULT false,
-          spare_toggle_11 BOOLEAN NOT NULL DEFAULT false,
-          spare_toggle_12 BOOLEAN NOT NULL DEFAULT false,
-          -- Telegram/Instagram usernames and a contact email — same
-          -- "spare column, claimed and renamed in place" story as
-          -- show_featured_items/show_description above, just for the
-          -- free-text pool instead of the boolean one. See
+          -- Claimed toggles (see app/lib/definitions.ts for what each means).
+          -- hide_types / hide_locations / ungroup_identical_items are
+          -- INVERTED on purpose: the column default (false) means "types
+          -- shown / locations shown / identical items grouped". Read them
+          -- through typesEnabled(), locationsEnabled(), groupIdenticalItems().
+          -- show_status_5 gates the 5th, tenant-named status option (its name
+          -- lives in name_status above). use_datetime / show_datetime: the
+          -- optional per-item date (items.item_datetime) and whether it is
+          -- shown on the visitor item page.
+          show_status_5 BOOLEAN NOT NULL DEFAULT false,
+          hide_types BOOLEAN NOT NULL DEFAULT false,
+          hide_locations BOOLEAN NOT NULL DEFAULT false,
+          use_datetime BOOLEAN NOT NULL DEFAULT false,
+          show_datetime BOOLEAN NOT NULL DEFAULT false,
+          ungroup_identical_items BOOLEAN NOT NULL DEFAULT false,
+          -- Telegram/Instagram usernames and a contact email — see
           -- components/dashboard/SettingsForm.tsx's contactChannelRow and
           -- app/lib/telegram.ts, email.ts, instagram.ts for how each is
           -- turned into a storefront contact button.
           contact_telegram VARCHAR(255),
           contact_email VARCHAR(255),
           contact_instagram VARCHAR(255),
-          -- Unassigned, reserved for future free-text fields (more contact
-          -- methods, integration IDs, etc.) — same reasoning as the spare
-          -- toggles above, sized to match every other free-text settings
-          -- column (see name_category etc. and validation/settings.ts).
+          -- ISO-8601 timestamp of the last dashboard use (see
+          -- recordDashboardAccess in services/settings.ts). Written
+          -- automatically, reported to the central site by /api/keepalive.
+          last_login_at VARCHAR(255),
+          -- SPARE POOL — unclaimed columns (20 toggles, 10 texts) kept ready
+          -- so a new feature ships with no schema change on any tenant: it
+          -- just claims one AS-IS under its spare_toggle_N / spare_text_N
+          -- name (documented in app/lib/definitions.ts), no rename, no
+          -- migration. Claimed columns are only renamed occasionally, in a
+          -- batch cleanup (see migration 0009 in
+          -- vercel-cli-runner/lib/migrations.js, and keep this table in step
+          -- with it).
+          spare_toggle_1 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_2 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_3 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_4 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_5 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_6 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_7 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_8 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_9 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_10 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_11 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_12 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_13 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_14 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_15 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_16 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_17 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_18 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_19 BOOLEAN NOT NULL DEFAULT false,
+          spare_toggle_20 BOOLEAN NOT NULL DEFAULT false,
+          spare_text_1 VARCHAR(255),
+          spare_text_2 VARCHAR(255),
+          spare_text_3 VARCHAR(255),
           spare_text_4 VARCHAR(255),
           spare_text_5 VARCHAR(255),
           spare_text_6 VARCHAR(255),
@@ -676,7 +671,7 @@ export async function POST(request: Request) {
           display_profit, display_sell_price, display_purchase_price, display_cost_price, theme,
           owned_themes, tried_themes, theme_trial_expires_at,
           storefront_name, storefront_tagline, storefront_density,
-          show_contact, contact_info, contact_whatsapp, show_location, show_package_filter,
+          show_contact, contact_whatsapp, show_location, show_package_filter,
           use_secret_notes, show_location_filter, name_location, app_url,
           checklist_added_item, checklist_named_storefront, checklist_went_live,
           show_description
@@ -690,7 +685,7 @@ export async function POST(request: Request) {
           false, false, false, false, 'default',
           ARRAY['default'], ARRAY[]::TEXT[], NULL,
           NULL, NULL, 'dense',
-          false, NULL, NULL, false, false,
+          false, NULL, false, false,
           false, false, NULL, ${appUrl},
           false, false, false,
           -- "Show description" — on by default for a brand-new tenant;

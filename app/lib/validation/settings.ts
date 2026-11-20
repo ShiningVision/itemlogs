@@ -56,11 +56,6 @@ export const updateSettingsSchema = z.object({
     })
     .nullable()
     .optional(),
-  // Legacy free-text field, replaced by contact_whatsapp above — kept
-  // valid to PATCH only so existing rows with a value already in it don't
-  // fail if something still round-trips the full settings object; nothing
-  // in the UI writes to it anymore.
-  contact_info: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
   show_location: z.boolean().optional(),
   show_package_filter: z.boolean().optional(),
   use_secret_notes: z.boolean().optional(),
@@ -69,22 +64,36 @@ export const updateSettingsSchema = z.object({
   show_featured_items: z.boolean().optional(),
   show_description: z.boolean().optional(),
   show_dashboard_storage_widget: z.boolean().optional(),
-  // Reserved for future features — see app/api/setup/route.ts. Kept valid
-  // to PATCH here ahead of time so a future feature only needs to start
-  // reading/writing one, not also wire up validation for it.
-  // spare_toggle_6 is claimed (gates the 5th, tenant-named status option —
-  // see app/lib/definitions.ts's Settings.spare_toggle_6 comment). Kept
-  // named spare_toggle_6 here too — do not rename; see that comment for why.
+  // Claimed toggles (see app/lib/definitions.ts for what each means).
+  show_status_5: z.boolean().optional(),
+  hide_types: z.boolean().optional(),
+  hide_locations: z.boolean().optional(),
+  use_datetime: z.boolean().optional(),
+  show_datetime: z.boolean().optional(),
+  ungroup_identical_items: z.boolean().optional(),
+  // Spare pool — kept valid to PATCH ahead of time so a future feature can
+  // claim one as-is (no rename, no migration — see app/lib/definitions.ts)
+  // without touching this schema.
+  spare_toggle_1: z.boolean().optional(),
+  spare_toggle_2: z.boolean().optional(),
+  spare_toggle_3: z.boolean().optional(),
+  spare_toggle_4: z.boolean().optional(),
+  spare_toggle_5: z.boolean().optional(),
   spare_toggle_6: z.boolean().optional(),
-  // spare_toggle_7 is claimed (inverted "hide types" — see
-  // app/lib/definitions.ts's Settings.spare_toggle_7 comment). Kept named
-  // spare_toggle_7 here too — do not rename.
   spare_toggle_7: z.boolean().optional(),
-  spare_toggle_8: z.boolean().optional(), // use_datetime — see Settings.spare_toggle_8
-  spare_toggle_9: z.boolean().optional(), // show_datetime — see Settings.spare_toggle_9
-  spare_toggle_10: z.boolean().optional(), // inverted group-identical-items — see app/lib/groupIdentical.ts
+  spare_toggle_8: z.boolean().optional(),
+  spare_toggle_9: z.boolean().optional(),
+  spare_toggle_10: z.boolean().optional(),
   spare_toggle_11: z.boolean().optional(),
   spare_toggle_12: z.boolean().optional(),
+  spare_toggle_13: z.boolean().optional(),
+  spare_toggle_14: z.boolean().optional(),
+  spare_toggle_15: z.boolean().optional(),
+  spare_toggle_16: z.boolean().optional(),
+  spare_toggle_17: z.boolean().optional(),
+  spare_toggle_18: z.boolean().optional(),
+  spare_toggle_19: z.boolean().optional(),
+  spare_toggle_20: z.boolean().optional(),
   // Same looseness reasoning as contact_whatsapp above — a real Telegram
   // username check needs the Telegram API to know for sure it exists, so
   // this only rejects obviously-wrong input. Stored without a leading @
@@ -116,8 +125,13 @@ export const updateSettingsSchema = z.object({
     })
     .nullable()
     .optional(),
-  // Reserved for future free-text fields — same reasoning as the spare
-  // toggles above, capped to match the VARCHAR(255) columns.
+  // Last dashboard use (ISO-8601) — written automatically, see
+  // recordDashboardAccess; never from the UI.
+  last_login_at: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
+  // Spare free-text pool, capped to match the VARCHAR(255) columns.
+  spare_text_1: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
+  spare_text_2: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
+  spare_text_3: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
   spare_text_4: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
   spare_text_5: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),
   spare_text_6: z.string().max(255, 'Must be 255 characters or fewer.').nullable().optional(),

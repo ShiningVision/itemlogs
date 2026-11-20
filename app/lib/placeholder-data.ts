@@ -79,7 +79,7 @@ const packages = [
   {
     id: '1',
     name: 'Tokyo Import Haul',
-    description: 'Figures and plushies shipped in from Japan.',
+    description: 'Figures and plushies shipped in from Japan. \n This is an example package. Please delete it.',
     departure_date: '2026-03-15',
     arrival_date: '2026-04-02',
     tariff: '22.00',
@@ -100,7 +100,7 @@ const items = [
   {
     id: '1',
     name: '1/7 Scale Hatsune Miku 15th Anniversary Figure',
-    description: 'Good Smile Company 1/7 scale figure celebrating Hatsune Miku\'s 15th anniversary. Still sealed in original box. Unopened.',
+    description: 'Good Smile Company 1/7 scale figure celebrating Hatsune Miku\'s 15th anniversary. Still sealed in original box. Unopened. \n This is an example item. Please delete it.',
     location_id: '1',
     barcode: '4571245123456',
     status: 1,
@@ -117,7 +117,7 @@ const items = [
   {
     id: '2',
     name: 'Witch Hat Atelier Art Book',
-    description: 'Kadokawa art book collecting illustrations and character design art from Witch Hat Atelier. Hardcover, near-mint.',
+    description: 'Kadokawa art book collecting illustrations and character design art from Witch Hat Atelier. Hardcover, near-mint. \n This is an example item. Please delete it.',
     location_id: '2',
     barcode: '9784041083879',
     status: 1,
@@ -136,7 +136,7 @@ const items = [
   {
     id: '3',
     name: 'Pokémon Center Exclusive Kimono Pikachu Plushie',
-    description: 'Pokémon Center exclusive plush wearing a kimono outfit, released for a seasonal event. Tag attached.',
+    description: 'Pokémon Center exclusive plush wearing a kimono outfit, released for a seasonal event. \n This is an example item. Please delete it.',
     location_id: '3',
     barcode: '4521329123456',
     status: 1,
@@ -152,7 +152,7 @@ const items = [
   {
     id: '4',
     name: 'Dragon Quest XI',
-    description: 'Physical copy of Dragon Quest XI: Echoes of an Elusive Age. Case and manual included, disc in great condition.',
+    description: 'Physical copy of Dragon Quest XI: Echoes of an Elusive Age. Case and manual included, disc in great condition. \n This is an example item. Please delete it.',
     location_id: '4',
     barcode: '4988601234567',
     status: 1,
@@ -200,7 +200,6 @@ const settings = [
     storefront_tagline: null,
     storefront_density: 'dense',
     show_contact: false,
-    contact_info: 'Insert your contact info here (email, social media, etc.)',
     show_location: false,
     show_package_filter: true,
     show: false,

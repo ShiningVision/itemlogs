@@ -5,6 +5,7 @@ import { getPackageSummary } from '@/app/lib/services/packages';
 import { getSettings } from '@/app/lib/services/settings';
 import { resolveLabel } from '@/app/lib/labels';
 import { typesEnabled } from '@/app/lib/typesEnabled';
+import { locationsEnabled } from '@/app/lib/locationsEnabled';
 import { getTranslations, getLocale } from 'next-intl/server';
 import { CalendarDaysIcon } from '@heroicons/react/24/outline';
 import { datetimeShown, formatDate } from '@/app/lib/datetime';
@@ -41,9 +42,7 @@ export default async function PublicItemPage({
     2: settings.show_status_2,
     3: settings.show_status_3,
     4: settings.show_status_4,
-    // spare_toggle_6 — see app/lib/definitions.ts's Settings.spare_toggle_6
-    // comment. Kept named spare_toggle_6, not renamed.
-    5: settings.spare_toggle_6,
+    5: settings.show_status_5,
   };
 
   if (!settings.show) {
@@ -245,7 +244,7 @@ export default async function PublicItemPage({
                   </div>
                 )}
 
-                {settings.show_location && (
+                {locationsEnabled(settings) && settings.show_location && (
                   <div className="sheet-section" style={{ marginTop: 'var(--spacing-md)' }}>
                     <div className="sheet-section-title">{resolveLabel(settings.name_location, itemsT('location'))}</div>
                     <p>{item.location_ref?.name ?? ''}</p>

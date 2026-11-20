@@ -22,6 +22,7 @@ import { parseApiError } from '@/app/lib/errors/parseApiError';
 import { UnsavedBadge, SaveDot, useUnsavedTitle, saveButtonStyle } from '@/components/ui/UnsavedIndicator';
 import { useUnsavedChangesGuard } from '@/app/lib/hooks/useUnsavedChangesGuard';
 import { typesEnabled } from '@/app/lib/typesEnabled';
+import { locationsEnabled } from '@/app/lib/locationsEnabled';
 import { datetimeEnabled, todayAsLocalDateInput, toDateInputValue } from '@/app/lib/datetime';
 
 type Option = { id: number; name: string | null };
@@ -255,7 +256,9 @@ export function ItemForm({
       // so the old value stayed. The server turns '' into NULL (see
       // normalizeEmptyText in services/items.ts).
       description: f.description,
-      location_id: f.location?.id ?? null,
+      // Left out when locations are turned off (locationsEnabled), same as
+      // type_ids below: saving never touches a stored location.
+      location_id: locationsEnabled(settings) ? (f.location?.id ?? null) : undefined,
       barcode: settings.use_barcode ? f.barcode.trim() : undefined,
       status: f.status,
       category_ids: f.categories.map((c) => c.id),
@@ -755,6 +758,7 @@ export function ItemForm({
           )}
 
           <div className="sheet-field-grid">
+            {locationsEnabled(settings) && (
             <div className="sheet-field">
               <span className="sheet-label">{t('location')}</span>
               <Tooltip text={t('location')}>
@@ -778,6 +782,7 @@ export function ItemForm({
                 </button>
               </Tooltip>
             </div>
+            )}
 
             {settings.use_barcode && (
               <div className="sheet-field">
@@ -843,7 +848,7 @@ export function ItemForm({
         <BlueprintPickerModal onSelect={applyBlueprint} onClose={() => setBlueprintModalOpen(false)} />
       )}
 
-      {locationModalOpen && (
+      {locationsEnabled(settings) && locationModalOpen && (
         <TagManagerModal
           mode="assign"
           apiPath="/api/v1/locations"

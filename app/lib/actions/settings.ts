@@ -16,10 +16,8 @@ const STOREFRONT_AUTOSAVE_FIELDS = [
   'show_status_2',
   'show_status_3',
   'show_status_4',
-  // spare_toggle_6 — gates the 5th, tenant-named status option (name lives
-  // in name_status below). Kept named spare_toggle_6, not renamed — see
-  // app/lib/definitions.ts's Settings.spare_toggle_6 comment for why.
-  'spare_toggle_6',
+  // Gates the 5th, tenant-named status option (name lives in name_status).
+  'show_status_5',
   'show_contact',
   'show_sell_price',
   'show_purchase_price',
@@ -48,10 +46,9 @@ const STOREFRONT_AUTOSAVE_FIELDS = [
   'contact_instagram',
   'show_featured_items',
   'show_description',
-  // show_datetime (see Settings.spare_toggle_9 in definitions.ts).
-  'spare_toggle_9',
-  // group_identical_items, inverted (spare_toggle_10 — see app/lib/groupIdentical.ts).
-  'spare_toggle_10',
+  'show_datetime',
+  // Inverted "group identical items" (see app/lib/groupIdentical.ts).
+  'ungroup_identical_items',
 ] as const;
 
 type StorefrontAutosaveField = (typeof STOREFRONT_AUTOSAVE_FIELDS)[number];
@@ -105,10 +102,11 @@ const GENERAL_SETTINGS_AUTOSAVE_FIELDS = [
   'language',
   'use_sell_price',
   'use_barcode',
-  // Inverted "hide types" (see Settings.spare_toggle_7 in definitions.ts).
-  'spare_toggle_7',
-  // use_datetime (see Settings.spare_toggle_8 in definitions.ts).
-  'spare_toggle_8',
+  // Inverted "use types" (see Settings.hide_types in definitions.ts).
+  'hide_types',
+  // Inverted "use locations" (see Settings.hide_locations in definitions.ts).
+  'hide_locations',
+  'use_datetime',
   'use_package_fees',
   'use_secret_notes',
   'display_profit',

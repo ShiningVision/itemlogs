@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/widgets/Button';
 import { Toast, type ToastType } from '@/components/ui/notification';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useBeforeUnloadWhile } from '@/app/lib/hooks/useBeforeUnloadWhile';
 import { ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 
@@ -14,24 +15,35 @@ export function ImportExcelButton() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
+  // A file that deletes items waits here until the person confirms.
+  const [pendingDelete, setPendingDelete] = useState<{ file: File; count: number } | null>(null);
   const [notification, setNotification] = useState<{ type: ToastType; message: string } | null>(null);
   // Desktop: native "leave site?" prompt. Phones can't show one, hence the
   // visible banner below as well.
   useBeforeUnloadWhile(isImporting);
 
-  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ''; // allow re-selecting the same file later
     if (!file) return;
+    runImport(file, false);
+  }
 
+  async function runImport(file: File, confirmDeletes: boolean) {
     setIsImporting(true);
     setNotification(null);
     try {
       const formData = new FormData();
       formData.append('file', file);
+      if (confirmDeletes) formData.append('confirmDeletes', 'true');
 
       const res = await fetch('/api/v1/items/import', { method: 'POST', body: formData });
       const json = await res.json();
+
+      if (res.status === 409 && json.needsDeleteConfirmation) {
+        setPendingDelete({ file, count: json.needsDeleteConfirmation.deleteCount });
+        return;
+      }
 
       if (!res.ok) {
         const details: string[] | undefined = json.details;
@@ -49,6 +61,7 @@ export function ImportExcelButton() {
       let message = t('importSuccess', {
         created: r.created,
         updated: r.updated,
+        deleted: r.deleted ?? 0,
         categoriesCreated: r.categoriesCreated,
         typesCreated: r.typesCreated,
         locationsCreated: r.locationsCreated,
@@ -95,6 +108,20 @@ export function ImportExcelButton() {
         >
           {t('importingWarning')}
         </div>
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          message={t('importConfirmDelete', { count: pendingDelete.count })}
+          confirmLabel={t('importConfirmDeleteConfirm')}
+          cancelLabel={t('importConfirmDeleteCancel')}
+          onConfirm={() => {
+            const { file } = pendingDelete;
+            setPendingDelete(null);
+            runImport(file, true);
+          }}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
 
       {notification && (
