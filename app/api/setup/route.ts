@@ -778,13 +778,14 @@ export async function POST(request: Request) {
       // names of its categories, types and location — each by pg_trgm
       // word_similarity (does the search term approximately match some
       // word-sequence inside the text), ranked by the best match across
-      // those fields. Keeps the historical name search_items_by_name so the
-      // JS caller (resolveSearchItemIds in app/lib/services/items.ts) didn't
-      // have to change. KEEP IN SYNC with migration 0005 in
-      // vercel-cli-runner/lib/migrations.js, which applies the same
-      // definition to already-provisioned tenants.
+      // those fields. Dashboard callers (include_barcode = true) also get an
+      // exact barcode match ranked first. Keeps the historical name
+      // search_items_by_name so the JS caller (resolveSearchItemIds in
+      // app/lib/services/items.ts) didn't have to change. KEEP IN SYNC with
+      // migration 0010 in vercel-cli-runner/lib/migrations.js, which applies
+      // the same definition to already-provisioned tenants.
       await sql`
-        CREATE OR REPLACE FUNCTION search_items_by_name(search_term text, match_limit integer DEFAULT 300)
+        CREATE OR REPLACE FUNCTION search_items_by_name(search_term text, match_limit integer DEFAULT 300, include_barcode boolean DEFAULT false)
         RETURNS TABLE(id integer, rank real) AS $$
           SELECT s.id, max(s.score)::real AS rank
           FROM (
@@ -805,6 +806,16 @@ export async function POST(request: Request) {
             SELECT i.id, word_similarity(search_term, l.name) * 0.95
               FROM items i JOIN locations l ON l.id = i.location_id
               WHERE search_term <% l.name
+            UNION ALL
+            -- Exact (case-insensitive) barcode match, always ranked first.
+            -- Only when the caller asks for it (the dashboard — never the
+            -- public storefront) and the tenant actually uses barcodes.
+            SELECT i.id, 1.0::real
+              FROM items i
+              WHERE include_barcode
+                AND i.barcode IS NOT NULL
+                AND lower(i.barcode) = lower(btrim(search_term))
+                AND COALESCE((SELECT use_barcode FROM settings ORDER BY id LIMIT 1), false)
           ) s
           GROUP BY s.id
           ORDER BY rank DESC

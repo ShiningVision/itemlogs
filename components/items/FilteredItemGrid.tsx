@@ -125,6 +125,7 @@ export function FilteredItemGrid({
         const haystack = [
           item.name,
           item.description,
+          ...(settings.use_barcode ? [item.barcode] : []),
           ...(item.categories ?? []).map((c: Tag) => c.name),
           ...(showTypes ? (item.types ?? []).map((tp: Tag) => tp.name) : []),
           ...(showLocations ? [item.location_ref?.name] : []),

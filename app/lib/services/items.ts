@@ -276,9 +276,15 @@ async function applyCommonItemFilters(query: any, filters: ItemFilters) {
 // too-long search is harmless and friendlier than erroring on it.
 const SEARCH_TERM_MAX_LENGTH = 100;
 
-async function resolveSearchItemIds(term: string): Promise<number[]> {
+// includeBarcode (dashboard only — never the public storefront) also matches
+// an item whose barcode equals the search term exactly, ranked first, so a
+// scanned/typed barcode finds its item.
+async function resolveSearchItemIds(term: string, includeBarcode: boolean): Promise<number[]> {
   const searchTerm = term.slice(0, SEARCH_TERM_MAX_LENGTH);
-  const { data, error } = await supabase.rpc('search_items_by_name', { search_term: searchTerm });
+  const { data, error } = await supabase.rpc('search_items_by_name', {
+    search_term: searchTerm,
+    include_barcode: includeBarcode,
+  });
   if (error) throw error;
   return ((data ?? []) as { id: number }[]).map((row) => row.id);
 }
@@ -294,7 +300,7 @@ export async function getItems(filters: ItemFilters = {}): Promise<{ items: any[
   // searching — relevance is a more useful order than "newest"/"name" once
   // you've typed something to search for.
   if (searchTerm) {
-    const rankedIds = await resolveSearchItemIds(searchTerm);
+    const rankedIds = await resolveSearchItemIds(searchTerm, !filters.public);
     if (rankedIds.length === 0) return { items: [], totalCount: 0 };
 
     let query = supabase
